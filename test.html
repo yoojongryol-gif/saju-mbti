@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>saju-engine.js 자가검증</title>
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+  기대값 출처 (모두 웹에서 확인한 실제 만세력/공표 값)
+  ──────────────────────────────────────────────────────────────────────────
+  [S1] 한국민족문화대백과사전 「사주」 encykorea.aks.ac.kr/Article/E0025957
+       → "1911년 8월 25일 하오 6시에 태어난 사람의 사주는
+          辛亥(년) 丙申(월) 丁卯(일) 己酉(시)"
+  [S2] ytliu0.github.io/ChineseCalendar/sexagenary.html
+       → 율리우스일 JD 2458511 = 甲子일 (일주 앵커 ①)
+  [S3] 국내 만세력/토정비결 작괘 예시 (31weeks.com/112 외)
+       → 2000년 1월 1일 = 戊午일 (일주 앵커 ②, S2와 동일 식을 만족)
+  [S4] bebeyam.com 「1946년~2023년 역대 입춘 시간 절입시간 모음」
+       → 입춘 절입시각 78개년 표 (1955=02-04 22:48, 1985=02-04 06:12,
+          1990=02-04 11:14, 2000=02-04 21:40, 2021=02-03 23:59)
+  [S5] bebeyam.com 「사주 만세력 1990년 경오년 24절기 절입시간」
+       → 1990년 12절 전체 절입시각
+  [S6] 국제뉴스/한국강사신문 (2024년 입춘 기사)
+       → 2024년 입춘 = 2월 4일 17시 27분
+  [S7] auvylo.com/celebrities/{son-heung-min, lee-dong-wook, tiffany-young, winter}
+       → 공개 생년월일 기준 년주/월주/일주 (생시 미상)
+          손흥민 1992-07-08 壬申/丁未/乙酉, 이동욱 1981-11-06 辛酉/戊戌/戊子,
+          티파니 1989-08-01 己巳/辛未/癸巳, 윈터 2001-01-01 庚辰/…/甲子
+          ※ 윈터 페이지의 '월주' 표기는 일주와 동일한 甲子로 중복 표기돼 있어
+            신뢰하지 않고 년주·일주만 채택. (월주 오호둔 규칙은 이동욱·티파니
+            케이스에서 이미 검증됨 → 2001-01-01은 자월/경진년이므로 戊子)
+  [S8] 나무위키 「윤달」 최근 윤달 표
+       → 2017 윤5월 6/24~7/22, 2020 윤4월 5/23~6/20,
+          2023 윤2월 3/22~4/19, 2025 윤6월 7/25~8/22
+  [S9] 나무위키 「사주팔자」 시주 시간대 표
+       → 자(子) 23~01, 축 01~03, … 해 21~23
+  ══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#262b36;--fg:#e6e9ef;--dim:#98a1b3;
+        --ok:#2ecc71;--ng:#ff5f56;--acc:#7aa2ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;padding:16px}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:14px}
+  #banner{padding:14px 16px;border-radius:12px;font-weight:700;font-size:17px;margin-bottom:16px}
+  .allok{background:rgba(46,204,113,.14);border:1px solid var(--ok);color:var(--ok)}
+  .anyng{background:rgba(255,95,86,.14);border:1px solid var(--ng);color:var(--ng)}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+  h2{font-size:13px;margin:0;padding:10px 14px;background:#1d222c;color:var(--acc);
+     border-bottom:1px solid var(--line);letter-spacing:.02em}
+  .wrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:640px}
+  th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}
+  th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  td.case{color:var(--fg);white-space:nowrap}
+  td.exp,td.got{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+  .P{color:var(--ok);font-weight:700}.F{color:var(--ng);font-weight:700}
+  tr.f{background:rgba(255,95,86,.07)}
+  .src{color:var(--dim);font-size:11px}
+  footer{color:var(--dim);font-size:11px;margin-top:18px;line-height:1.7}
+</style>
+</head>
+<body>
+<h1>saju-engine.js 자가검증</h1>
+<div class="sub">페이지 로드 시 자동 실행 · 기대값 출처는 이 파일의 HTML 주석 참조</div>
+<div id="banner">실행 중…</div>
+<div id="out"></div>
+<footer>
+  본 검증표는 엔진(만세력 계산) 정확도 확인용입니다.<br>
+  본 콘텐츠는 전통 명리학과 성격유형 이론을 재미로 풀어낸 것으로, 의료·투자 판단의 근거가 될 수 없습니다.
+</footer>
+
+<script src="saju-engine.js"></script>
+<script>
+(function(){
+  var groups = [], cur = null, nPass = 0, nFail = 0;
+  function G(title){ cur = {title:title, rows:[]}; groups.push(cur); }
+  function T(name, expected, actual, src){
+    var exp = String(expected), got;
+    try { got = String(typeof actual === 'function' ? actual() : actual); }
+    catch(e){ got = 'ERROR: ' + e.message; }
+    var ok = (got === exp);
+    ok ? nPass++ : nFail++;
+    cur.rows.push({name:name, exp:exp, got:got, ok:ok, src:src||''});
+  }
+  var E = window.SajuEngine;
+  function P(p){ return p ? p.gan + p.ji : 'null'; }
+  function PH(p){ return p ? p.gan + p.ji + '(' + E.toHanja(p) + ')' : 'null'; }
+  function four(c){ return P(c.pillars.year)+' '+P(c.pillars.month)+' '+P(c.pillars.day)+' '+P(c.pillars.hour); }
+  function three(c){ return P(c.pillars.year)+' '+P(c.pillars.month)+' '+P(c.pillars.day); }
+  function term(y,j){ var t=E.termAt(y,j); return t.m+'-'+t.d+' '+('0'+t.hh).slice(-2)+':'+('0'+t.mi).slice(-2); }
+  function A(o){ return E.analyze(o); }
+
+  // ───────────────────────────────────────────────────────────
+  // 1. 절기 경계 (입춘 전후) — 필수 2건
+  // ───────────────────────────────────────────────────────────
+  G('1. 절기 경계 · 입춘 전후 (년주·월주가 절입 "시각"에 바뀌는가)');
+  T('2021년 입춘 절입시각', '2-3 23:59', function(){ return term(2021,1); }, 'S4');
+  T('경계 ①  2021-02-03 23:58 (입춘 1분 전) → 년/월주',
+    '경자 기축',
+    function(){ var c=A({birthDate:'2021-02-03',calendar:'solar',birthTime:'23:58',gender:'M'});
+                return P(c.pillars.year)+' '+P(c.pillars.month); }, 'S4');
+  T('경계 ②  2021-02-04 00:10 (입춘 통과 후) → 년/월주',
+    '신축 경인',
+    function(){ var c=A({birthDate:'2021-02-04',calendar:'solar',birthTime:'00:10',gender:'M'});
+                return P(c.pillars.year)+' '+P(c.pillars.month); }, 'S4');
+  T('같은 날 안에서도 절입 시각 전후로 갈린다 (2021-02-03 23:58 vs 2021-02-04 00:00)',
+    '경자→신축',
+    function(){ var a=A({birthDate:'2021-02-03',birthTime:'23:58',gender:'M'});
+                var b=A({birthDate:'2021-02-04',birthTime:'00:00',gender:'M'});
+                return P(a.pillars.year)+'→'+P(b.pillars.year); }, 'S4');
+  T('2024년 입춘 절입시각', '2-4 17:27', function(){ return term(2024,1); }, 'S6');
+  T('경계 ③  2024-02-04 17:26 vs 17:27 (분 단위 판별)',
+    '계묘→갑진',
+    function(){ var a=A({birthDate:'2024-02-04',birthTime:'17:26',gender:'M'});
+                var b=A({birthDate:'2024-02-04',birthTime:'17:27',gender:'M'});
+                return P(a.pillars.year)+'→'+P(b.pillars.year); }, 'S6');
+
+  // ───────────────────────────────────────────────────────────
+  // 2. 자시 경계 — 필수 1건
+  // ───────────────────────────────────────────────────────────
+  G('2. 자시 경계 (23:00~00:59 = 자시 / 야자시 미채택: 23시 이후도 당일 일주 유지)');
+  T('1990-05-15 23:30 → 일주+시주 (당일 일주 + 자시)',
+    '경진 병자',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'23:30',gender:'M'});
+                return P(c.pillars.day)+' '+P(c.pillars.hour); }, 'S9');
+  T('1990-05-16 00:30 → 일주+시주 (익일 일주 + 자시)',
+    '신사 무자',
+    function(){ var c=A({birthDate:'1990-05-16',birthTime:'00:30',gender:'M'});
+                return P(c.pillars.day)+' '+P(c.pillars.hour); }, 'S9');
+  T('23:30 의 일주 == 그날의 일진 (익일로 넘기지 않음)',
+    '경진 / 경진',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'23:30',gender:'M'});
+                var j=E.iljin('1990-05-15');
+                return P(c.pillars.day)+' / '+j.gan+j.ji; }, '채택 규칙');
+  T('22:59 = 해시, 23:00 = 자시', '해 / 자',
+    function(){ var a=A({birthDate:'1990-05-15',birthTime:'22:59',gender:'M'});
+                var b=A({birthDate:'1990-05-15',birthTime:'23:00',gender:'M'});
+                return a.pillars.hour.ji+' / '+b.pillars.hour.ji; }, 'S9');
+  T('birthTime = null → 시주 null', 'null',
+    function(){ return P(A({birthDate:'1990-05-15',birthTime:null,gender:'M'}).pillars.hour); }, 'SPEC');
+  T('시주 12지 전 구간 매핑 (0,2,4,…,22시)',
+    '자축인묘진사오미신유술해',
+    function(){ var s=''; for(var h=0;h<24;h+=2){
+                  s += A({birthDate:'1990-05-15',birthTime:('0'+h).slice(-2)+':00',gender:'M'}).pillars.hour.ji; }
+                return s; }, 'S9');
+
+  // ───────────────────────────────────────────────────────────
+  // 3. 음력 → 양력 (윤달 포함) — 필수 1건
+  // ───────────────────────────────────────────────────────────
+  G('3. 음력→양력 변환 (윤달 포함)');
+  T('음력 2020년 윤4월 1일 → 양력', '2020-05-23', function(){ return E.lunarToSolar(2020,4,1,true); }, 'S8');
+  T('음력 2020년 윤4월 29일 → 양력 (윤4월 끝)', '2020-06-20', function(){ return E.lunarToSolar(2020,4,29,true); }, 'S8');
+  T('음력 2020년 (평)4월 1일 → 양력 (윤달과 구분)', '2020-04-23', function(){ return E.lunarToSolar(2020,4,1,false); }, 'S8');
+  T('음력 2023년 윤2월 1일~19일 → 양력', '2023-03-22 / 2023-04-09',
+    function(){ return E.lunarToSolar(2023,2,1,true)+' / '+E.lunarToSolar(2023,2,19,true); }, 'S8');
+  T('음력 2017년 윤5월 1일 → 양력', '2017-06-24', function(){ return E.lunarToSolar(2017,5,1,true); }, 'S8');
+  T('음력 2025년 윤6월 1일~29일 → 양력', '2025-07-25 / 2025-08-22',
+    function(){ return E.lunarToSolar(2025,6,1,true)+' / '+E.lunarToSolar(2025,6,29,true); }, 'S8');
+  T('윤달 입력으로 사주 산출 (음력 2020 윤4/1, 13:00 → 양력 2020-05-23)',
+    '경자 신사 병인 을미',
+    function(){ return four(A({birthDate:'2020-04-01',calendar:'lunar',lunarLeap:true,birthTime:'13:00',gender:'F'})); }, '양력 2020-05-23');
+  T('양력→음력 역변환 (2020-06-06)', '2020년 윤4월 15일',
+    function(){ var l=E.solarToLunar(2020,6,6); return l.year+'년 '+(l.leap?'윤':'')+l.month+'월 '+l.day+'일'; }, 'S8');
+  T('없는 윤달 요청 시 예외 (2021년엔 윤달 없음)', 'throw',
+    function(){ try{ E.lunarToSolar(2021,4,1,true); return 'no-throw'; }catch(e){ return 'throw'; } }, 'SPEC');
+
+  // ───────────────────────────────────────────────────────────
+  // 4. 유명 검증 사례 (웹에서 확인한 실제 만세력 값) — 필수 4건+
+  // ───────────────────────────────────────────────────────────
+  G('4. 유명 검증 사례 · 웹 공표 만세력 값 대조');
+  T('[S1] 1911-08-25 18:00 (한국민족문화대백과사전 사주 예제) → 년월일시 4주',
+    '신해 병신 정묘 기유',
+    function(){ return four(A({birthDate:'1911-08-25',calendar:'solar',birthTime:'18:00',gender:'M'})); }, 'S1');
+  T('[S1] 위 사례 한자 표기', '辛亥 丙申 丁卯 己酉',
+    function(){ var c=A({birthDate:'1911-08-25',birthTime:'18:00',gender:'M'}), p=c.pillars;
+                return [p.year,p.month,p.day,p.hour].map(E.toHanja).join(' '); }, 'S1');
+  T('[S7] 손흥민 1992-07-08 (생시 미상) → 년/월/일주',
+    '임신 정미 을유',
+    function(){ return three(A({birthDate:'1992-07-08',birthTime:null,gender:'M'})); }, 'S7');
+  T('[S7] 이동욱 1981-11-06 (생시 미상) → 년/월/일주',
+    '신유 무술 무자',
+    function(){ return three(A({birthDate:'1981-11-06',birthTime:null,gender:'M'})); }, 'S7');
+  T('[S7] 티파니 1989-08-01 (생시 미상) → 년/월/일주',
+    '기사 신미 계사',
+    function(){ return three(A({birthDate:'1989-08-01',birthTime:null,gender:'F'})); }, 'S7');
+  T('[S7] 윈터 2001-01-01 (생시 미상) → 년주·일주  ※양력 1/1이지만 입춘 전이라 2000년(경진)',
+    '경진 / 갑자',
+    function(){ var c=A({birthDate:'2001-01-01',birthTime:null,gender:'F'});
+                return P(c.pillars.year)+' / '+P(c.pillars.day); }, 'S7');
+  T('[S3] 2000-01-01 일진 (일주 앵커 ②)', '무오',
+    function(){ var j=E.iljin('2000-01-01'); return j.gan+j.ji; }, 'S3');
+  T('[S2] JD 2458511(=2000-01-01 +6966일=2019-01-27) 일진 (일주 앵커 ①)', '갑자 / 2458511',
+    function(){ var j=E.iljin('2019-01-27'); return j.gan+j.ji+' / '+j.jdn; }, 'S2');
+  T('일주 60갑자 순환 무결성 (임의 60일 간격 동일 일주)', 'true',
+    function(){ var a=E.iljin('1975-03-09'), b=E.iljin('1975-05-08');
+                return String(a.gan===b.gan && a.ji===b.ji); }, '60갑자');
+
+  // ───────────────────────────────────────────────────────────
+  // 5. 절기 데이터 정확도
+  // ───────────────────────────────────────────────────────────
+  G('5. 내장 절기 테이블 대조 (절입 시각 분 단위)');
+  T('[S4] 1955년 입춘 (한국 표준시 UTC+8:30 시행기)', '2-4 22:48', function(){ return term(1955,1); }, 'S4');
+  T('[S4] 1985년 입춘', '2-4 06:12', function(){ return term(1985,1); }, 'S4');
+  T('[S4] 1990년 입춘', '2-4 11:14', function(){ return term(1990,1); }, 'S4');
+  T('[S4] 2000년 입춘', '2-4 21:40', function(){ return term(2000,1); }, 'S4');
+  T('[S5] 1990년 12절 전체 (소한·입춘·경칩·청명·입하·망종·소서·입추·백로·한로·입동·대설, ±1분 허용)',
+    'PASS',
+    function(){
+      var ref=[[1,5,23,33],[2,4,11,14],[3,6,5,19],[4,5,10,13],[5,6,3,36],[6,6,7,46],
+               [7,7,18,1],[8,8,3,46],[9,8,6,37],[10,8,22,14],[11,8,1,23],[12,7,18,14]];
+      var bad=[];
+      for(var j=0;j<12;j++){
+        var t=E.termAt(1990,j), r=ref[j];
+        var diff=(t.d*1440+t.hh*60+t.mi)-(r[1]*1440+r[2]*60+r[3]);
+        if(t.m!==r[0]||Math.abs(diff)>1) bad.push(E.JEOL_NAMES[j]+'('+diff+'분)');
+      }
+      return bad.length? bad.join(',') : 'PASS';
+    }, 'S5');
+  T('절기 순서 단조성 (1900~2050 전 구간에서 12절이 각각 1~12월에 1회)',
+    'OK',
+    function(){
+      for(var y=1900;y<=2050;y++) for(var j=0;j<12;j++){
+        var t=E.termAt(y,j);
+        if(t.m!==j+1 || t.d<1 || t.d>31) return '이상 '+y+' '+E.JEOL_NAMES[j];
+      }
+      return 'OK';
+    }, '내부 일관성');
+
+  // ───────────────────────────────────────────────────────────
+  // 6. 명리 계산 (십신·오행·강약·신살)
+  // ───────────────────────────────────────────────────────────
+  G('6. 십신 · 오행 · 강약 · 신살');
+  T('십신 정의: 갑(甲) 일간 기준 갑~계', '비견 겁재 식신 상관 편재 정재 편관 정관 편인 정인',
+    function(){ return E.GAN.map(function(g){ return E.sipsin('갑', g); }).join(' '); }, '명리 정의');
+  T('십신 정의: 계(癸) 일간 기준 갑~계', '상관 식신 정재 편재 정관 편관 정인 편인 겁재 비견',
+    function(){ return E.GAN.map(function(g){ return E.sipsin('계', g); }).join(' '); }, '명리 정의');
+  T('오행 개수 합 = 8 (시주 있음) / 6 (시주 없음)', '8 / 6',
+    function(){ function s(c){var t=0;for(var k in c.elements)t+=c.elements[k];return t;}
+                return s(A({birthDate:'1911-08-25',birthTime:'18:00',gender:'M'}))+' / '+
+                       s(A({birthDate:'1911-08-25',birthTime:null,gender:'M'})); }, 'SPEC');
+  T('1911-08-25 18:00 오행 분포 (신해 병신 정묘 기유 = 천간 신병정기 + 지지 해신묘유)', '목1 화2 토1 금3 수1',
+    function(){ var e=A({birthDate:'1911-08-25',birthTime:'18:00',gender:'M'}).elements;
+                return '목'+e.목+' 화'+e.화+' 토'+e.토+' 금'+e.금+' 수'+e.수; }, '수기 계산');
+  T('강약 판정값이 3종 중 하나', 'true',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+                return String(['신강','중화','신약'].indexOf(c.strength)>=0); }, 'SPEC');
+  T('신살(일지 기준 삼합국): 1990-05-15 10:30 = 경오/신사/경진/신사 → 일지 진 = 신자진국(화개=진) → 화개',
+    '화개',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+                return c.specials.join(',') || '(없음)'; }, '일지 삼합국');
+  T('신살 미해당 사주는 빈 배열 (1911-08-25 18:00, 일지 묘=해묘미국 도화자/역마사/화개미 없음)',
+    '(없음)',
+    function(){ var c=A({birthDate:'1911-08-25',birthTime:'18:00',gender:'M'});
+                return c.specials.join(',') || '(없음)'; }, '일지 삼합국');
+  T('specials 는 도화/역마/화개 중에서만 나온다 (1000일 스윕)', 'OK',
+    function(){ var ok=true, base=new Date(Date.UTC(1980,0,1));
+      for(var i=0;i<1000;i++){ var d=new Date(base.getTime()+i*86400000);
+        var s=A({birthDate:d.toISOString().slice(0,10),birthTime:'09:00',gender:'M'}).specials;
+        for(var k=0;k<s.length;k++) if(['도화','역마','화개'].indexOf(s[k])<0) ok=false; }
+      return ok?'OK':'NG'; }, 'SPEC');
+  T('sipsin 객체 키 = year/month/hour, 시주 없으면 hour=null', 'year,month,hour / null',
+    function(){ var c=A({birthDate:'1992-07-08',birthTime:null,gender:'M'});
+                return Object.keys(c.sipsin).join(',')+' / '+c.sipsin.hour; }, 'SPEC');
+
+  // ───────────────────────────────────────────────────────────
+  // 7. today() / compat()
+  // ───────────────────────────────────────────────────────────
+  G('7. today() · compat() 계약');
+  T('today() 일진 = 해당일 일진', '경신',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+                var t=E.today(c,'2026-08-14'); return t.iljin.gan+t.iljin.ji; }, 'JDN');
+  T('today() 반환 키', 'iljin,sipsinVsDay,branchRel,score',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+                var t=E.today(c,'2026-08-14');
+                return ['iljin','sipsinVsDay','branchRel','score'].filter(function(k){return k in t;}).join(','); }, 'SPEC');
+  T('today() score 는 0~100', 'true',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'}), ok=true;
+      for(var i=1;i<=28;i++){ var s=E.today(c,'2026-08-'+('0'+i).slice(-2)).score;
+        if(!(s>=0&&s<=100)) ok=false; }
+      return String(ok); }, 'SPEC');
+  T('today() branchRel 값 집합', 'true',
+    function(){ var c=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'}), ok=true, V=['합','충','형','해','파','무관'];
+      for(var i=1;i<=28;i++){ if(V.indexOf(E.today(c,'2026-08-'+('0'+i).slice(-2)).branchRel)<0) ok=false; }
+      return String(ok); }, 'SPEC');
+  T('지지 관계표: 자-축 육합 / 자-오 충 / 자-묘 형 / 자-미 해 / 자-유 파 / 자-인 무관',
+    '육합 충 형 해 파 무관',
+    function(){ return ['축','오','묘','미','유','인'].map(function(x){ return E.branchRelation('자',x,true); }).join(' '); }, '명리 정의');
+  T('삼합 판정: 신-자 / 해-묘 / 인-오 / 사-유', '삼합 삼합 삼합 삼합',
+    function(){ return [['신','자'],['해','묘'],['인','오'],['사','유']]
+                  .map(function(p){ return E.branchRelation(p[0],p[1],true); }).join(' '); }, '명리 정의');
+  T('compat() ganRel — 갑일간 vs 기일간 = 천간합', '합',
+    function(){ var a=A({birthDate:'2001-01-01',birthTime:null,gender:'M'});   // 일간 갑
+                var b=A({birthDate:'1989-08-01',birthTime:null,gender:'F'});   // 일간 계
+                var g=E.compat(a,b).ganRel;
+                var c2=A({birthDate:'2001-01-06',birthTime:null,gender:'F'});  // 일간 기
+                return E.compat(a,c2).ganRel; }, '갑기합');
+  T('compat() 반환 키 및 범위', 'ganRel,branchRel,elementFit,score / true',
+    function(){ var a=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+                var b=A({birthDate:'1992-07-08',birthTime:'14:00',gender:'F'});
+                var r=E.compat(a,b);
+                var ok = r.elementFit>=0&&r.elementFit<=100&&r.score>=0&&r.score<=100;
+                return ['ganRel','branchRel','elementFit','score'].filter(function(k){return k in r;}).join(',')+' / '+ok; }, 'SPEC');
+  T('compat() branchRel 값 집합(육합/삼합/충/형/해/파/무관)', 'true',
+    function(){ var V=['육합','삼합','충','형','해','파','무관'], ok=true;
+      var a=A({birthDate:'1990-05-15',birthTime:'10:30',gender:'M'});
+      for(var i=1;i<=28;i++){ var b=A({birthDate:'1991-03-'+('0'+i).slice(-2),birthTime:'10:30',gender:'F'});
+        if(V.indexOf(E.compat(a,b).branchRel)<0) ok=false; }
+      return String(ok); }, 'SPEC');
+
+  // ───────────────────────────────────────────────────────────
+  // 8. 전수 안정성
+  // ───────────────────────────────────────────────────────────
+  G('8. 전수 안정성 스윕');
+  T('1900-01-01 ~ 2050-12-28 매월 1·15·28일 analyze() 무예외 (5,436건)', '0건 오류',
+    function(){ var err=0,n=0;
+      for(var y=1900;y<=2050;y++) for(var m=1;m<=12;m++) [1,15,28].forEach(function(d){
+        try{ A({birthDate:y+'-'+('0'+m).slice(-2)+'-'+('0'+d).slice(-2),birthTime:'12:00',gender:'M'}); n++; }
+        catch(e){ err++; } });
+      return err+'건 오류'; }, '내부');
+  T('같은 구간 음↔양 왕복 일치 (analyze의 lunarDate → lunarToSolar)', '0건 불일치',
+    function(){ var bad=0;
+      for(var y=1900;y<=2050;y++) for(var m=1;m<=12;m++) [1,15,28].forEach(function(d){
+        var s=y+'-'+('0'+m).slice(-2)+'-'+('0'+d).slice(-2);
+        try{ var c=A({birthDate:s,birthTime:'12:00',gender:'M'});
+             if(E.lunarToSolar(c.lunarDate.year,c.lunarDate.month,c.lunarDate.day,c.lunarDate.leap)!==c.solarDate) bad++;
+        }catch(e){ bad++; } });
+      return bad+'건 불일치'; }, '내부');
+  T('지원 범위 밖 입력은 RangeError', 'throw / throw',
+    function(){ function t(s){ try{ A({birthDate:s,birthTime:'12:00',gender:'M'}); return 'no'; }catch(e){ return 'throw'; } }
+                return t('1899-06-01')+' / '+t('2051-06-01'); }, 'SPEC');
+  T('잘못된 입력 형식은 예외', 'throw / throw',
+    function(){ function t(o){ try{ A(o); return 'no'; }catch(e){ return 'throw'; } }
+                return t({birthDate:'1990/05/15',gender:'M'})+' / '+
+                       t({birthDate:'1990-05-15',birthTime:'25:00',gender:'M'}); }, 'SPEC');
+
+  // ── 렌더 ──
+  var html = '';
+  groups.forEach(function(g){
+    html += '<section><h2>'+g.title+'</h2><div class="wrap"><table>'+
+            '<tr><th style="width:44%">케이스</th><th>기대값</th><th>산출값</th><th style="width:52px">결과</th><th style="width:58px">출처</th></tr>';
+    g.rows.forEach(function(r){
+      html += '<tr class="'+(r.ok?'':'f')+'"><td class="case">'+esc(r.name)+'</td>'+
+              '<td class="exp">'+esc(r.exp)+'</td><td class="got">'+esc(r.got)+'</td>'+
+              '<td class="'+(r.ok?'P':'F')+'">'+(r.ok?'PASS':'FAIL')+'</td>'+
+              '<td class="src">'+esc(r.src)+'</td></tr>';
+    });
+    html += '</table></div></section>';
+  });
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  document.getElementById('out').innerHTML = html;
+  var b = document.getElementById('banner');
+  b.className = nFail ? 'anyng' : 'allok';
+  b.textContent = (nFail ? '✕ ' : '✓ ') + nPass + ' / ' + (nPass+nFail) + ' PASS' +
+                  (nFail ? '  ·  ' + nFail + '건 FAIL' : '  ·  전 항목 통과') +
+                  '   (engine v' + E.version + ')';
+})();
+</script>
+</body>
+</html>
