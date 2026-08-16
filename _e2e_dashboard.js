@@ -97,6 +97,10 @@ async function activeScreenId(page) {
 
 async function submitSelf(page, opts) {
   opts = opts || {};
+  // v1.6.1: #home은 이제 프로필 유무와 무관하게 대시보드(빈 상태 포함)를 보여주므로,
+  // 입력 폼(#screen-home)에 접근하려면 명시적으로 #input으로 이동해야 한다.
+  await page.evaluate(function () { location.hash = '#input'; });
+  await page.waitForSelector('#screen-home.active', { timeout: 10000 });
   await page.fill('#self-date', opts.birthDate || '1994-05-21');
   await page.selectOption('#self-time', opts.time || '10:30');
   await page.selectOption('#self-mbti', opts.mbti || 'INFP');
@@ -109,11 +113,25 @@ async function submitSelf(page, opts) {
   var browser = await chromium.launch({ executablePath: CHROME });
 
   // ============================================================
-  // ⓐ 첫 방문(프로필 없음) = 기존 입력 폼
+  // ⓐ 첫 방문(프로필 없음) = v1.6.1: 홈(대시보드) 빈 상태 — 메뉴 상시 접근 가능
+  //   (구 계약 "screen-home 즉시 표시"는 메뉴가 프로필 뒤에 숨는 버그였음 — 이번 수정으로 폐기)
   // ============================================================
   var p0 = await freshPage(browser, { isoDateTime: '2026-08-17T09:00:00' });
-  check('ⓐ 첫 방문: screen-home(입력 폼) 활성', await activeScreenId(p0.page) === 'screen-home');
+  check('ⓐ 첫 방문: screen-dashboard(빈 상태) 활성', await activeScreenId(p0.page) === 'screen-dashboard');
   check('ⓐ 첫 방문: 저장된 프로필 없음(빈 목록)', await p0.page.evaluate(function () { return window.ProfileStore.list().length; }) === 0);
+  var emptyStateVisible0 = await p0.page.evaluate(function () {
+    return getComputedStyle(document.getElementById('dash-empty-state')).display !== 'none';
+  });
+  check('ⓐ 첫 방문: 빈 상태 카드 노출', emptyStateVisible0);
+  var headerMenuVisible0 = await p0.page.evaluate(function () {
+    var btn = document.getElementById('header-menu-btn');
+    return !!btn && getComputedStyle(btn).display !== 'none';
+  });
+  check('ⓐ 첫 방문: 상시 헤더 ☰ 메뉴 버튼 노출(프로필 없이도)', headerMenuVisible0);
+  await p0.page.click('#header-menu-btn');
+  await p0.page.waitForSelector('#menu-sheet.show', { timeout: 5000 });
+  var menuTileCount0 = await p0.page.locator('#menu-tile-grid .menu-tile').count();
+  check('ⓐ 첫 방문: ☰ 메뉴 타일 5개(사주/이름/한자/로또/궁합) 노출', menuTileCount0 === 5, menuTileCount0);
   await p0.ctx.close();
 
   // ============================================================
@@ -257,7 +275,7 @@ async function submitSelf(page, opts) {
   // ============================================================
   var p3 = await freshPage(browser, { isoDateTime: '2026-08-17T09:00:00', blockStorage: true });
   var page3 = p3.page;
-  check('ⓔ localStorage 차단 상태에서도 첫 화면은 입력 폼', await activeScreenId(page3) === 'screen-home');
+  check('ⓔ localStorage 차단 상태에서도 첫 화면은 홈(대시보드 빈 상태, 예외로 죽지 않음)', await activeScreenId(page3) === 'screen-dashboard');
 
   await submitSelf(page3, { name: '최수아' });
   check('ⓔ localStorage 차단 상태에서도 결과 조회 정상 완료(#screen-result)', await activeScreenId(page3) === 'screen-result');
@@ -266,7 +284,7 @@ async function submitSelf(page, opts) {
 
   await page3.reload({ waitUntil: 'load' });
   await page3.waitForTimeout(300);
-  check('ⓔ localStorage 차단 상태에서는 재로드해도 다시 입력 폼(대시보드로 못 감, 자연 폴백)', await activeScreenId(page3) === 'screen-home');
+  check('ⓔ localStorage 차단 상태에서는 재로드해도 홈은 빈 상태로 자연 폴백(예외 없음, 프로필 저장 실패)', await activeScreenId(page3) === 'screen-dashboard');
   await p3.ctx.close();
 
   // ============================================================

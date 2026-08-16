@@ -43,6 +43,9 @@ function check(label, cond, extra) {
 
   // ---- 입력 → 결과 ----
   async function submitName(name) {
+    // v1.6.1: #home은 프로필 유무와 무관하게 대시보드를 보여주므로, 입력 폼은 #input에서 연다.
+    await page.evaluate(function () { location.hash = '#input'; });
+    await page.waitForSelector('#screen-home.active', { timeout: 10000 });
     await page.fill('#self-name', name);
     await page.fill('#self-date', '1994-05-21');
     await page.selectOption('#self-time', '10:30');
