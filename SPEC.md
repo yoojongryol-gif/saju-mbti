@@ -117,6 +117,22 @@ ContentDB.lotto(chart, 'YYYY-MM-DD') → { numbers:[6개 오름차순 1~45 중�
 - show: 월~금만 true (토·일 false → UI 미노출). UI는 오늘의운세 카드 하단 공 모양 번호 6개.
 - 고지: "재미로 보는 번호이며 당첨과 무관합니다" 카드 내 소문구 필수.
 
+## v1.5 추가: 궁합 이름풀이 반영 (2026-08-16 사장님 지시)
+```js
+window.NameReader.compatNames(nameA, nameB, chartA|null, chartB|null) → {
+  elementsA, elementsB,          // 각 이름의 소리오행 구성
+  nameRel: { rel:'상생(A→B)'|'상생(B→A)'|'상호상생'|'상극'|'비화', para },  // 두 이름 대표오행 관계
+  giveTake: [                    // 이름이 상대 사주에 주는 기운 (chart 있는 쪽만)
+    {dir:'A→B', fills:bool, element, para}, {dir:'B→A', ...}
+  ],
+  suriPair: { aScore, bScore, para },   // 각자 정격 등급 조합 코멘트
+  score: 0~100, headline, para,
+}
+```
+- UI: 궁합 폼에 양쪽 "이름(선택)" 필드 추가 → 둘 다 입력 시 궁합 결과에 "이름 궁합" 섹션(이름 오행 관계도 + 서로 주는 기운 + 종합), 한쪽만 입력 시 그쪽 분석만 축약 표시, 미입력 시 섹션 없음.
+- 기존 SajuEngine.compat 점수 체계는 무변경 — 이름 궁합은 별도 보조 점수·섹션으로 병기(사주 궁합 점수와 혼합 금지).
+- 결정성·존댓말·경향 톤·로컬 처리 원칙 동일.
+
 ## 품질 기준
 - 엔진: test.html에 검증 사례 최소 8건(절기 경계일 2건, 자시 경계 1건, 음력 윤달 1건 포함) 전부 PASS 표기.
 - 콘텐츠: 동일 조합이라도 문단이 조각 3개 이상 조합으로 구성돼 기계 반복감 없게. 존댓말, 단정 대신 경향("~한 흐름입니다"). 의료 단정 금지(건강운은 생활 조언 톤).

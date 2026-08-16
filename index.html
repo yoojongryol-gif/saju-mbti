@@ -369,6 +369,24 @@
     padding:8px 14px;border-radius:10px;font-size:13px;
   }
 
+  /* ---- lotto (v1.4) ---- */
+  .lotto-block{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(255,255,255,0.14);}
+  .lotto-label{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;}
+  .lotto-para{font-size:13px;color:var(--text);margin:0 0 10px;}
+  .lotto-balls{display:flex;gap:8px;flex-wrap:wrap;}
+  .lotto-ball{
+    width:34px;height:34px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#1a1a1a;
+    box-shadow:0 1px 3px rgba(0,0,0,0.35);
+  }
+  .lotto-ball.b-yellow{background:#FBC400;}
+  .lotto-ball.b-blue{background:#69C8F2;}
+  .lotto-ball.b-red{background:#FF7272;color:#fff;}
+  .lotto-ball.b-gray{background:#AAAAAA;color:#fff;}
+  .lotto-ball.b-green{background:#B0D840;}
+  .lotto-disclaimer{font-size:10.5px;color:var(--muted2);margin-top:10px;}
+
   /* ---- action buttons block ---- */
   .action-block{margin-bottom:18px;}
   .section-label{font-size:13px;color:var(--muted);font-weight:700;margin:22px 0 10px;text-transform:uppercase;letter-spacing:0.04em;}
@@ -478,6 +496,13 @@
           <div class="meta-item">🍀 <span id="daily-item">-</span></div>
           <div class="daily-score-badge" id="daily-score">-</div>
         </div>
+
+        <div class="lotto-block" id="lotto-block" style="display:none;">
+          <div class="lotto-label">🎱 오늘의 로또 번호</div>
+          <p class="lotto-para" id="lotto-para">-</p>
+          <div class="lotto-balls" id="lotto-balls"></div>
+          <div class="lotto-disclaimer">재미로 보는 번호이며 당첨과 무관합니다.</div>
+        </div>
       </div>
 
       <div class="section-label">궁합</div>
@@ -578,7 +603,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   var MBTI_GROUPS = (window.ContentDB && window.ContentDB._internal && window.ContentDB._internal.MBTI_GROUPS) || FALLBACK_MBTI_GROUPS;
 
   var state = {
-    selfChart: null, selfMbti: null, composed: null, todayResult: null, dailyInfo: null,
+    selfChart: null, selfMbti: null, composed: null, todayResult: null, dailyInfo: null, lottoInfo: null,
     partnerChart: null, partnerMbti: null, compatResult: null, composedCompat: null,
     quiz: null, nameResult: null,
     // v1.3 한자 뜻풀이
@@ -832,6 +857,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     setActiveTab('total');
 
     renderDaily(state.dailyInfo);
+    renderLotto(state.lottoInfo);
 
     document.getElementById('ai-deep-btn').style.display =
       (window.APP_CONFIG && window.APP_CONFIG.aiEndpoint) ? 'block' : 'none';
@@ -1148,6 +1174,34 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     document.getElementById('daily-score').textContent = (state.todayResult ? state.todayResult.score : '-') + '점';
   }
 
+  // 실제 로또(동행복권) 공 색 규칙: 1-10 노랑 / 11-20 파랑 / 21-30 빨강 / 31-40 회색 / 41-45 초록
+  function lottoBallClass(n){
+    if(n <= 10) return 'b-yellow';
+    if(n <= 20) return 'b-blue';
+    if(n <= 30) return 'b-red';
+    if(n <= 40) return 'b-gray';
+    return 'b-green';
+  }
+
+  function renderLotto(info){
+    var block = document.getElementById('lotto-block');
+    if(!block) return;
+    if(!info || info.show !== true){
+      block.style.display = 'none';
+      return;
+    }
+    document.getElementById('lotto-para').textContent = info.para;
+    var ballsWrap = document.getElementById('lotto-balls');
+    ballsWrap.innerHTML = '';
+    (info.numbers || []).forEach(function(n){
+      var ball = document.createElement('div');
+      ball.className = 'lotto-ball ' + lottoBallClass(n);
+      ball.textContent = n;
+      ballsWrap.appendChild(ball);
+    });
+    block.style.display = 'block';
+  }
+
   // ============================================================
   // 6. 홈 폼 제출 → 분석 실행
   // ============================================================
@@ -1181,6 +1235,8 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
         state.dailyInfo = window.ContentDB.daily(state.todayResult, chart);
         state.recommendData = (typeof window.ContentDB.recommend === 'function')
           ? window.ContentDB.recommend(chart, data.mbti) : null;
+        state.lottoInfo = (typeof window.ContentDB.lotto === 'function')
+          ? window.ContentDB.lotto(chart, TODAY_STR) : null;
 
         state.nameResult = null;
         state.nameInput = data.name || '';

@@ -6,6 +6,8 @@
  * - ContentDB.compose(chart, mbti|null)
  * - ContentDB.daily(todayResult, chart)
  * - ContentDB.compat(compatResult, mbtiA|null, mbtiB|null)
+ * - ContentDB.recommend(chart, mbti|null)
+ * - ContentDB.lotto(chart, 'YYYY-MM-DD')  // v1.4
  * - ContentDB.mbtiQuiz
  * - ContentDB.disclaimer (푸터용 고지문구, UI 셸에서 사용)
  *
@@ -1191,6 +1193,78 @@
   }
 
   // ============================================================
+  // 13. 오늘의 운세 로또 번호 (v1.4, 2026-08-16) — lotto()
+  //   결정적 시드 = chart + 날짜 (chartSeedString 재사용, 날짜별로 매일 변경)
+  //   오행→숫자 대역: 목1~9 / 화10~18 / 토19~27 / 금28~36 / 수37~45
+  //   가중치: 당일 일진 천간 오행 +1.5, 본인 부족(최소) 오행 +2 (겹치면 합산), 기본 1
+  //   일진 오행은 SajuEngine.today() 와 동일한 JDN 60갑자 공식((jdn+9)%10)을 독립 계산
+  //   (saju-engine.js 를 직접 참조하지 않고, 그레고리력 JDN 공식만 여기서도 자체 구현)
+  // ============================================================
+
+  var LOTTO_BAND = { 목: [1, 9], 화: [10, 18], 토: [19, 27], 금: [28, 36], 수: [37, 45] };
+
+  function jdnFromYmdLocal(y, m, d) {
+    var a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  }
+  function parseDateStrLotto(dateStr) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+    if (!m) throw new Error("ContentDB.lotto: 날짜는 'YYYY-MM-DD' 형식이어야 합니다.");
+    return { y: +m[1], mo: +m[2], d: +m[3] };
+  }
+  function lottoIljinElement(dateStr) {
+    var p = parseDateStrLotto(dateStr);
+    var jdn = jdnFromYmdLocal(p.y, p.mo, p.d);
+    return GAN_ELEMENT[GAN[(jdn + 9) % 10]];
+  }
+  function lottoIsWeekday(dateStr) {
+    var p = parseDateStrLotto(dateStr);
+    var dow = new Date(p.y, p.mo - 1, p.d).getDay(); // 0=일 ~ 6=토 (로컬 y/m/d 생성이라 타임존 경계 이슈 없음)
+    return dow >= 1 && dow <= 5;
+  }
+
+  function lotto(chart, dateStr) {
+    if (!chart) throw new Error('ContentDB.lotto: chart 가 필요합니다.');
+    parseDateStrLotto(dateStr); // 형식 검증(실패 시 throw)
+
+    var rng = seedFrom(chartSeedString(chart, 'lotto|' + dateStr));
+    var iljinEl = lottoIljinElement(dateStr);
+    var lackEl = weakestElement(chart.elements);
+
+    var weight = {};
+    ELEMENTS.forEach(function (e) { weight[e] = 1; });
+    weight[iljinEl] += 1.5;
+    weight[lackEl] += 2;
+
+    var pool = [];
+    ELEMENTS.forEach(function (e) {
+      var band = LOTTO_BAND[e], w = weight[e];
+      for (var n = band[0]; n <= band[1]; n++) pool.push({ n: n, w: w });
+    });
+
+    // 가중 룰렛 추첨(비복원) — 오행별 가중치가 클수록 해당 대역 숫자가 더 자주 뽑힘
+    var numbers = [];
+    while (numbers.length < 6 && pool.length > 0) {
+      var totalW = 0;
+      for (var i = 0; i < pool.length; i++) totalW += pool[i].w;
+      var r = rng() * totalW, acc = 0, idx = pool.length - 1;
+      for (i = 0; i < pool.length; i++) {
+        acc += pool[i].w;
+        if (r < acc) { idx = i; break; }
+      }
+      numbers.push(pool[idx].n);
+      pool.splice(idx, 1);
+    }
+    numbers.sort(function (a, b) { return a - b; });
+
+    var para = (iljinEl === lackEl)
+      ? ('오늘 일진과 겹치는 ' + iljinEl + ' 기운을 중심으로 뽑아본 번호입니다.')
+      : ('오늘 일진의 ' + iljinEl + ' 기운과 부족한 ' + lackEl + ' 기운을 함께 채우는 조합입니다.');
+
+    return { numbers: numbers, para: para, show: lottoIsWeekday(dateStr) };
+  }
+
+  // ============================================================
   // export
   // ============================================================
 
@@ -1201,13 +1275,16 @@
     daily: daily,
     compat: compat,
     recommend: recommend,
+    lotto: lotto,
     mbtiQuiz: MBTI_QUIZ,
     disclaimer: DISCLAIMER,
     // 디버그/테스트용 내부 데이터 노출 (UI에서 필수 사용 대상 아님)
     _internal: {
       GAN: GAN, JI: JI, ELEMENTS: ELEMENTS, SIPSIN: SIPSIN,
       MBTI_TYPES: MBTI_TYPES, MBTI_GROUPS: MBTI_GROUPS,
-      groupOf: groupOf, iljiSipsin: iljiSipsin, sipsinOf: sipsinOf
+      groupOf: groupOf, iljiSipsin: iljiSipsin, sipsinOf: sipsinOf,
+      weakestElement: weakestElement,
+      lottoIljinElement: lottoIljinElement, lottoIsWeekday: lottoIsWeekday
     }
   };
 

@@ -3,7 +3,7 @@
  * 전략: 캐시 우선(cache-first) + 네트워크 폴백, 실패한 GET은 캐시로 폴백
  * 버전을 올리면(CACHE_VERSION 변경) 이전 캐시는 activate 단계에서 자동 정리된다.
  */
-var CACHE_VERSION = 'mz-saju-v4';
+var CACHE_VERSION = 'mz-saju-v5';
 
 var CACHE_FILES = [
   './',
