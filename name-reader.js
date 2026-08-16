@@ -1,6 +1,6 @@
 /**
- * name-reader.js — MZ사주풀이 이름풀이(한글 성명학) 엔진
- * v1.2 (2026-08-16, SPEC.md "v1.2 추가: 이름풀이" 계약 준수)
+ * name-reader.js — MZ사주풀이 이름풀이(한글 성명학 + 한자 뜻풀이) 엔진
+ * v1.3 (2026-08-16, SPEC.md "v1.2 이름풀이" + "v1.3 한자 뜻풀이" 계약 준수)
  *
  * 순수 JS · 외부 라이브러리 0 · 네트워크 0 · window.NameReader 전역 노출
  * saju-engine.js / content-db.js 는 import/수정하지 않는다 (파일 독립).
@@ -8,8 +8,12 @@
  * window.NameReader.analyze(name, chart|null) → {
  *   syllables, soriFlow, suri, sajuFit, overall
  * }
+ * window.NameReader.analyzeHanja(selected, chart|null) → {
+ *   perChar, meaningPara, jawonFit, suriHanja, overall
+ * }   // 한자 데이터는 name-hanja-db.js(window.HanjaDB)에서 온다
  *
- * 범위: 순한글 이름(성 1자 + 이름 1~3자)만 다룬다. 한자 이름풀이는 차기(범위 외).
+ * 범위: 성 1자 + 이름 1~3자. 한글 풀이가 기본이고, 한자 풀이는 사용자가 음절별
+ * 후보를 고른 경우에만 부가로 계산한다("목록에 없음" 선택 시 한글 풀이만 유지).
  * 처리는 전부 로컬(기기 내)에서만 이뤄지며 어떤 값도 외부로 전송하지 않는다.
  */
 (function (global) {
@@ -254,6 +258,53 @@
   }
 
   // ============================================================
+  // 5-1. 원형이정 4격 계산 (한글 획수 / 한자 원획 공용)
+  // 성 1자 + 이름 1~3자를 가정한다.
+  // - 이름 2자(기본): 원격=이름1+이름2, 형격=성+이름1, 이격=성+이름 끝자, 정격=전체합
+  // - 이름 1자: 첫/끝 구분이 없어 형격=이격=성+이름(같은 값). 원격은 그 글자 획수 그대로.
+  // - 이름 3자: 원격=이름 전체합, 형격=성+이름1, 이격=성+이름3(끝자). 이름2는 형격/이격에
+  //   단독 반영되지 않고 원격·정격 합산에만 포함된다(여러 성명학 실무의 채택 방식).
+  // ============================================================
+  function computeSuri(strokesArr) {
+    var surnameS = strokesArr[0];
+    var nameArr = strokesArr.slice(1);
+    var totalName = nameArr.reduce(function (a, b) { return a + b; }, 0);
+    var wonRaw, hyeongRaw, iRaw;
+    if (nameArr.length === 1) {
+      wonRaw = nameArr[0];
+      hyeongRaw = surnameS + nameArr[0];
+      iRaw = hyeongRaw;
+    } else {
+      wonRaw = totalName;
+      hyeongRaw = surnameS + nameArr[0];
+      iRaw = surnameS + nameArr[nameArr.length - 1];
+    }
+    return {
+      wonhyeong: suriEntry(wonRaw),
+      hyeonggyeok: suriEntry(hyeongRaw),
+      igyeok: suriEntry(iRaw),
+      jeonggyeok: suriEntry(surnameS + totalName)
+    };
+  }
+
+  function suriAverage(suri) {
+    return (GRADE_SCORE[suri.wonhyeong.grade] + GRADE_SCORE[suri.hyeonggyeok.grade] +
+      GRADE_SCORE[suri.igyeok.grade] + GRADE_SCORE[suri.jeonggyeok.grade]) / 4;
+  }
+
+  // 사주에서 가장 약한 오행 찾기 (한글 소리오행/한자 자원오행 공용)
+  var ELEMENT_ORDER = ['목', '화', '토', '금', '수'];
+  function weakestElement(chart) {
+    var minEl = ELEMENT_ORDER[0];
+    var minN = chart.elements[minEl] || 0;
+    ELEMENT_ORDER.forEach(function (e) {
+      var v = chart.elements[e] || 0;
+      if (v < minN) { minN = v; minEl = e; }
+    });
+    return minEl;
+  }
+
+  // ============================================================
   // 6. 입력 검증
   // ============================================================
   function isValidName(name) {
@@ -314,43 +365,13 @@
       soriPara = '순하게 이어지는 부분과 살짝 부딪히는 부분이 함께 있는 흐름입니다. 전체적으로는 무난하게 조화를 이루는 편으로 볼 수 있습니다.';
     }
 
-    // ---- 7-3. suri (원형이정 4격) ----
-    // 성 1자 + 이름 1~3자를 가정한다.
-    // - 이름 2자(기본): 원격=이름1+이름2, 형격=성+이름1, 이격=성+이름 끝자(이름2), 정격=전체합
-    // - 이름 1자: 첫/끝 구분이 없어 형격=이격=성+이름(같은 값). 원격은 그 글자 획수 그대로, 정격은 전체합.
-    // - 이름 3자: 원격=이름1+이름2+이름3(이름 전체합), 형격=성+이름1, 이격=성+이름3(끝자, 이름2는
-    //   형격/이격에 단독 반영되지 않고 원격·정격 합산에는 포함됨 — 여러 성명학 실무에서 채택하는 방식과 동일)
-    var surnameS = syllables[0].strokes;
-    var nameSyllables = syllables.slice(1); // 1~3개
-    var wonRaw, hyeongRaw, iRaw, jeongRaw;
-    var totalNameStrokes = nameSyllables.reduce(function (sum, s) { return sum + s.strokes; }, 0);
-    if (nameSyllables.length === 1) {
-      wonRaw = nameSyllables[0].strokes;
-      hyeongRaw = surnameS + nameSyllables[0].strokes;
-      iRaw = hyeongRaw;
-    } else {
-      wonRaw = totalNameStrokes;
-      hyeongRaw = surnameS + nameSyllables[0].strokes;
-      iRaw = surnameS + nameSyllables[nameSyllables.length - 1].strokes;
-    }
-    jeongRaw = surnameS + totalNameStrokes;
-
-    var suri = {
-      wonhyeong: suriEntry(wonRaw),
-      hyeonggyeok: suriEntry(hyeongRaw),
-      igyeok: suriEntry(iRaw),
-      jeonggyeok: suriEntry(jeongRaw)
-    };
+    // ---- 7-3. suri (원형이정 4격) — 계산 규약은 computeSuri() 주석 참조 ----
+    var suri = computeSuri(syllables.map(function (s) { return s.strokes; }));
 
     // ---- 7-4. sajuFit (chart가 있을 때만) ----
     var sajuFit = null;
     if (chart && chart.elements) {
-      var ORDER = ['목', '화', '토', '금', '수'];
-      var minEl = ORDER[0], minN = chart.elements[ORDER[0]] === undefined ? 0 : chart.elements[ORDER[0]];
-      ORDER.forEach(function (e) {
-        var v = chart.elements[e] || 0;
-        if (v < minN) { minN = v; minEl = e; }
-      });
+      var minEl = weakestElement(chart);
       var nameElSet = {};
       syllables.forEach(function (s) {
         nameElSet[s.elements.초성오행] = true;
@@ -370,8 +391,7 @@
     }
 
     // ---- 7-5. overall (결정적 가중 합산) ----
-    var suriAvg = (GRADE_SCORE[suri.wonhyeong.grade] + GRADE_SCORE[suri.hyeonggyeok.grade] +
-      GRADE_SCORE[suri.igyeok.grade] + GRADE_SCORE[suri.jeonggyeok.grade]) / 4;
+    var suriAvg = suriAverage(suri);
     var flowBase = 55;
     var flowScore = flowBase + (genCount - ctrlCount) * 15;
     flowScore = Math.max(0, Math.min(100, flowScore));
@@ -409,8 +429,290 @@
     };
   }
 
+  // ============================================================
+  // 8. 한자 뜻풀이 (v1.3) — window.HanjaDB(name-hanja-db.js)와 함께 동작
+  // ============================================================
+
+  // 8-1. 뜻 → 의미 계열 분류. 조합 템플릿을 고르기 위한 것으로,
+  //      키워드 우선순위 순으로 훑어 첫 일치 계열을 채택한다(결정적).
+  var MEANING_CATEGORIES = [
+    ['광명', ['밝', '빛', '볕', '해 돋', '환할', '비칠', '반짝', '불꽃', '새벽', '햇']],
+    ['보배', ['옥', '구슬', '보배', '금', '은', '서옥', '주석', '琮', '보석', '돌']],
+    ['초목', ['나무', '풀', '꽃', '뿌리', '싹', '열매', '버들', '무궁화', '오동', '녹나무', '대나무', '벼', '쌀', '난초', '향풀', '연']],
+    ['자연', ['하늘', '물', '바다', '강', '내', '샘', '산', '구름', '비', '이슬', '바람', '눈', '서리', '해', '달', '별', '땅', '봄', '여름', '가을', '겨울', '호수', '물결', '언덕']],
+    ['덕성', ['어질', '착할', '온화', '화할', '화평', '순할', '사랑', '은혜', '정성', '미쁠', '믿을', '공경', '삼갈', '겸할', '사양', '효도', '충성', '예도', '용서', '너그', '도울', '지킬', '받들', '고울', '아름', '아리따울', '맑을', '깨끗', '흴', '조촐', '향기', '향내']],
+    ['지혜', ['슬기', '알', '지혜', '배울', '헤아릴', '살필', '깨우칠', '글', '문채', '무늬', '기록', '가르칠', '통할', '밝힐', '연마', '생각', '뜻', '이치', '다스릴', '법', '바를', '참']],
+    ['기개', ['굳셀', '강할', '씩씩', '힘쓸', '이길', '준걸', '뛰어', '높을', '클', '으뜸', '성인', '용', '날랠', '떨칠', '나아갈', '오를', '일어날', '세울', '이룰', '펼', '깊을', '넓을', '먼저', '가장', '우뚝', '앞', '기둥']],
+    ['복록', ['복', '경사', '기쁠', '즐길', '창성', '성할', '영화', '넉넉', '남을', '이로울', '재물', '상줄', '귀할', '기릴', '칭찬', '축하', '웃', '노래', '잔치', '누릴', '많을', '가득']],
+    ['평안', ['편안', '안정', '고요', '따뜻', '평안', '부드러', '쉴', '머무를', '지닐', '한가']],
+    ['터전', ['집', '마을', '나라', '고을', '터', '뜰', '동산', '세상', '백성', '사람', '벗', '아들', '맏', '가문', '성씨', '일가', '겨레', '도읍', '서울', '자리', '문', '길']]
+  ];
+
+  function categorize(meaning) {
+    for (var i = 0; i < MEANING_CATEGORIES.length; i++) {
+      var cat = MEANING_CATEGORIES[i][0], keys = MEANING_CATEGORIES[i][1];
+      for (var j = 0; j < keys.length; j++) {
+        if (meaning.indexOf(keys[j]) >= 0) return cat;
+      }
+    }
+    return '기타';
+  }
+
+  // 계열별 서술어 (문장 조립용 — 기계적 나열 대신 이 표현으로 문장을 만든다)
+  var CAT_PHRASE = {
+    '광명': '밝게 빛나는 기운',
+    '보배': '귀하게 다듬어진 기운',
+    '초목': '자라나며 뻗어가는 생명의 기운',
+    '자연': '하늘과 물처럼 넓게 트인 기운',
+    '덕성': '따뜻하고 어진 품성',
+    '지혜': '밝게 헤아리는 지혜',
+    '기개': '굳세게 밀고 나가는 기개',
+    '복록': '복과 즐거움이 따르는 기운',
+    '평안': '고요하고 편안한 기운',
+    '터전': '뿌리내릴 터전의 기운',
+    '기타': '이름 고유의 결'
+  };
+
+  // 8-2. 뜻 조합 템플릿 (유형별 12종 + 단일글자 11종 + 혼합 폴백)
+  //  key는 계열 두 개를 사전순으로 이어 붙인 것 → 선택 순서와 무관하게 같은 문장이 나온다.
+  function pairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+
+  var PAIR_TEMPLATES = {};
+  PAIR_TEMPLATES[pairKey('광명', '덕성')] = '밝은 빛과 따뜻한 품성이 나란히 놓인 이름입니다. 앞에 나서서 환하게 이끌기보다, 곁에 있는 사람부터 편하게 만드는 방식으로 빛이 드러나는 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('광명', '기개')] = '빛과 기개가 함께 담긴 이름입니다. 뜻한 바를 또렷하게 밝히고 그대로 밀고 나가는, 방향이 분명한 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('광명', '보배')] = '빛과 옥의 기운이 겹친 이름입니다. 겉으로 요란하지 않아도 시간이 지날수록 값이 드러나는, 오래 두고 보는 이름의 결입니다.';
+  PAIR_TEMPLATES[pairKey('덕성', '지혜')] = '어진 품성과 밝은 지혜가 짝을 이룬 이름입니다. 머리로 먼저 재기보다 사람을 먼저 헤아린 뒤에 판단하는 순서를 지닌 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('덕성', '복록')] = '따뜻한 품성 위에 복이 얹힌 이름입니다. 베푼 것이 돌아오는 방식으로 자리가 넓어지는 흐름으로 볼 수 있습니다.';
+  PAIR_TEMPLATES[pairKey('기개', '복록')] = '나아가는 힘과 누리는 복이 함께 있는 이름입니다. 애써 벌린 일이 헛돌지 않고 손에 남는 쪽으로 정리되는 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('기개', '지혜')] = '추진력과 판단력이 함께 담긴 이름입니다. 서두르되 길을 잃지 않는, 속도와 방향이 같이 가는 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('자연', '초목')] = '넓은 자연과 자라나는 생명이 어울린 이름입니다. 무리해서 끌어올리기보다 때가 되면 저절로 자라는 쪽에 가까운 흐름으로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('자연', '평안')] = '트인 자연의 기운과 고요함이 만난 이름입니다. 급한 일 앞에서도 숨을 고를 줄 아는 여백이 느껴지는 흐름입니다.';
+  PAIR_TEMPLATES[pairKey('평안', '터전')] = '편안함과 터전이 함께 놓인 이름입니다. 멀리 나가 이름을 얻기보다 자기 자리를 단단히 다지며 오래 가는 결로 읽힙니다.';
+  PAIR_TEMPLATES[pairKey('보배', '덕성')] = '옥처럼 귀한 기운과 어진 품성이 어울린 이름입니다. 다듬을수록 맑아지는 쪽이라, 서두르지 않는 사람에게 더 잘 어울리는 결입니다.';
+  PAIR_TEMPLATES[pairKey('지혜', '터전')] = '헤아리는 지혜와 뿌리내릴 터전이 함께 담긴 이름입니다. 배운 것을 자기 자리에서 실제로 써먹는 쪽으로 풀리는 흐름으로 읽힙니다.';
+
+  var SAME_TEMPLATES = {
+    '광명': '두 글자가 모두 밝음 쪽을 향하는 이름입니다. 기운이 한 방향으로 모여 있어 존재감이 또렷한 대신, 가끔은 속도를 늦추는 여유가 도움이 되는 결입니다.',
+    '보배': '귀한 옥의 기운이 겹쳐 있는 이름입니다. 화려함보다 단단함으로 값이 매겨지는 쪽이라, 오래 볼수록 좋아지는 결로 읽힙니다.',
+    '초목': '자라나는 기운이 이어진 이름입니다. 조급하게 끌어올리지 않아도 제 계절에 맞춰 뻗어가는 흐름으로 볼 수 있습니다.',
+    '자연': '자연의 큰 기운이 겹친 이름입니다. 스케일이 크고 트여 있어, 작은 일에 매이지 않는 쪽으로 풀리는 결입니다.',
+    '덕성': '어진 품성이 거듭 담긴 이름입니다. 사람을 얻는 힘이 강한 대신, 스스로를 챙기는 시간을 따로 두면 더 좋은 흐름입니다.',
+    '지혜': '밝게 헤아리는 기운이 이어진 이름입니다. 판단이 빠르고 정확한 편이라, 결정을 맡기고 싶어지는 자리로 가는 결로 읽힙니다.',
+    '기개': '나아가는 힘이 거듭 실린 이름입니다. 추진력이 강한 만큼, 함께 가는 사람의 속도를 살피면 더 멀리 가는 흐름입니다.',
+    '복록': '복과 즐거움의 기운이 겹친 이름입니다. 사람과 자리가 모이는 쪽이라, 나누는 만큼 더 채워지는 결로 볼 수 있습니다.',
+    '평안': '고요함이 이어진 이름입니다. 눈에 띄게 앞서가진 않아도 흔들림이 적어, 길게 보면 오히려 앞서는 흐름으로 읽힙니다.',
+    '터전': '자리와 터전의 기운이 겹친 이름입니다. 뿌리를 먼저 내리고 그 위에서 넓혀가는, 순서가 분명한 결입니다.',
+    '기타': '두 글자가 서로 비슷한 결을 지닌 이름입니다. 기운이 한쪽으로 모여 있어 색이 분명한 편으로 볼 수 있습니다.'
+  };
+
+  var TRIPLE_TEMPLATE = '세 글자가 각각 %A, %B, %C{를} 품고 있어 결이 여럿인 이름입니다. 한 가지 색으로 규정되기보다 상황에 따라 다른 면이 나오는, 폭이 넓은 흐름으로 읽힙니다.';
+  var MIX_TEMPLATE = '%A{와} %B{가} 짝을 이룬 이름입니다. 성격이 다른 두 기운이 서로를 받쳐주는 구성이라, 한쪽으로 치우치지 않는 균형이 느껴지는 흐름입니다.';
+  var SINGLE_TEMPLATE = '이름 한 글자에 %A{가} 오롯이 담겨 있습니다. 뜻이 흩어지지 않고 한 점에 모여 있어, 이름이 곧 방향이 되는 결로 읽힙니다.';
+
+  // ---- 조사(助詞) 자동 선택: 앞 단어의 받침 유무로 은/는·이/가·을/를·과/와를 고른다.
+  // 문장 템플릿에는 {는} {가} {를} {와} {으로} 자리표시자를 쓰고, 바로 앞 글자를 보고 치환한다.
+  var JOSA_PAIRS = { '는': ['은', '는'], '가': ['이', '가'], '를': ['을', '를'], '와': ['과', '와'], '으로': ['으로', '로'] };
+
+  function hasJongseong(ch) {
+    var code = ch.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code > 11171) return false;
+    return code % 28 !== 0;
+  }
+
+  /** 문자열 안의 {는}{가}{를}{와}{으로} 자리표시자를 앞 글자 받침에 맞게 치환 */
+  function applyJosa(text) {
+    return text.replace(/([\s\S])\{(는|가|를|와|으로)\}/g, function (_, prev, key) {
+      var base = prev;
+      // 괄호로 닫힌 경우(예: "俊(준걸 준)") 괄호 안 마지막 한글을 기준으로 삼는다
+      return prev + JOSA_PAIRS[key][hasJongseong(base) ? 0 : 1];
+    });
+  }
+
+  function label(e) { return e.ch + '(' + e.meaning + ' ' + e.reading + ')'; }
+
+  /** 라벨 문자열의 조사 판정 기준 글자 = 괄호 안 마지막 한글(=음) */
+  function labelTail(lbl) {
+    var m = lbl.match(/([가-힣])\)$/);
+    return m ? m[1] : lbl.charAt(lbl.length - 1);
+  }
+
+  function josaFor(lbl, key) {
+    return JOSA_PAIRS[key][hasJongseong(labelTail(lbl)) ? 0 : 1];
+  }
+
+  function joinLabels(list) {
+    if (list.length === 1) return list[0];
+    if (list.length === 2) return list[0] + josaFor(list[0], '와') + ' ' + list[1];
+    return list.slice(0, -1).join(', ') + ', 그리고 ' + list[list.length - 1];
+  }
+
+  /**
+   * 뜻 조합 문단 생성. 성(姓)은 물려받은 글자라 도입부에서만 언급하고,
+   * 조합 해석은 이름 글자(2번째 이후)를 기준으로 만든다.
+   * @param norm 음절 위치를 유지한 배열(선택 안 한 자리는 null) — 성/이름 위치가 어긋나지 않게.
+   */
+  function composeMeaningPara(norm) {
+    var perChar = norm.filter(function (e) { return e; });
+    if (!perChar.length) return '';
+    // 위치 0 = 성. 성을 고르지 않았으면 나머지를 전부 이름 글자로 본다.
+    var surname = norm.length > 1 ? norm[0] : null;
+    var given = (norm.length > 1 ? norm.slice(1) : norm).filter(function (e) { return e; });
+    if (!given.length) { given = perChar; surname = null; }
+    var cats = given.map(function (e) { return categorize(e.meaning); });
+    var intro, joined = joinLabels(given.map(label));
+    if (surname) {
+      intro = '성 ' + label(surname) + ' 아래 ' + joined +
+        josaFor(joined, '가') + ' 놓인 이름입니다. ';
+    } else {
+      intro = '고르신 한자는 ' + joined + '입니다. ';
+    }
+
+    var body;
+    if (given.length === 1) {
+      body = SINGLE_TEMPLATE.replace('%A', CAT_PHRASE[cats[0]]);
+    } else if (given.length === 2) {
+      if (cats[0] === cats[1]) {
+        body = SAME_TEMPLATES[cats[0]] || SAME_TEMPLATES['기타'];
+      } else {
+        body = PAIR_TEMPLATES[pairKey(cats[0], cats[1])] ||
+          MIX_TEMPLATE.replace('%A', CAT_PHRASE[cats[0]]).replace('%B', CAT_PHRASE[cats[1]]);
+      }
+    } else {
+      body = TRIPLE_TEMPLATE.replace('%A', CAT_PHRASE[cats[0]])
+        .replace('%B', CAT_PHRASE[cats[1]]).replace('%C', CAT_PHRASE[cats[2]]);
+    }
+    return applyJosa(intro + body);
+  }
+
+  // 8-3. 선택 입력 정규화. 항목은 {ch:'旼'} / '旼' / null('목록에 없음') 모두 허용.
+  function normalizeSelection(selected) {
+    if (!Array.isArray(selected)) throw new Error('한자 선택 값은 배열이어야 합니다.');
+    var HDB = global.HanjaDB;
+    return selected.map(function (item) {
+      if (item === null || item === undefined || item === '') return null;
+      var ch = typeof item === 'string' ? item : item.ch;
+      if (!ch) return null;
+      // 다음자(多音字, 例 金=금/김)는 UI가 함께 넘겨준 reading으로 정확한 항목을 집는다.
+      var hint = (typeof item === 'object' && item.reading) ? item.reading : null;
+      var entry = HDB && HDB.lookup ? HDB.lookup(ch, hint) : null;
+      if (entry) {
+        return {
+          ch: entry.ch, reading: entry.reading, meaning: entry.meaning,
+          jawonElement: entry.jawonElement, strokes: entry.strokes, pilhoek: entry.pilhoek
+        };
+      }
+      // DB에 없는 글자를 직접 넘긴 경우: 획수 없이 뜻만 비워 반환(수리 계산에서 제외)
+      if (typeof item === 'object' && typeof item.strokes === 'number') {
+        return {
+          ch: ch, reading: item.reading || '', meaning: item.meaning || '',
+          jawonElement: item.jawonElement || null, strokes: item.strokes,
+          pilhoek: item.pilhoek || item.strokes
+        };
+      }
+      return null;
+    });
+  }
+
+  /**
+   * analyzeHanja(selected, chart|null)
+   * @param selected 음절 순서대로의 한자 선택 배열. null = "목록에 없음".
+   *                 전 음절이 선택돼야 원획 수리 4격(suriHanja)을 계산한다.
+   */
+  function analyzeHanja(selected, chart) {
+    var norm = normalizeSelection(selected);
+    var perChar = norm.filter(function (e) { return e; });
+    if (!perChar.length) {
+      throw new Error('한자를 한 글자 이상 선택해주세요.');
+    }
+    var complete = norm.every(function (e) { return e && typeof e.strokes === 'number'; });
+
+    // ---- 뜻 조합 (음절 위치를 유지한 norm을 넘겨 성/이름이 어긋나지 않게) ----
+    var meaningPara = composeMeaningPara(norm);
+
+    // ---- 원획 수리 4격 (전 음절 선택 시에만) ----
+    var suriHanja = complete && norm.length >= 2
+      ? computeSuri(norm.map(function (e) { return e.strokes; }))
+      : null;
+
+    // ---- 자원오행의 사주 보완 ----
+    var jawonFit = null;
+    if (chart && chart.elements) {
+      var lackEl = weakestElement(chart);
+      var set = {};
+      perChar.forEach(function (e) { if (e.jawonElement) set[e.jawonElement] = true; });
+      var nameElements = Object.keys(set);
+      var fills = !!set[lackEl];
+      var para;
+      if (!nameElements.length) {
+        para = '선택하신 한자들은 부수만으로 자원오행을 확정하기 어려운 글자들이라, 이 항목은 참고에서 빼두었습니다. 소리오행 풀이 쪽을 보시면 좋겠습니다.';
+      } else if (fills) {
+        para = '사주에서 가장 옅은 오행인 \'' + lackEl + '\'의 기운이 선택하신 한자의 자원오행에 담겨 있습니다. 글자의 뿌리(부수)가 부족한 자리를 채워주는 구성이라, 이름을 쓰고 부를 때마다 그 기운을 조금씩 보태는 흐름으로 볼 수 있습니다.';
+      } else {
+        para = '사주에서 가장 옅은 오행은 \'' + lackEl + '\'인데, 선택하신 한자의 자원오행은 ' +
+          nameElements.join('·') + ' 쪽에 모여 있습니다. 부족한 자리를 직접 채워주진 않지만 이름이 지닌 기운 자체는 뚜렷한 편이니, 색이나 방향 같은 다른 개운 방법과 함께 보시면 좋겠습니다.';
+      }
+      jawonFit = {
+        fillsLack: fills,
+        lackElement: lackEl,
+        nameElements: nameElements,
+        verdict: nameElements.length ? (fills ? '오행 보완' : '오행 비보완') : '판정 보류',
+        para: para
+      };
+    }
+
+    // ---- overall (결정적 가중 합산) ----
+    var score, parts = [];
+    if (suriHanja) parts.push([suriAverage(suriHanja), 0.55]);
+    var goodCats = { '광명': 1, '보배': 1, '덕성': 1, '지혜': 1, '기개': 1, '복록': 1, '평안': 1, '초목': 1, '자연': 1, '터전': 1 };
+    var goodCount = perChar.filter(function (e) { return goodCats[categorize(e.meaning)]; }).length;
+    parts.push([50 + Math.round(goodCount / perChar.length * 40), suriHanja ? 0.25 : 0.6]);
+    if (jawonFit) parts.push([jawonFit.fillsLack ? 88 : (jawonFit.nameElements.length ? 58 : 50), suriHanja ? 0.20 : 0.40]);
+    var wsum = parts.reduce(function (a, p) { return a + p[1]; }, 0);
+    score = Math.round(parts.reduce(function (a, p) { return a + p[0] * p[1]; }, 0) / wsum);
+    score = Math.max(0, Math.min(100, score));
+
+    var headline, para2;
+    if (!suriHanja) {
+      headline = '고르신 글자만으로 본 뜻풀이입니다';
+      para2 = '음절 중 일부를 \'목록에 없음\'으로 두셔서 원획 수리 4격은 계산하지 않았습니다. 아래 뜻풀이와 자원오행만 참고로 봐주시고, 획수 풀이는 위쪽 한글 이름풀이 결과를 보시면 됩니다.';
+    } else if (score >= 80) {
+      headline = '한자의 뜻과 획수가 두루 잘 맞물리는 이름입니다';
+      para2 = '글자에 담긴 뜻과 원획 수리가 서로 어긋나지 않고 같은 방향을 보고 있어, 한자까지 놓고 봐도 안정적인 이름으로 풀이됩니다.';
+    } else if (score >= 65) {
+      headline = '한자로 봐도 무난하게 잘 어울리는 이름입니다';
+      para2 = '군데군데 아쉬운 수리가 섞여 있지만 글자의 뜻이 그 자리를 받쳐주는 편이라, 전체적으로는 순한 흐름으로 볼 수 있습니다.';
+    } else if (score >= 50) {
+      headline = '뜻과 획수의 결이 조금씩 다른 이름입니다';
+      para2 = '뜻이 좋은 글자와 조심스러운 수리가 함께 있어 한쪽으로 단정하기 어려운 구성입니다. 이름 하나보다 살아가는 태도가 더 크게 작용한다고 여기시면 좋겠습니다.';
+    } else {
+      headline = '원획 수리 쪽에 조심스러운 지점이 있습니다';
+      para2 = '전통 성명학의 원획 기준으로는 아쉬운 수가 섞여 있습니다. 다만 이는 여러 해석 중 하나이고 유파마다 획수를 세는 방식도 달라, 재미 요소로만 받아들이시면 좋겠습니다.';
+    }
+
+    return {
+      perChar: perChar.map(function (e) {
+        return { ch: e.ch, reading: e.reading, meaning: e.meaning, jawonElement: e.jawonElement, strokes: e.strokes };
+      }),
+      meaningPara: meaningPara,
+      jawonFit: jawonFit,
+      suriHanja: suriHanja,
+      overall: { score: score, headline: headline, para: para2 }
+    };
+  }
+
+  /** 이름(한글)에 대한 음절별 한자 후보 목록. UI 칩 렌더용. */
+  function hanjaCandidates(name) {
+    if (!isValidName(name)) throw new Error('이름은 한글 2~4자여야 합니다.');
+    var HDB = global.HanjaDB;
+    return name.split('').map(function (ch) {
+      return { syllable: ch, list: (HDB && HDB.candidates) ? HDB.candidates(ch) : [] };
+    });
+  }
+
   var NameReader = {
     analyze: analyze,
+    analyzeHanja: analyzeHanja,
+    hanjaCandidates: hanjaCandidates,
     isValidName: isValidName,
     // 테스트/디버깅용 내부 노출 (test.html, node 유닛테스트에서 사용)
     _internal: {
@@ -424,7 +726,12 @@
       syllableStrokes: syllableStrokes,
       SURI_TABLE: SURI_TABLE,
       reduceToSuri: reduceToSuri,
-      relationOf: relationOf
+      relationOf: relationOf,
+      computeSuri: computeSuri,
+      categorize: categorize,
+      composeMeaningPara: composeMeaningPara,
+      PAIR_TEMPLATES: PAIR_TEMPLATES,
+      SAME_TEMPLATES: SAME_TEMPLATES
     }
   };
 

@@ -1,0 +1,8 @@
+# 원자료(공개 데이터셋)는 용량이 커서 커밋하지 않는다.
+# build_db.py 주석의 URL에서 다시 내려받으면 동일 결과가 재현된다.
+hanja.txt
+Unihan*.zip
+Unihan_*.txt
+CJKRadicals.txt
+db_draft.json
+verify_all_out.txt
