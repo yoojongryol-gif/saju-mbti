@@ -709,10 +709,183 @@
     });
   }
 
+  // ============================================================
+  // 9. 궁합 이름풀이 (v1.5, SPEC.md "v1.5 궁합 이름풀이 반영" 계약)
+  // 두 이름의 소리오행이 서로 어떤 기운을 주고받는지를 본다.
+  // 소리오행 산출은 analyze()가 이미 하는 계산(초성/종성 오행, 5장)을 그대로 재사용하며,
+  // 여기서는 그 결과를 모아 "이름 전체 오행 집합"으로 묶고 상생상극 방향만 새로 판정한다.
+  // ============================================================
+
+  /**
+   * 이름 하나(analyze() 결과의 syllables)에서 소리오행 집합을 뽑는다.
+   * order = 처음 등장한 순서로 나열한 중복없는 오행 목록(동률 대표오행 판정을 결정적으로 만들기 위함).
+   * dominant = 가장 많이 등장한 오행(동률이면 먼저 등장한 쪽을 유지 — 결정적).
+   */
+  function elementSetFromSyllables(syllables) {
+    var counts = {};
+    var order = [];
+    syllables.forEach(function (s) {
+      var el1 = s.elements.초성오행;
+      if (!counts[el1]) order.push(el1);
+      counts[el1] = (counts[el1] || 0) + 1;
+      var el2 = s.elements.종성오행;
+      if (el2) {
+        if (!counts[el2]) order.push(el2);
+        counts[el2] = (counts[el2] || 0) + 1;
+      }
+    });
+    var dominant = order[0];
+    order.forEach(function (el) { if (counts[el] > counts[dominant]) dominant = el; });
+    return { order: order, counts: counts, dominant: dominant };
+  }
+
+  /**
+   * 두 이름의 오행 집합 사이에 생(生)이 어느 방향으로 흐르는지, 극(剋)이 있는지를 판정한다.
+   * 기존 GEN_NEXT/CTRL_NEXT(soriFlow가 쓰는 것과 동일한 상수)를 그대로 쓰되,
+   * 이름 전체 오행 집합(복수 가능) 사이의 모든 조합을 살펴 방향성을 판단한다.
+   * 우선순위: 상호상생(양방향 생) > 상생(A→B) > 상생(B→A) > 상극(양방향 어느 쪽이든) > 비화
+   */
+  function computeNameRel(setA, setB) {
+    function someGen(fromSet, toSet) {
+      return fromSet.order.some(function (a) {
+        return toSet.order.some(function (b) { return GEN_NEXT[a] === b; });
+      });
+    }
+    function someCtrl(fromSet, toSet) {
+      return fromSet.order.some(function (a) {
+        return toSet.order.some(function (b) { return CTRL_NEXT[a] === b; });
+      });
+    }
+    var genAtoB = someGen(setA, setB);
+    var genBtoA = someGen(setB, setA);
+    if (genAtoB && genBtoA) return '상호상생';
+    if (genAtoB) return '상생(A→B)';
+    if (genBtoA) return '상생(B→A)';
+    if (someCtrl(setA, setB) || someCtrl(setB, setA)) return '상극';
+    return '비화';
+  }
+
+  function relParaFor(rel, nameA, nameB) {
+    switch (rel) {
+      case '상호상생':
+        return '두 이름의 소리오행이 서로를 살려주는 흐름입니다. ' + nameA + ' 님과 ' + nameB +
+          ' 님 중 어느 한쪽만 이끄는 것이 아니라, 기운을 주고받으며 서로를 북돋아주는 조합으로 볼 수 있습니다.';
+      case '상생(A→B)':
+        return nameA + ' 님의 소리오행이 ' + nameB + ' 님 쪽으로 기운을 밀어주는 흐름입니다. ' +
+          nameA + ' 님이 조금 더 이끌고 ' + nameB + ' 님이 그 기운을 편하게 받아 쓰는 구성으로 읽힙니다.';
+      case '상생(B→A)':
+        return nameB + ' 님의 소리오행이 ' + nameA + ' 님 쪽으로 기운을 밀어주는 흐름입니다. ' +
+          nameB + ' 님이 조금 더 이끌고 ' + nameA + ' 님이 그 기운을 편하게 받아 쓰는 구성으로 읽힙니다.';
+      case '상극':
+        return '두 이름의 소리오행 사이에 서로 부딪히는 지점이 있는 편입니다. 다만 이는 소리오행 한 가지 기준일 뿐이니, 대화와 배려로 얼마든지 조율할 수 있는 부분으로 봐주시면 좋겠습니다.';
+      default: // 비화
+        return '두 이름이 비슷한 결의 소리오행을 지니고 있어 안정적이지만 다소 단조로울 수 있는 흐름입니다. 취향이나 리듬이 자연스럽게 맞아떨어지는 편으로 볼 수 있습니다.';
+    }
+  }
+
+  function giveTakeParaFor(fromName, toName, element, fills) {
+    return fills
+      ? (fromName + ' 님의 소리오행에 담긴 \'' + element + '\'의 기운이 ' + toName + ' 님 사주에서 가장 옅은 오행을 채워주는 흐름입니다. 곁에 있는 것만으로 서로에게 도움이 되는 조합으로 볼 수 있습니다.')
+      : (fromName + ' 님의 소리오행에는 ' + toName + ' 님 사주에서 가장 옅은 오행(\'' + element + '\')의 기운이 직접 담겨 있지는 않은 편입니다. 이름보다는 서로의 태도와 배려가 그 자리를 채워줄 수 있는 부분으로 봐주시면 좋겠습니다.');
+  }
+
+  function suriPairPara(nameA, nameB, aScore, bScore) {
+    var GOOD = 70, LOW = 50, GAP = 20;
+    if (aScore >= GOOD && bScore >= GOOD) {
+      return '두 분 다 이름의 수리 흐름이 안정적인 편이라, 나란히 있을 때 더 단단하게 받쳐주는 조합입니다.';
+    }
+    if (aScore < LOW && bScore < LOW) {
+      return '두 분 다 수리 쪽으로는 다소 조심스러운 지점이 섞여 있지만, 수리보다 서로를 대하는 태도가 관계를 더 크게 좌우한다고 여기시면 좋겠습니다.';
+    }
+    if (Math.abs(aScore - bScore) >= GAP) {
+      var higher = aScore >= bScore ? nameA : nameB;
+      return higher + ' 님 쪽 수리가 조금 더 안정적인 편이라, 서로 다른 색을 보완해주는 구성으로 볼 수 있습니다.';
+    }
+    return '두 분의 수리가 서로 다른 결을 지니고 있어, 한쪽으로 치우치기보다 균형 잡힌 조합으로 볼 수 있습니다.';
+  }
+
+  var COMPAT_REL_SCORE = { '상호상생': 88, '상생(A→B)': 76, '상생(B→A)': 76, '비화': 58, '상극': 40 };
+
+  /**
+   * NameReader.compatNames(nameA, nameB, chartA|null, chartB|null)
+   * 기존 SajuEngine.compat 점수 체계와는 무관한 별도 보조 점수/섹션이다(혼합 금지).
+   * chartA/chartB가 있는 쪽만 giveTake 판정에 참여한다(상대 chart.elements 최소 오행과 대조).
+   */
+  function compatNames(nameA, nameB, chartA, chartB) {
+    if (!isValidName(nameA)) throw new Error('이름A는 한글 2~4자(성 1자 + 이름 1~3자)여야 합니다.');
+    if (!isValidName(nameB)) throw new Error('이름B는 한글 2~4자(성 1자 + 이름 1~3자)여야 합니다.');
+    chartA = (chartA && chartA.elements) ? chartA : null;
+    chartB = (chartB && chartB.elements) ? chartB : null;
+
+    // soriFlow와 동일한 초성/종성 오행 산출 로직을 그대로 쓰기 위해 analyze()를 재사용한다.
+    var resA = analyze(nameA, chartA);
+    var resB = analyze(nameB, chartB);
+
+    var setA = elementSetFromSyllables(resA.syllables);
+    var setB = elementSetFromSyllables(resB.syllables);
+
+    var elementsA = { elements: setA.order, counts: setA.counts, dominant: setA.dominant };
+    var elementsB = { elements: setB.order, counts: setB.counts, dominant: setB.dominant };
+
+    var relType = computeNameRel(setA, setB);
+    var nameRel = { rel: relType, para: relParaFor(relType, nameA, nameB) };
+
+    var giveTake = [];
+    if (chartB) {
+      var lackB = weakestElement(chartB);
+      var fillsAtoB = setA.order.indexOf(lackB) >= 0;
+      giveTake.push({ dir: 'A→B', fills: fillsAtoB, element: lackB, para: giveTakeParaFor(nameA, nameB, lackB, fillsAtoB) });
+    }
+    if (chartA) {
+      var lackA = weakestElement(chartA);
+      var fillsBtoA = setB.order.indexOf(lackA) >= 0;
+      giveTake.push({ dir: 'B→A', fills: fillsBtoA, element: lackA, para: giveTakeParaFor(nameB, nameA, lackA, fillsBtoA) });
+    }
+
+    var aScore = Math.round(suriAverage(resA.suri));
+    var bScore = Math.round(suriAverage(resB.suri));
+    var suriPair = { aScore: aScore, bScore: bScore, para: suriPairPara(nameA, nameB, aScore, bScore) };
+
+    // ---- 종합 점수 (결정적 가중 합산, SajuEngine.compat.score와는 별개) ----
+    var relScore = COMPAT_REL_SCORE[relType];
+    var gtScore = giveTake.length
+      ? Math.round(giveTake.reduce(function (sum, g) { return sum + (g.fills ? 80 : 45); }, 0) / giveTake.length)
+      : 60; // 양쪽 다 chart 없으면 중립값
+    var score = Math.round(Math.max(0, Math.min(100,
+      relScore * 0.45 + ((aScore + bScore) / 2) * 0.30 + gtScore * 0.25)));
+
+    var headline, para;
+    if (score >= 80) {
+      headline = '이름의 기운이 서로 잘 어울리는 궁합입니다';
+      para = '소리오행 흐름과 수리, 서로 채워주는 기운까지 두루 순조로워 이름만 놓고 봐도 안정적인 조합으로 풀이됩니다.';
+    } else if (score >= 65) {
+      headline = '이름으로 보면 전반적으로 무난한 궁합입니다';
+      para = '군데군데 아쉬운 지점이 있어도 전체적으로는 순하게 어울리는 이름 조합으로 볼 수 있습니다.';
+    } else if (score >= 50) {
+      headline = '이름 궁합은 장단점이 함께 있는 흐름입니다';
+      para = '좋은 기운과 조심스러운 기운이 섞여 있어, 이름 하나보다는 두 분이 함께 만들어가는 태도가 더 크게 작용하는 조합입니다.';
+    } else {
+      headline = '이름으로는 조금 더 다가가려는 노력이 필요한 궁합입니다';
+      para = '전통 성명학 기준으로는 아쉬운 지점이 섞여 있지만, 이는 재미 요소 중 하나일 뿐 두 분의 마음과 대화가 관계를 더 크게 좌우한다고 여기시면 좋겠습니다.';
+    }
+
+    return {
+      elementsA: elementsA,
+      elementsB: elementsB,
+      nameRel: nameRel,
+      giveTake: giveTake,
+      suriPair: suriPair,
+      score: score,
+      headline: headline,
+      para: para
+    };
+  }
+
   var NameReader = {
     analyze: analyze,
     analyzeHanja: analyzeHanja,
     hanjaCandidates: hanjaCandidates,
+    compatNames: compatNames,
     isValidName: isValidName,
     // 테스트/디버깅용 내부 노출 (test.html, node 유닛테스트에서 사용)
     _internal: {
@@ -731,7 +904,11 @@
       categorize: categorize,
       composeMeaningPara: composeMeaningPara,
       PAIR_TEMPLATES: PAIR_TEMPLATES,
-      SAME_TEMPLATES: SAME_TEMPLATES
+      SAME_TEMPLATES: SAME_TEMPLATES,
+      GEN_NEXT: GEN_NEXT,
+      CTRL_NEXT: CTRL_NEXT,
+      elementSetFromSyllables: elementSetFromSyllables,
+      computeNameRel: computeNameRel
     }
   };
 

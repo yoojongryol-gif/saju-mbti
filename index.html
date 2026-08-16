@@ -545,6 +545,12 @@
       <div class="tab-content" id="compat-content"></div>
       <div class="section-label">궁합 팁</div>
       <div class="tab-content" id="compat-tips"></div>
+
+      <div id="name-compat-wrap" style="display:none;">
+        <div class="section-label">이름 궁합</div>
+        <div class="tab-content" id="name-compat-content"></div>
+      </div>
+
       <button type="button" class="btn-ghost" id="compat-result-back-btn" style="width:100%;">결과로 돌아가기</button>
     </section>
 
@@ -607,7 +613,9 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     partnerChart: null, partnerMbti: null, compatResult: null, composedCompat: null,
     quiz: null, nameResult: null,
     // v1.3 한자 뜻풀이
-    nameInput: '', hanjaOpen: false, hanjaSelection: null, hanjaResult: null, hanjaError: ''
+    nameInput: '', hanjaOpen: false, hanjaSelection: null, hanjaResult: null, hanjaError: '',
+    // v1.5 궁합 이름풀이
+    partnerNameInput: '', nameCompatResult: null, nameCompatSingle: null
   };
 
   // ============================================================
@@ -744,7 +752,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   }
 
   document.getElementById('self-fields').innerHTML = formFieldsHTML('self', true);
-  document.getElementById('partner-fields').innerHTML = formFieldsHTML('partner', false);
+  document.getElementById('partner-fields').innerHTML = formFieldsHTML('partner', true);
   bindFormBehavior('self');
   bindFormBehavior('partner');
 
@@ -1308,9 +1316,32 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
         });
         state.partnerChart = chartB;
         state.partnerMbti = data.mbti;
+        state.partnerNameInput = data.name || '';
         var compatResult = window.SajuEngine.compat(state.selfChart, chartB);
         state.compatResult = compatResult;
         state.composedCompat = window.ContentDB.compat(compatResult, state.selfMbti, data.mbti);
+
+        // ---- v1.5 이름 궁합: 둘 다 있으면 compatNames, 한쪽만 있으면 그쪽만 analyze() 축약 ----
+        state.nameCompatResult = null;
+        state.nameCompatSingle = null;
+        var selfName = state.nameInput || '';
+        var partnerName = state.partnerNameInput || '';
+        if(window.NameReader){
+          try {
+            if(selfName && partnerName){
+              state.nameCompatResult = window.NameReader.compatNames(selfName, partnerName, state.selfChart, chartB);
+            } else if(selfName && typeof window.NameReader.analyze === 'function'){
+              state.nameCompatSingle = { side: 'self', name: selfName, result: window.NameReader.analyze(selfName, state.selfChart) };
+            } else if(partnerName && typeof window.NameReader.analyze === 'function'){
+              state.nameCompatSingle = { side: 'partner', name: partnerName, result: window.NameReader.analyze(partnerName, chartB) };
+            }
+          } catch(nameCompatErr){
+            console.error('[MZ사주풀이] 이름 궁합 오류:', nameCompatErr);
+            state.nameCompatResult = null;
+            state.nameCompatSingle = null;
+          }
+        }
+
         renderCompatResult();
         showScreen('screen-compat-result');
       } catch(err){
@@ -1329,6 +1360,80 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
       '<ul style="margin:0;padding-left:18px;">' +
       c.tips.map(function(t){ return '<li class="tab-para" style="margin-bottom:8px;">' + t + '</li>'; }).join('') +
       '</ul>';
+    renderNameCompatSection();
+  }
+
+  // ============================================================
+  // 7-1. v1.5 궁합 이름풀이 — 기존 SajuEngine.compat 점수/섹션과는 무변경 병기(별도 보조 섹션)
+  // ============================================================
+  function nameRelBaseClass(rel){
+    if(rel === '상극') return '상극';
+    if(rel === '비화') return '비화';
+    return '상생'; // 상호상생 / 상생(A→B) / 상생(B→A)
+  }
+
+  function renderNameCompatSection(){
+    var wrap = document.getElementById('name-compat-wrap');
+    var content = document.getElementById('name-compat-content');
+    var nc = state.nameCompatResult;
+    var single = state.nameCompatSingle;
+
+    if(!nc && !single){
+      wrap.style.display = 'none';
+      content.innerHTML = '';
+      return;
+    }
+    wrap.style.display = 'block';
+
+    if(nc){
+      var html = '';
+      html += '<div class="reco-section"><div class="reco-section-title">이름 오행 관계</div>';
+      html += '<div class="name-flow-row">';
+      html += '<div class="name-chip"><span class="ch">' + state.nameInput + '</span><span class="el">' + nc.elementsA.dominant + '</span></div>';
+      html += '<div class="name-arrow">→<span class="rel-' + nameRelBaseClass(nc.nameRel.rel) + '">' + nc.nameRel.rel + '</span></div>';
+      html += '<div class="name-chip"><span class="ch">' + state.partnerNameInput + '</span><span class="el">' + nc.elementsB.dominant + '</span></div>';
+      html += '</div>';
+      html += '<p class="tab-para">' + nc.nameRel.para + '</p></div>';
+
+      if(nc.giveTake.length){
+        html += '<div class="reco-section"><div class="reco-section-title">서로 주는 기운</div><div class="suri-grid">';
+        nc.giveTake.forEach(function(g){
+          html += '<div class="suri-card">'
+            + '<div class="suri-card-label">' + g.dir + '</div>'
+            + '<div class="suri-card-num">' + g.element + '</div>'
+            + '<span class="suri-grade g-' + (g.fills ? '길' : '흉') + '">' + (g.fills ? '보완' : '비보완') + '</span>'
+            + '<p class="suri-card-para">' + g.para + '</p>'
+            + '</div>';
+        });
+        html += '</div></div>';
+      }
+
+      html += '<div class="reco-section"><div class="reco-section-title">수리 조합</div>'
+        + '<p class="tab-para">' + nc.suriPair.para + '</p></div>';
+
+      html += '<div class="reco-section"><div class="reco-section-title">이름 궁합 종합 (보조 점수)</div>';
+      html += '<div class="name-overall-card">'
+        + '<div class="name-overall-score">' + nc.score + '</div>'
+        + '<div class="name-overall-text"><p class="h">' + nc.headline + '</p><p class="p">' + nc.para + '</p></div>'
+        + '</div></div>';
+
+      content.innerHTML = html;
+      return;
+    }
+
+    // 한쪽만 입력된 경우: 그쪽만 축약 표시
+    var who = single.side === 'self' ? '나' : '상대방';
+    var r = single.result;
+    var html2 = '<div class="reco-section"><div class="reco-section-title">' + who + ' 이름(' + single.name + ') 소리오행</div>';
+    html2 += '<div class="name-flow-row">';
+    r.syllables.forEach(function(s){
+      html2 += '<div class="name-chip"><span class="ch">' + s.ch + '</span><span class="el">' + s.elements.초성오행 + '</span></div>';
+    });
+    html2 += '</div>';
+    html2 += '<p class="tab-para">' + r.soriFlow.para + '</p>';
+    html2 += '<p class="tab-para" style="opacity:.75;">상대방 이름도 입력하시면 두 이름의 궁합까지 함께 볼 수 있어요.</p>';
+    html2 += '</div>';
+    content.innerHTML = html2;
   }
 
   // ============================================================
