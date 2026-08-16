@@ -158,15 +158,22 @@ async function submitSelf(page, name) {
   });
   check('고지문구 "재미로 보는 번호이며 당첨과 무관합니다." 노출', disclaimerText === '재미로 보는 번호이며 당첨과 무관합니다.', 'actual ' + disclaimerText);
 
-  // 결정성: 같은 사람 같은 날 재조회해도 동일 번호(페이지 리로드 후 재제출 — 날짜 모킹은 컨텍스트에 유지됨)
+  // 결정성: 같은 사람 같은 날 재조회해도 동일 번호
+  // v1.6: 첫 조회 완료 시 프로필이 자동 저장되므로, 재접속(reload) 하면 폼이 아니라
+  // 홈 대시보드가 뜨고 그 안에서 같은 로또 번호가 재계산되어 그대로 나타난다(재입력 불필요).
   await page2.reload({ waitUntil: 'load' });
   await page2.waitForTimeout(300);
-  await submitSelf(page2, '김민준');
+  await page2.waitForSelector('#screen-dashboard.active', { timeout: 10000 });
   var ballNumbers2 = await page2.evaluate(function () {
-    return Array.prototype.map.call(document.querySelectorAll('#lotto-balls .lotto-ball'), function (b) { return Number(b.textContent); });
+    return Array.prototype.map.call(document.querySelectorAll('#dash-lotto-balls .lotto-ball'), function (b) { return Number(b.textContent); });
   });
-  check('같은 chart+같은 날짜 재제출 → 동일 번호(결정성)', JSON.stringify(ballNumbers) === JSON.stringify(ballNumbers2),
+  check('v1.6 홈 대시보드 재접속 → 동일 번호(결정성)', JSON.stringify(ballNumbers) === JSON.stringify(ballNumbers2),
     JSON.stringify(ballNumbers) + ' vs ' + JSON.stringify(ballNumbers2));
+
+  // v1.6 대시보드 "사주 상세 리포트" 타일로 이동(해시 라우팅 확인 겸 이후 회귀 검증 준비)
+  await page2.click('.dash-tile[data-route="result"][data-tab="total"]');
+  await page2.waitForSelector('#screen-result.active', { timeout: 10000 });
+  check('v1.6 타일 라우팅: #result 해시로 이동', await page2.evaluate(function () { return location.hash; }) === '#result');
 
   // ============================================================
   // 3. v1.1/v1.2/v1.3 회귀

@@ -5,33 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MZ사주풀이</title>
 <meta name="description" content="사주 명리학과 MBTI를 함께 풀어보는 재미 콘텐츠, MZ사주풀이">
-<meta name="theme-color" content="#1b1330">
+<meta name="theme-color" content="#15110c">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
+<!-- 명조 서체(v1.6 사극 테마) — 실패해도 무해: font-display:swap + CSS serif 폴백이 항상 적용됨(오프라인 안전) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap" onerror="this.remove()">
 <style>
+  /* 사극(한국 전통) 테마 — 먹빛 밤하늘 + 한지 카드 + 금색 포인트 + 낙관(붉은 도장) 액센트 (v1.6) */
   :root{
-    --bg:#120f1c;
-    --bg-elevated:#1c1730;
-    --card:#221b3a;
-    --card-border:#33285a;
-    --accent:#8b5cf6;
-    --accent2:#c084fc;
-    --text:#f4f2f9;
-    --muted:#a99fc7;
-    --muted2:#7d719c;
-    --danger:#e5484d;
-    --ok:#4caf50;
+    --bg:#15110c;
+    --bg-elevated:#20170f;
+    --card:#efe0bb;
+    --card-border:#b9975a;
+    --accent:#b8862a;
+    --accent2:#c9a227;
+    --text:#f3e7cc;
+    --muted:#c7b48c;
+    --muted2:#8f7d5c;
+    --danger:#c0433f;
+    --ok:#5c8a4a;
     --radius:16px;
+    /* 한지 위 잉크(먹) 텍스트 톤 — .card/.tab-content 안에서 --text/--muted 를 대체 */
+    --ink:#2c2013;
+    --ink-soft:#5c4a30;
+    --ink-soft2:#8a765a;
+    --ink-accent:#8a4a1f;
+    --hanji-2:#e6d3a0;
+    --seal:#8c2a2a;
+    --font-title:'Nanum Myeongjo','HY Myeongjo','Batang',serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  /* 명조/붓글씨 계열 제목 서체: 구글 폰트 로드 실패(오프라인 등) 시 'Nanum Myeongjo' 페이스가 아예 존재하지 않게 되어
+     font-family 스택이 자동으로 HY Myeongjo → Batang → serif 로 폴백된다(레이아웃 안 깨짐, 별도 JS 불필요). */
   body{
     background:var(--bg);
     color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
     line-height:1.55;
     -webkit-tap-highlight-color:transparent;
+    position:relative;
+  }
+  /* 배경 장식(인라인 SVG data-uri): 구름 문양(운문) 저반복 타일 + 은은한 산수 실루엣 */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(201,162,39,0.10), transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><g fill='none' stroke='%23c9a227' stroke-width='1.2' opacity='0.07'><path d='M20 60c10-14 30-14 40 0s30 14 40 0'/><path d='M120 60c10-14 30-14 40 0s30 14 40 0'/><path d='M20 150c10-14 30-14 40 0s30 14 40 0'/><path d='M120 150c10-14 30-14 40 0s30 14 40 0'/></g></svg>");
+    background-repeat:repeat;
   }
   .app-shell{
     max-width:480px;
@@ -40,20 +63,52 @@
     display:flex;
     flex-direction:column;
     position:relative;
+    z-index:1;
+  }
+  h1, h2.screen-title, .persona-title, .daily-headline, .name-overall-score,
+  .dash-greeting-name, .tab-headline{
+    font-family:var(--font-title);
+    letter-spacing:0;
+  }
+  /* 한지 카드 스코프: .card/.tab-content 및 그 내부 요소는 --text/--muted 가 잉크(먹) 톤으로 바뀐다 */
+  .card, .tab-content{
+    --text:var(--ink);
+    --muted:var(--ink-soft);
+    --muted2:var(--ink-soft2);
+    --bg-elevated:var(--hanji-2);
+    --accent2:var(--ink-accent);
+    color:var(--ink);
+  }
+  /* 한지 안에 다시 나타나는 어두운 "야경" 히어로 카드(이름/한자 종합)는 밝은 톤으로 되돌림 */
+  .name-overall-card{
+    --text:#f3e7cc;
+    --muted:#c7b48c;
+    --accent2:#c9a227;
+    color:#f3e7cc;
   }
   header.top-bar{
     padding:18px 20px 14px;
     display:flex;
     align-items:center;
     gap:10px;
-    background:linear-gradient(180deg, rgba(139,92,246,0.18), rgba(139,92,246,0));
+    position:relative;
+    background:
+      linear-gradient(180deg, rgba(201,162,39,0.14), rgba(201,162,39,0));
+    background-color:transparent;
+    background-image:
+      linear-gradient(180deg, rgba(201,162,39,0.16), rgba(201,162,39,0)),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 90'><circle cx='340' cy='22' r='14' fill='%23c9a227' opacity='0.35'/><path d='M0 90 L40 55 L80 78 L130 40 L180 72 L230 48 L280 80 L330 50 L400 90 Z' fill='%23000000' opacity='0.28'/></svg>");
+    background-repeat:no-repeat;
+    background-size:100% 100%, 100% 100%;
   }
   header.top-bar .logo-dot{
     width:34px;height:34px;border-radius:10px;
     background:linear-gradient(135deg,var(--accent),var(--accent2));
     display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:15px;color:#fff;
+    font-weight:700;font-size:16px;color:var(--ink);
+    font-family:var(--font-title);
     flex:none;
+    box-shadow:0 0 0 1px rgba(201,162,39,0.35);
   }
   header.top-bar h1{
     font-size:18px;margin:0;font-weight:700;letter-spacing:-0.02em;
@@ -119,7 +174,7 @@
   .radio-pill input{display:none;}
   .radio-pill:has(input:checked){
     border-color:var(--accent);
-    background:rgba(139,92,246,0.18);
+    background:rgba(184,134,42,0.22);
     color:var(--text);
     font-weight:700;
   }
@@ -134,8 +189,8 @@
   .btn-primary{
     display:block;width:100%;padding:14px 16px;border:none;border-radius:12px;
     background:linear-gradient(135deg,var(--accent),var(--accent2));
-    color:#fff;font-size:16px;font-weight:700;cursor:pointer;
-    box-shadow:0 6px 18px rgba(139,92,246,0.35);
+    color:var(--ink);font-size:16px;font-weight:700;cursor:pointer;
+    box-shadow:0 6px 18px rgba(184,134,42,0.4);
   }
   .btn-primary:active{transform:scale(0.98);}
   .btn-secondary{
@@ -158,7 +213,7 @@
   }
   .spinner{
     width:56px;height:56px;border-radius:50%;
-    border:4px solid rgba(139,92,246,0.2);
+    border:4px solid rgba(201,162,39,0.2);
     border-top-color:var(--accent);
     animation:spin 0.9s linear infinite;
     margin-bottom:22px;
@@ -189,22 +244,30 @@
     border-radius:14px;border:1.5px solid var(--card-border);background:var(--card);
     color:var(--text);font-size:15px;cursor:pointer;
   }
-  .quiz-option:active{border-color:var(--accent);background:rgba(139,92,246,0.15);}
+  .quiz-option:active{border-color:var(--accent);background:rgba(184,134,42,0.18);}
 
   /* ---- persona card ---- */
   .persona-card{
-    background:linear-gradient(160deg,#2c1f52,#1b1330 70%);
+    background:linear-gradient(160deg,#2c1e10,#15110c 70%);
     border:1px solid var(--card-border);
     border-radius:20px;padding:24px 20px;text-align:center;margin-bottom:18px;
     position:relative;overflow:hidden;
   }
   .persona-card::before{
     content:"";position:absolute;top:-40px;right:-40px;width:140px;height:140px;
-    background:radial-gradient(circle, rgba(192,132,252,0.35), transparent 70%);
+    background:radial-gradient(circle, rgba(201,162,39,0.32), transparent 70%);
+  }
+  /* 낙관(붉은 도장) 액센트 */
+  .persona-card::after{
+    content:"福";position:absolute;bottom:12px;right:14px;width:30px;height:30px;
+    border-radius:6px;background:var(--seal);color:#f3e7cc;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-title);font-size:15px;font-weight:800;
+    box-shadow:0 0 0 1px rgba(201,162,39,0.5);
   }
   .persona-badge{
     display:inline-block;font-size:12px;color:var(--muted);
-    background:rgba(255,255,255,0.06);padding:5px 12px;border-radius:20px;margin-bottom:12px;
+    background:rgba(201,162,39,0.14);padding:5px 12px;border-radius:20px;margin-bottom:12px;
   }
   .persona-title{font-size:24px;font-weight:800;margin:0 0 10px;letter-spacing:-0.02em;}
   .persona-summary{font-size:14px;color:var(--muted);margin:0;}
@@ -231,7 +294,7 @@
     background:var(--bg-elevated);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;
   }
   .tab-btn.active{
-    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--ink);border-color:transparent;
   }
   .tab-content{
     background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);
@@ -244,7 +307,7 @@
     margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(229,72,77,0.1);
     border:1px solid rgba(229,72,77,0.3);font-size:13px;
   }
-  .caution-box strong{display:block;margin-bottom:6px;color:#f3a2a5;}
+  .caution-box strong{display:block;margin-bottom:6px;color:var(--seal);}
   .caution-box ul{margin:0;padding-left:18px;}
   .caution-box li{margin-bottom:4px;}
 
@@ -261,7 +324,7 @@
   .reco-lucky-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;}
   .reco-lucky-value{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;}
   .reco-field-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;}
-  .reco-chip{background:rgba(139,92,246,0.18);color:var(--accent2);font-size:12.5px;font-weight:600;padding:6px 10px;border-radius:20px;}
+  .reco-chip{background:rgba(184,134,42,0.18);color:var(--accent2);font-size:12.5px;font-weight:600;padding:6px 10px;border-radius:20px;}
   .reco-tips{margin:10px 0 0;padding-left:18px;}
   .reco-tips li{font-size:13.5px;color:var(--text);margin-bottom:6px;}
   .reco-product{background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
@@ -279,7 +342,7 @@
   .name-chip .ch{font-size:18px;font-weight:700;color:var(--text);}
   .name-chip .el{font-size:11px;color:var(--accent2);font-weight:600;}
   .name-arrow{font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;}
-  .name-arrow .rel-상생{color:#4caf50;font-weight:700;}
+  .name-arrow .rel-상생{color:#2e7d32;font-weight:700;}
   .name-arrow .rel-상극{color:var(--danger);font-weight:700;}
   .name-arrow .rel-비화{color:var(--muted);font-weight:700;}
   .suri-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 14px;}
@@ -290,16 +353,16 @@
   .suri-grade{
     display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-bottom:6px;
   }
-  .suri-grade.g-길{background:rgba(76,175,80,0.18);color:#7fd685;}
-  .suri-grade.g-중길{background:rgba(139,92,246,0.18);color:var(--accent2);}
-  .suri-grade.g-평{background:rgba(255,255,255,0.08);color:var(--muted);}
-  .suri-grade.g-흉{background:rgba(229,72,77,0.14);color:#f3a2a5;}
+  .suri-grade.g-길{background:rgba(76,175,80,0.18);color:#2e7d32;}
+  .suri-grade.g-중길{background:rgba(184,134,42,0.18);color:var(--accent2);}
+  .suri-grade.g-평{background:rgba(44,32,19,0.06);color:var(--muted);}
+  .suri-grade.g-흉{background:rgba(229,72,77,0.14);color:var(--seal);}
   .suri-card-para{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5;}
   .name-overall-card{
-    display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,#2c1f52,#1b1330 80%);
+    display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,#2c1e10,#15110c 80%);
     border:1px solid var(--card-border);border-radius:14px;padding:16px;margin-top:6px;
   }
-  .name-overall-score{font-size:30px;font-weight:800;color:#fff;flex:none;}
+  .name-overall-score{font-size:30px;font-weight:800;color:#e8c96a;flex:none;}
   .name-overall-text .h{font-size:14.5px;font-weight:700;margin:0 0 4px;}
   .name-overall-text .p{font-size:12.5px;color:var(--muted);margin:0;}
 
@@ -309,7 +372,7 @@
     background:var(--bg-elevated);border:1px dashed var(--accent2);color:var(--accent2);
     font-size:14px;font-weight:700;font-family:inherit;
   }
-  .hanja-toggle-btn:hover{background:rgba(139,92,246,0.12);}
+  .hanja-toggle-btn:hover{background:rgba(184,134,42,0.14);}
   .hanja-picker{margin-top:12px;}
   .hanja-syl{margin-bottom:14px;}
   .hanja-syl-head{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:7px;}
@@ -321,7 +384,7 @@
     padding:7px 9px;cursor:pointer;font-family:inherit;color:var(--text);text-align:center;
   }
   .hanja-opt:hover{border-color:var(--accent2);}
-  .hanja-opt.selected{border-color:var(--accent2);background:rgba(139,92,246,0.18);}
+  .hanja-opt.selected{border-color:var(--accent2);background:rgba(184,134,42,0.2);}
   .hanja-opt .hj{font-size:19px;font-weight:700;line-height:1.15;}
   .hanja-opt .mn{font-size:10.5px;color:var(--muted);max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .hanja-opt .st{font-size:9.5px;color:var(--accent2);font-weight:700;}
@@ -346,13 +409,13 @@
   .hanja-card .mn{font-size:12px;color:var(--text);margin-top:2px;}
   .hanja-card .meta{font-size:10.5px;color:var(--accent2);font-weight:700;margin-top:3px;}
   .suri-hanja-note{
-    font-size:11.5px;color:var(--muted);background:rgba(139,92,246,0.10);
+    font-size:11.5px;color:var(--muted);background:rgba(184,134,42,0.12);
     border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:8px 10px;margin:0 0 10px;line-height:1.55;
   }
 
   /* ---- daily ---- */
   .daily-card{
-    background:linear-gradient(160deg,#1e2a4a,#1b1330 80%);
+    background:linear-gradient(160deg,#2a2013,#15110c 80%);
     border:1px solid var(--card-border);border-radius:var(--radius);padding:18px;margin-bottom:18px;
   }
   .daily-card h3{font-size:14px;margin:0 0 4px;color:var(--muted);font-weight:600;}
@@ -361,16 +424,16 @@
   .daily-meta{display:flex;gap:14px;flex-wrap:wrap;}
   .daily-meta .meta-item{
     display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);
-    background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:10px;
+    background:rgba(201,162,39,0.10);padding:8px 12px;border-radius:10px;
   }
-  .color-swatch{width:16px;height:16px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);flex:none;}
+  .color-swatch{width:16px;height:16px;border-radius:50%;border:1px solid rgba(120,95,50,0.55);flex:none;}
   .daily-score-badge{
-    font-weight:700;color:#fff;background:rgba(139,92,246,0.35);
+    font-weight:700;color:#fff;background:rgba(201,162,39,0.35);
     padding:8px 14px;border-radius:10px;font-size:13px;
   }
 
   /* ---- lotto (v1.4) ---- */
-  .lotto-block{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(255,255,255,0.14);}
+  .lotto-block{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(201,162,39,0.25);}
   .lotto-label{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;}
   .lotto-para{font-size:13px;color:var(--text);margin:0 0 10px;}
   .lotto-balls{display:flex;gap:8px;flex-wrap:wrap;}
@@ -408,6 +471,53 @@
     border-top:1px solid var(--card-border);
   }
   footer.disclaimer .brand{color:var(--muted);font-weight:600;display:block;margin-bottom:6px;font-size:12px;}
+
+  /* ================= 홈 대시보드 (v1.6) ================= */
+  .dash-greeting{
+    display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative;
+  }
+  .dash-greeting-moon{
+    width:46px;height:46px;border-radius:50%;flex:none;
+    background:radial-gradient(circle at 35% 32%, #f3e7cc, #c9a227 65%, #8a4a1f 100%);
+    box-shadow:0 0 0 1px rgba(201,162,39,0.4), 0 0 18px rgba(201,162,39,0.25);
+  }
+  .dash-greeting-name{font-size:19px;font-weight:800;margin:0 0 3px;}
+  .dash-greeting-date{font-size:12.5px;color:var(--muted);margin:0;}
+  .dash-greeting-date .iljin{color:var(--accent2);font-weight:700;}
+
+  .dash-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px;}
+  .dash-tile{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    background:var(--card);border:1px solid var(--card-border);border-radius:14px;
+    padding:16px 8px 12px;cursor:pointer;font-family:inherit;color:var(--ink);
+    text-align:center;
+  }
+  .dash-tile:active{border-color:var(--accent);background:var(--hanji-2);}
+  .dash-tile svg{width:26px;height:26px;flex:none;}
+  .dash-tile .dash-tile-label{font-size:12.5px;font-weight:700;color:var(--ink);}
+  .dash-aux-row{margin:4px 0 18px;}
+  .dash-aux-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    padding:12px 14px;border-radius:12px;border:1px dashed var(--card-border);
+    background:transparent;color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;
+  }
+  .dash-aux-btn svg{width:16px;height:16px;flex:none;}
+
+  .profile-switcher{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;}
+  .profile-chip{
+    flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:8px 14px;border-radius:12px;border:1px solid var(--card-border);
+    background:var(--bg-elevated);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;
+    font-family:inherit;min-width:64px;
+  }
+  .profile-chip.active{
+    border-color:var(--accent2);background:rgba(201,162,39,0.16);color:var(--text);
+  }
+  .profile-actions{display:flex;gap:8px;margin-bottom:20px;}
+  .profile-actions > *{flex:1;}
+
+  /* ================= 낙관 도장 SVG(공용) ================= */
+  .seal-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;}
 </style>
 </head>
 <body>
@@ -422,8 +532,78 @@
 
   <main id="app">
 
+    <!-- ================= 홈 대시보드 (v1.6, 저장된 프로필이 있을 때) ================= -->
+    <section class="screen" id="screen-dashboard">
+      <div class="profile-switcher" id="profile-switcher"></div>
+
+      <div class="dash-greeting">
+        <div class="dash-greeting-moon" aria-hidden="true"></div>
+        <div>
+          <p class="dash-greeting-name" id="dash-greeting-name">-</p>
+          <p class="dash-greeting-date" id="dash-greeting-date">-</p>
+        </div>
+      </div>
+
+      <div class="daily-card">
+        <h3>오늘의 운세</h3>
+        <div class="daily-headline" id="dash-daily-headline">-</div>
+        <p class="daily-para" id="dash-daily-para">-</p>
+        <div class="daily-meta">
+          <div class="meta-item"><span class="color-swatch" id="dash-daily-color-swatch"></span><span id="dash-daily-color-name">-</span></div>
+          <div class="meta-item">🍀 <span id="dash-daily-item">-</span></div>
+          <div class="daily-score-badge" id="dash-daily-score">-</div>
+        </div>
+
+        <div class="lotto-block" id="dash-lotto-block" style="display:none;">
+          <div class="lotto-label">🎱 오늘의 로또 번호</div>
+          <p class="lotto-para" id="dash-lotto-para">-</p>
+          <div class="lotto-balls" id="dash-lotto-balls"></div>
+          <div class="lotto-disclaimer">재미로 보는 번호이며 당첨과 무관합니다.</div>
+        </div>
+      </div>
+
+      <!-- 애드센스 슬롯 3: 홈 대시보드. 승인 후 .ad-slot 의 display:none 을 제거하고 내부에 <ins class="adsbygoogle">...</ins> 코드를 삽입할 것 -->
+      <div class="ad-slot" id="ad-slot-dash">광고 영역 (승인 후 노출)</div>
+
+      <div class="section-label">바로가기</div>
+      <div class="dash-tiles" id="dash-tiles">
+        <button type="button" class="dash-tile" data-route="result" data-tab="total">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          <span class="dash-tile-label">사주<br>상세 리포트</span>
+        </button>
+        <button type="button" class="dash-tile" data-route="result" data-tab="name">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10a2 2 0 00-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+          <span class="dash-tile-label">이름풀이</span>
+        </button>
+        <button type="button" class="dash-tile" data-route="result" data-tab="name" data-hanja="1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 7v10M8 12h8"/></svg>
+          <span class="dash-tile-label">한자<br>뜻풀이</span>
+        </button>
+        <button type="button" class="dash-tile" data-route="result" data-scroll-lotto="1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+          <span class="dash-tile-label">로또</span>
+        </button>
+        <button type="button" class="dash-tile" data-route="compat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>
+          <span class="dash-tile-label">궁합</span>
+        </button>
+      </div>
+      <div class="dash-aux-row">
+        <button type="button" class="dash-aux-btn" id="dash-quiz-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .5c0 1.5-2 1.8-2 3.3"/><circle cx="12" cy="16.6" r=".6" fill="currentColor" stroke="none"/></svg>
+          MBTI 약식검사
+        </button>
+      </div>
+
+      <div class="section-label">프로필</div>
+      <div class="profile-actions">
+        <button type="button" class="btn-secondary" id="dash-new-profile-btn">새 사주 보기</button>
+        <button type="button" class="btn-ghost" id="dash-edit-profile-btn">프로필 수정</button>
+      </div>
+    </section>
+
     <!-- ================= 홈 (입력폼) ================= -->
-    <section class="screen active" id="screen-home">
+    <section class="screen" id="screen-home">
       <h2 class="screen-title">기본 정보를 입력해주세요</h2>
       <p class="screen-sub">생년월일과 MBTI를 바탕으로 사주 풀이를 만들어 드립니다.</p>
       <form id="form-self" class="card" novalidate>
@@ -572,6 +752,110 @@
 <script>
 window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
 </script>
+<!-- v1.6 프로필 저장(로컬 전용) — DOM 의존 없는 순수 localStorage 로직이라 node에서 그대로 단위 테스트 가능 -->
+<script>
+window.ProfileStore = (function () {
+  'use strict';
+  var KEY = 'mzsaju_profiles_v1';
+  var MAX_PROFILES = 5;
+
+  // 중복 입력 방지 키: 생년월일 + 출생시간 + 성별 (SPEC v1.6)
+  function profileKey(p) {
+    return (p.birthDate || '') + '_' + (p.birthTime || 'none') + '_' + (p.gender || '');
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return { list: [], activeId: null };
+      var obj = JSON.parse(raw);
+      if (!obj || !Array.isArray(obj.list)) return { list: [], activeId: null };
+      return obj;
+    } catch (e) {
+      // 사생활 모드 등으로 localStorage 접근 불가 → 항상 "프로필 없음"으로 자연 폴백
+      return { list: [], activeId: null, _blocked: true };
+    }
+  }
+
+  function save(store) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(store));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function upsert(data) {
+    try {
+      var store = load();
+      var key = profileKey(data);
+      var idx = -1;
+      for (var i = 0; i < store.list.length; i++) {
+        if (profileKey(store.list[i]) === key) { idx = i; break; }
+      }
+      var entry = {
+        id: idx >= 0 ? store.list[idx].id : ('p' + Date.now() + Math.floor(Math.random() * 1000)),
+        name: data.name || '',
+        birthDate: data.birthDate,
+        calendar: data.calendar || 'solar',
+        lunarLeap: !!data.lunarLeap,
+        birthTime: data.birthTime || null,
+        gender: data.gender,
+        mbti: data.mbti || null,
+        savedAt: Date.now()
+      };
+      if (idx >= 0) {
+        store.list[idx] = entry;
+      } else {
+        store.list.push(entry);
+        if (store.list.length > MAX_PROFILES) {
+          // 최대 5개 — 가장 오래 저장된 프로필부터 정리(활성 프로필은 보호)
+          var byAge = store.list.slice().sort(function (a, b) { return a.savedAt - b.savedAt; });
+          var victim = byAge[0];
+          if (victim.id === store.activeId && byAge.length > 1) victim = byAge[1];
+          var victimId = victim.id;
+          store.list = store.list.filter(function (p) { return p.id !== victimId; });
+        }
+      }
+      store.activeId = entry.id;
+      if (!save(store)) return null;
+      return entry;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function list() {
+    return load().list;
+  }
+
+  function getActive() {
+    try {
+      var store = load();
+      if (!store.activeId) return null;
+      for (var i = 0; i < store.list.length; i++) {
+        if (store.list[i].id === store.activeId) return store.list[i];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setActive(id) {
+    try {
+      var store = load();
+      store.activeId = id;
+      return save(store);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return { load: load, save: save, upsert: upsert, list: list, getActive: getActive, setActive: setActive, _key: profileKey };
+})();
+</script>
 <script>
 (function(){
   'use strict';
@@ -582,6 +866,8 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   function pad(n){ return n < 10 ? '0' + n : '' + n; }
   var now = new Date();
   var TODAY_STR = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+  var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
+  var TODAY_DOW = DOW_KO[now.getDay()];
 
   var TIME_OPTIONS = [
     { value: '', label: '모름 (시간 정보 없이 풀이)' },
@@ -615,8 +901,11 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     // v1.3 한자 뜻풀이
     nameInput: '', hanjaOpen: false, hanjaSelection: null, hanjaResult: null, hanjaError: '',
     // v1.5 궁합 이름풀이
-    partnerNameInput: '', nameCompatResult: null, nameCompatSingle: null
+    partnerNameInput: '', nameCompatResult: null, nameCompatSingle: null,
+    // v1.6 홈 대시보드 / 프로필
+    activeProfile: null
   };
+  var pendingRouteOpts = {};
 
   // ============================================================
   // 1. 화면 전환
@@ -647,6 +936,95 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   function contentDbReady(){
     return !!(window.ContentDB && typeof window.ContentDB.compose === 'function');
   }
+
+  // ============================================================
+  // 1-1. 해시 라우터 (v1.6) — #home/#input/#result/#compat/#quiz
+  //   메뉴 타일·프로필 전환 등 모든 내부 이동은 navigateTo() 를 거쳐 location.hash 를 갱신하므로
+  //   브라우저 뒤로가기/앞으로가기가 항상 같은 규칙으로 화면을 복원한다.
+  // ============================================================
+  function currentRoute(){
+    var h = (location.hash || '').replace('#', '');
+    return h || 'home';
+  }
+
+  function navigateTo(route, opts){
+    pendingRouteOpts = opts || {};
+    var target = '#' + route;
+    if(location.hash === target){
+      // 해시가 이미 같으면 hashchange 이벤트가 발생하지 않으므로 직접 라우팅한다
+      applyRoute(route);
+    } else {
+      location.hash = target;
+    }
+  }
+
+  function applyRoute(route){
+    var opts = pendingRouteOpts || {};
+    pendingRouteOpts = {};
+
+    if(route === 'home'){
+      var active = window.ProfileStore ? window.ProfileStore.getActive() : null;
+      if(active){
+        renderDashboard(active);
+        showScreen('screen-dashboard');
+      } else {
+        showScreen('screen-home');
+      }
+      return;
+    }
+
+    if(route === 'input'){
+      if(opts.mode === 'new'){ clearSelfForm(); }
+      else if(opts.mode === 'edit' && opts.profile){ prefillSelfForm(opts.profile); }
+      showScreen('screen-home');
+      return;
+    }
+
+    if(route === 'result'){
+      if(!state.composed || !state.selfChart){
+        navigateTo('home');
+        return;
+      }
+      renderResult();
+      showScreen('screen-result');
+      if(opts.tab) setActiveTab(opts.tab);
+      if(opts.openHanja && hanjaAvailable()){
+        state.hanjaOpen = true;
+        state.hanjaSelection = state.nameInput.split('').map(function(){ return undefined; });
+        state.hanjaResult = null;
+        state.hanjaError = '';
+        renderNameTab(state.nameResult);
+      }
+      if(opts.scrollLotto){
+        setTimeout(function(){
+          var el = document.getElementById('lotto-block');
+          if(!el || getComputedStyle(el).display === 'none'){
+            el = document.querySelector('#screen-result .daily-card');
+          }
+          if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+      }
+      return;
+    }
+
+    if(route === 'compat'){
+      if(!state.selfChart){
+        navigateTo('home');
+        return;
+      }
+      showScreen('screen-compat-form');
+      return;
+    }
+
+    if(route === 'quiz'){
+      startQuiz('self');
+      return;
+    }
+
+    navigateTo('home');
+  }
+
+  window.addEventListener('hashchange', function(){ applyRoute(currentRoute()); });
 
   // ============================================================
   // 2. 입력폼 렌더링 (self / partner 공용 템플릿)
@@ -751,6 +1129,38 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     return null;
   }
 
+  function setRadioValue(name, value){
+    var el = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+    if(el) el.checked = true;
+  }
+
+  // v1.6 프로필 "수정": 저장된 프로필 값으로 본인 입력폼을 채운다
+  function prefillSelfForm(profile){
+    if(!profile) return;
+    document.getElementById('self-name').value = profile.name || '';
+    document.getElementById('self-date').value = profile.birthDate || '';
+    setRadioValue('self-calendar', profile.calendar || 'solar');
+    document.getElementById('self-leap-wrap').style.display = (profile.calendar === 'lunar') ? 'block' : 'none';
+    document.getElementById('self-leap').checked = !!profile.lunarLeap;
+    document.getElementById('self-time').value = profile.birthTime || '';
+    setRadioValue('self-gender', profile.gender || 'M');
+    document.getElementById('self-mbti').value = profile.mbti || '';
+    document.getElementById('self-mbti-quiz-wrap').style.display = 'none';
+  }
+
+  // v1.6 "새 사주 보기": 본인 입력폼을 빈 상태로 되돌린다
+  function clearSelfForm(){
+    document.getElementById('self-name').value = '';
+    document.getElementById('self-date').value = '';
+    setRadioValue('self-calendar', 'solar');
+    document.getElementById('self-leap-wrap').style.display = 'none';
+    document.getElementById('self-leap').checked = false;
+    document.getElementById('self-time').value = '';
+    setRadioValue('self-gender', 'M');
+    document.getElementById('self-mbti').value = '';
+    document.getElementById('self-mbti-quiz-wrap').style.display = 'none';
+  }
+
   document.getElementById('self-fields').innerHTML = formFieldsHTML('self', true);
   document.getElementById('partner-fields').innerHTML = formFieldsHTML('partner', true);
   bindFormBehavior('self');
@@ -806,13 +1216,15 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     selectEl.value = type;
     document.getElementById(target + '-mbti-quiz-wrap').style.display = 'none';
     state.quiz = null;
-    showScreen(target === 'partner' ? 'screen-compat-form' : 'screen-home');
+    if(target === 'partner') showScreen('screen-compat-form');
+    else navigateTo('input');
   }
 
   document.getElementById('quiz-cancel-btn').addEventListener('click', function(){
     var target = state.quiz ? state.quiz.target : 'self';
     state.quiz = null;
-    showScreen(target === 'partner' ? 'screen-compat-form' : 'screen-home');
+    if(target === 'partner') showScreen('screen-compat-form');
+    else navigateTo('input');
   });
 
   // ============================================================
@@ -995,7 +1407,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     h += '</div>';
     h += '<div class="hanja-actions"><button type="button" class="hanja-reset-btn" id="hanja-reset-btn">다시 고르기</button></div>';
     if(state.hanjaError){
-      h += '<p class="hanja-hint" style="color:#f3a2a5;">' + state.hanjaError + '</p>';
+      h += '<p class="hanja-hint" style="color:#8c2a2a;">' + state.hanjaError + '</p>';
     } else if(!state.hanjaResult){
       h += '<p class="hanja-hint">모든 음절을 고르시면 아래에 뜻풀이가 나타납니다.</p>';
     }
@@ -1261,8 +1673,13 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
           }
         }
 
+        // v1.6: 결과 조회 완료 → 프로필 자동 저장(로컬). 저장 실패(사생활 모드 등)해도 결과 화면은 그대로 진행(자연 폴백).
+        if(window.ProfileStore){
+          try { state.activeProfile = window.ProfileStore.upsert(data); } catch(saveErr){ state.activeProfile = null; }
+        }
+
         renderResult();
-        showScreen('screen-result');
+        navigateTo('result');
       } catch(err){
         console.error('[MZ사주풀이] 사주 분석 오류:', err);
         showGuard('사주 계산 중 오류가 발생했습니다. 입력하신 정보를 다시 확인해주세요.');
@@ -1271,30 +1688,30 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   });
 
   document.getElementById('guard-back-btn').addEventListener('click', function(){
-    showScreen('screen-home');
+    navigateTo('input');
   });
   document.getElementById('result-restart-btn').addEventListener('click', function(){
-    showScreen('screen-home');
+    navigateTo('input', { mode: 'new' });
   });
 
   // ============================================================
   // 7. 궁합
   // ============================================================
   document.getElementById('open-compat-btn').addEventListener('click', function(){
-    showScreen('screen-compat-form');
+    navigateTo('compat');
   });
   document.getElementById('compat-back-btn').addEventListener('click', function(){
-    showScreen('screen-result');
+    navigateTo('result');
   });
   document.getElementById('compat-result-back-btn').addEventListener('click', function(){
-    showScreen('screen-result');
+    navigateTo('result');
   });
 
   document.getElementById('form-partner').addEventListener('submit', function(e){
     e.preventDefault();
     if(!state.selfChart){
       alert('먼저 본인의 사주 결과를 확인해주세요.');
-      showScreen('screen-home');
+      navigateTo('home');
       return;
     }
     var data = collectFormData('partner');
@@ -1465,26 +1882,26 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     var ctx = canvas.getContext('2d');
 
     var grad = ctx.createLinearGradient(0, 0, 1080, 1350);
-    grad.addColorStop(0, '#1b1330');
-    grad.addColorStop(1, '#3a2166');
+    grad.addColorStop(0, '#15110c');
+    grad.addColorStop(1, '#3a2a12');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1080, 1350);
 
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = '#c084fc';
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#c9a227';
     ctx.beginPath(); ctx.arc(920, 140, 260, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
 
-    ctx.fillStyle = '#c9b8ff';
-    ctx.font = '600 40px sans-serif';
+    ctx.fillStyle = '#e0c060';
+    ctx.font = '600 40px serif';
     ctx.fillText('MZ사주풀이', 70, 120);
 
     var persona = state.composed.persona;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 62px sans-serif';
+    ctx.fillStyle = '#f3e7cc';
+    ctx.font = '700 62px serif';
     var y = wrapCanvasText(ctx, persona.title, 70, 240, 940, 74);
 
-    ctx.fillStyle = '#e5defa';
+    ctx.fillStyle = '#d9c9a3';
     ctx.font = '400 32px sans-serif';
     y = wrapCanvasText(ctx, persona.summary, 70, y + 30, 940, 46);
 
@@ -1511,7 +1928,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
 
     var scoreY = baseY + order.length * 68 + 50;
     if(state.todayResult){
-      ctx.fillStyle = '#c9b8ff';
+      ctx.fillStyle = '#e0c060';
       ctx.font = '500 30px sans-serif';
       ctx.fillText('오늘의 점수', 70, scoreY);
       ctx.fillStyle = '#ffffff';
@@ -1579,6 +1996,141 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   }
 
   // ============================================================
+  // 10-1. 홈 대시보드 (v1.6) — 프로필 저장 시 자동 진입, 오늘의 운세·로또는 기존 함수 재사용
+  // ============================================================
+  function computeForProfile(p){
+    var chart = window.SajuEngine.analyze({
+      birthDate: p.birthDate, calendar: p.calendar, lunarLeap: p.lunarLeap,
+      birthTime: p.birthTime, gender: p.gender
+    });
+    // SajuEngine.analyze 는 여기서 1회만 호출 — daily/lotto/recommend 는 모두 이 chart 를 재사용한다.
+    state.selfChart = chart;
+    state.selfMbti = p.mbti;
+    state.activeProfile = p;
+    state.composed = window.ContentDB.compose(chart, p.mbti);
+    state.todayResult = window.SajuEngine.today(chart, TODAY_STR);
+    state.dailyInfo = window.ContentDB.daily(state.todayResult, chart);
+    state.recommendData = (typeof window.ContentDB.recommend === 'function') ? window.ContentDB.recommend(chart, p.mbti) : null;
+    state.lottoInfo = (typeof window.ContentDB.lotto === 'function') ? window.ContentDB.lotto(chart, TODAY_STR) : null;
+
+    state.nameResult = null;
+    state.nameInput = p.name || '';
+    state.hanjaOpen = false;
+    state.hanjaSelection = null;
+    state.hanjaResult = null;
+    state.hanjaError = '';
+    if(p.name && window.NameReader && typeof window.NameReader.analyze === 'function'){
+      try { state.nameResult = window.NameReader.analyze(p.name, chart); }
+      catch(nameErr){ console.error('[MZ사주풀이] 이름풀이 오류:', nameErr); state.nameResult = null; }
+    }
+  }
+
+  function iljinLabel(){
+    if(!state.todayResult || !state.todayResult.iljin) return '-';
+    var ganTable = lookupHanjaTable('GAN_HANJA');
+    var jiTable = lookupHanjaTable('JI_HANJA');
+    var g = state.todayResult.iljin.gan, j = state.todayResult.iljin.ji;
+    var gh = ganTable && ganTable[g];
+    var jh = jiTable && jiTable[j];
+    return g + j + ((gh && jh) ? '(' + gh + jh + ')' : '');
+  }
+
+  function profileChipLabel(p){
+    if(p.name) return p.name;
+    return (p.gender === 'F' ? '여성' : '남성') + ' ' + p.birthDate;
+  }
+
+  function renderProfileSwitcher(activeId){
+    var wrap = document.getElementById('profile-switcher');
+    if(!wrap) return;
+    var list = window.ProfileStore ? window.ProfileStore.list() : [];
+    wrap.innerHTML = list.map(function(p){
+      return '<button type="button" class="profile-chip' + (p.id === activeId ? ' active' : '') +
+        '" data-profile-id="' + p.id + '">' + profileChipLabel(p) + '</button>';
+    }).join('');
+  }
+
+  function renderDashDaily(d){
+    document.getElementById('dash-daily-headline').textContent = d.headline;
+    document.getElementById('dash-daily-para').textContent = d.para;
+    document.getElementById('dash-daily-color-swatch').style.background = d.luckyColor.hex;
+    document.getElementById('dash-daily-color-name').textContent = d.luckyColor.name;
+    document.getElementById('dash-daily-item').textContent = d.luckyItem;
+    document.getElementById('dash-daily-score').textContent = (state.todayResult ? state.todayResult.score : '-') + '점';
+  }
+
+  function renderDashLotto(info){
+    var block = document.getElementById('dash-lotto-block');
+    if(!block) return;
+    if(!info || info.show !== true){ block.style.display = 'none'; return; }
+    document.getElementById('dash-lotto-para').textContent = info.para;
+    var ballsWrap = document.getElementById('dash-lotto-balls');
+    ballsWrap.innerHTML = '';
+    (info.numbers || []).forEach(function(n){
+      var ball = document.createElement('div');
+      ball.className = 'lotto-ball ' + lottoBallClass(n);
+      ball.textContent = n;
+      ballsWrap.appendChild(ball);
+    });
+    block.style.display = 'block';
+  }
+
+  function renderDashboard(profile){
+    if(!contentDbReady() || !engineReady()){
+      showGuard('명리 계산 엔진을 준비하고 있습니다. 조금만 기다려주세요.');
+      return;
+    }
+    try {
+      computeForProfile(profile);
+    } catch(dashErr){
+      console.error('[MZ사주풀이] 홈 대시보드 계산 오류:', dashErr);
+      showGuard('사주 계산 중 오류가 발생했습니다. 프로필을 다시 확인해주세요.');
+      return;
+    }
+    var displayName = profile.name || (state.composed && state.composed.persona && state.composed.persona.title) || '회원';
+    document.getElementById('dash-greeting-name').textContent = '안녕하세요, ' + displayName + '님';
+    document.getElementById('dash-greeting-date').innerHTML =
+      now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일(' + TODAY_DOW + ') · ' +
+      '<span class="iljin">' + iljinLabel() + '일진</span>';
+    renderDashDaily(state.dailyInfo);
+    renderDashLotto(state.lottoInfo);
+    renderProfileSwitcher(profile.id);
+  }
+
+  document.getElementById('dash-tiles').addEventListener('click', function(e){
+    var btn = e.target.closest('.dash-tile');
+    if(!btn) return;
+    if(btn.dataset.tab === 'name' && !state.nameResult){
+      alert('이름을 입력하시면 이름풀이·한자 뜻풀이를 볼 수 있어요. 프로필 수정에서 이름을 추가해주세요.');
+      navigateTo('input', { mode: 'edit', profile: window.ProfileStore ? window.ProfileStore.getActive() : null });
+      return;
+    }
+    var opts = {};
+    if(btn.dataset.tab) opts.tab = btn.dataset.tab;
+    if(btn.dataset.hanja) opts.openHanja = true;
+    if(btn.dataset.scrollLotto) opts.scrollLotto = true;
+    navigateTo(btn.dataset.route, opts);
+  });
+
+  document.getElementById('dash-quiz-btn').addEventListener('click', function(){
+    navigateTo('quiz');
+  });
+
+  document.getElementById('profile-switcher').addEventListener('click', function(e){
+    var btn = e.target.closest('.profile-chip');
+    if(!btn || !window.ProfileStore) return;
+    window.ProfileStore.setActive(btn.dataset.profileId);
+    navigateTo('home');
+  });
+
+  document.getElementById('dash-new-profile-btn').addEventListener('click', function(){
+    navigateTo('input', { mode: 'new' });
+  });
+  document.getElementById('dash-edit-profile-btn').addEventListener('click', function(){
+    navigateTo('input', { mode: 'edit', profile: window.ProfileStore ? window.ProfileStore.getActive() : null });
+  });
+
+  // ============================================================
   // 11. PWA: 서비스워커 등록
   // ============================================================
   if('serviceWorker' in navigator){
@@ -1588,6 +2140,9 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
       });
     });
   }
+
+  // 초기 진입: 프로필이 있으면 홈 대시보드, 없으면 기존 입력 폼(첫 방문 플로우 그대로)
+  applyRoute(currentRoute());
 
   // 초기 진입 시 필수 스크립트 로드 상태 콘솔 안내 (디버그용)
   console.log('[MZ사주풀이] ContentDB ready =', contentDbReady(), ', SajuEngine ready =', engineReady());

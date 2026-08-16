@@ -3,7 +3,7 @@
  * 전략: 캐시 우선(cache-first) + 네트워크 폴백, 실패한 GET은 캐시로 폴백
  * 버전을 올리면(CACHE_VERSION 변경) 이전 캐시는 activate 단계에서 자동 정리된다.
  */
-var CACHE_VERSION = 'mz-saju-v6';
+var CACHE_VERSION = 'mz-saju-v7';
 
 var CACHE_FILES = [
   './',
@@ -50,7 +50,13 @@ self.addEventListener('fetch', function(event){
   event.respondWith(
     caches.match(event.request).then(function(cached){
       var networkFetch = fetch(event.request).then(function(response){
-        if(response && response.status === 200 && response.type === 'basic'){
+        // v1.6: 명조 폰트(구글 폰트) 등 교차출처 리소스도 캐시해 오프라인에서 폴백 서체로 깨지지 않게 한다.
+        // opaque(교차출처 no-cors) 응답은 status 를 읽을 수 없으므로 type 만으로 판단한다.
+        var cacheable = response && (
+          (response.status === 200 && (response.type === 'basic' || response.type === 'cors')) ||
+          response.type === 'opaque'
+        );
+        if(cacheable){
           var clone = response.clone();
           caches.open(CACHE_VERSION).then(function(cache){
             cache.put(event.request, clone);
