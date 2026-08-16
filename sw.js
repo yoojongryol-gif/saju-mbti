@@ -3,7 +3,7 @@
  * 전략: 캐시 우선(cache-first) + 네트워크 폴백, 실패한 GET은 캐시로 폴백
  * 버전을 올리면(CACHE_VERSION 변경) 이전 캐시는 activate 단계에서 자동 정리된다.
  */
-var CACHE_VERSION = 'mz-saju-v2';
+var CACHE_VERSION = 'mz-saju-v3';
 
 var CACHE_FILES = [
   './',
@@ -12,7 +12,8 @@ var CACHE_FILES = [
   './icon-192.png',
   './icon-512.png',
   './content-db.js',
-  './saju-engine.js'
+  './saju-engine.js',
+  './name-reader.js'
 ];
 
 self.addEventListener('install', function(event){

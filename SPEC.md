@@ -79,6 +79,21 @@ ContentDB.recommend(chart, mbti|null) → {
 - UI: 결과 화면에 5번째 탭 또는 별도 섹션 "맞춤 추천" — actions/lucky/career/wealth 렌더, products는 link null이면 카테고리 텍스트+"준비 중" 없이 자연스러운 추천 문장으로만.
 - 단정 금지 톤 유지("~쪽이 잘 맞는 흐름"), 투자 단정 금지(wealth.caution 필수), 푸터 고지 문구가 재테크에도 적용됨을 명시.
 
+## v1.2 추가: 이름풀이 (2026-08-16 사장님 지시)
+```js
+window.NameReader.analyze(name /*한글 2~4자*/, chart|null) → {
+  syllables: [{ch, cho, jung, elements:{초성오행, 종성오행|null}, strokes}],
+  soriFlow: { pairs:[{from,to,rel:'상생'|'상극'|'비화'}], verdict, para },   // 소리오행 흐름
+  suri: { wonhyeong:{num,grade,name,para}, hyeonggyeok:{...}, igyeok:{...}, jeonggyeok:{...} }, // 한글 획수 4격×81수리
+  sajuFit: chart ? { fillsLack:bool, lackElement, nameElements, verdict, para } : null,  // 이름이 사주 부족 오행을 보완하는가
+  overall: { score:0~100, headline, para },
+}
+```
+- 자음→오행: ㄱㅋ=목/ㄴㄷㅌㄹ=화/ㅇㅎ=토/ㅅㅈㅊ=금/ㅁㅂㅍ=수 (전통 소리오행). 획수는 채택 규약을 코드 주석에 명시하고 공개 사례 2건+로 교차확인.
+- 81수리 길흉표 전체 내장(수별 이름·등급·2문장 풀이).
+- UI: 입력폼에 "이름(선택)" 필드 — 입력 시 결과에 "이름풀이" 탭 추가(soriFlow→suri 4격 카드→sajuFit→overall). 미입력 시 탭 숨김. 성(姓) 1자+이름 1~3자 가정, 한글만 허용(검증). 한자 이름풀이는 차기(범위 외) 명시.
+- 이름도 로컬 처리(전송 0) — 푸터 고지에 반영.
+
 ## 품질 기준
 - 엔진: test.html에 검증 사례 최소 8건(절기 경계일 2건, 자시 경계 1건, 음력 윤달 1건 포함) 전부 PASS 표기.
 - 콘텐츠: 동일 조합이라도 문단이 조각 3개 이상 조합으로 구성돼 기계 반복감 없게. 존댓말, 단정 대신 경향("~한 흐름입니다"). 의료 단정 금지(건강운은 생활 조언 톤).

@@ -269,6 +269,40 @@
   .reco-product-cat{font-size:14px;font-weight:700;margin:0 0 4px;}
   .reco-product-reason{font-size:13px;color:var(--muted);margin:0;}
 
+  /* ---- 이름풀이 (v1.2) ---- */
+  .name-flow-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .name-chip{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;
+    padding:10px 12px;min-width:52px;text-align:center;
+  }
+  .name-chip .ch{font-size:18px;font-weight:700;color:var(--text);}
+  .name-chip .el{font-size:11px;color:var(--accent2);font-weight:600;}
+  .name-arrow{font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;}
+  .name-arrow .rel-상생{color:#4caf50;font-weight:700;}
+  .name-arrow .rel-상극{color:var(--danger);font-weight:700;}
+  .name-arrow .rel-비화{color:var(--muted);font-weight:700;}
+  .suri-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 14px;}
+  .suri-card{background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;padding:12px;}
+  .suri-card-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;}
+  .suri-card-num{font-size:20px;font-weight:800;color:var(--text);}
+  .suri-card-name{font-size:13px;color:var(--accent2);font-weight:700;margin:2px 0 6px;}
+  .suri-grade{
+    display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-bottom:6px;
+  }
+  .suri-grade.g-길{background:rgba(76,175,80,0.18);color:#7fd685;}
+  .suri-grade.g-중길{background:rgba(139,92,246,0.18);color:var(--accent2);}
+  .suri-grade.g-평{background:rgba(255,255,255,0.08);color:var(--muted);}
+  .suri-grade.g-흉{background:rgba(229,72,77,0.14);color:#f3a2a5;}
+  .suri-card-para{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5;}
+  .name-overall-card{
+    display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,#2c1f52,#1b1330 80%);
+    border:1px solid var(--card-border);border-radius:14px;padding:16px;margin-top:6px;
+  }
+  .name-overall-score{font-size:30px;font-weight:800;color:#fff;flex:none;}
+  .name-overall-text .h{font-size:14.5px;font-weight:700;margin:0 0 4px;}
+  .name-overall-text .p{font-size:12.5px;color:var(--muted);margin:0;}
+
   /* ---- daily ---- */
   .daily-card{
     background:linear-gradient(160deg,#1e2a4a,#1b1330 80%);
@@ -447,12 +481,14 @@
   <footer class="disclaimer">
     <span class="brand">MZ사주풀이</span>
     <span id="disclaimer-text">본 콘텐츠는 전통 명리학과 성격유형 이론을 재미로 풀어낸 것으로, 의료·투자 판단의 근거가 될 수 없습니다.</span>
+    <span style="display:block;margin-top:6px;">이름을 포함한 모든 입력 정보는 서버로 전송되지 않고 이 기기 안에서만 계산·처리됩니다.</span>
   </footer>
 </div>
 
 <!-- 엔진(saju-engine.js)이 콘텐츠DB(content-db.js)보다 먼저 로드되어야 함. 엔진 파일이 없을 수 있으므로 실패해도 무시. -->
 <script src="./saju-engine.js" onerror="console.warn('[MZ사주풀이] saju-engine.js 로드 실패 - 엔진 준비 중 안내로 대체됩니다.')"></script>
 <script src="./content-db.js"></script>
+<script src="./name-reader.js" onerror="console.warn('[MZ사주풀이] name-reader.js 로드 실패 - 이름풀이 탭이 표시되지 않습니다.')"></script>
 <script>
 window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
 </script>
@@ -495,7 +531,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   var state = {
     selfChart: null, selfMbti: null, composed: null, todayResult: null, dailyInfo: null,
     partnerChart: null, partnerMbti: null, compatResult: null, composedCompat: null,
-    quiz: null
+    quiz: null, nameResult: null
   };
 
   // ============================================================
@@ -531,7 +567,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   // ============================================================
   // 2. 입력폼 렌더링 (self / partner 공용 템플릿)
   // ============================================================
-  function formFieldsHTML(prefix){
+  function formFieldsHTML(prefix, includeName){
     var timeOptions = TIME_OPTIONS.map(function(o){
       return '<option value="' + o.value + '">' + o.label + '</option>';
     }).join('');
@@ -543,7 +579,15 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
       mbtiOptions += '<optgroup label="' + MBTI_GROUP_LABEL_KO[grpKey] + '">' + opts + '</optgroup>';
     });
 
+    var nameFieldHTML = includeName
+      ? ('<div class="field">'
+        +   '<label>이름 (선택)</label>'
+        +   '<input type="text" id="' + prefix + '-name" placeholder="예: 홍길동 (선택 입력, 한글 2~4자)" maxlength="4" autocomplete="off">'
+        + '</div>')
+      : '';
+
     return ''
+      + nameFieldHTML
       + '<div class="field">'
       +   '<label>생년월일</label>'
       +   '<input type="date" id="' + prefix + '-date" required min="1900-01-01" max="' + TODAY_STR + '">'
@@ -602,7 +646,9 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
 
   function collectFormData(prefix){
     var mbtiRaw = document.getElementById(prefix + '-mbti').value;
+    var nameEl = document.getElementById(prefix + '-name');
     return {
+      name: nameEl ? nameEl.value.trim() : '',
       birthDate: document.getElementById(prefix + '-date').value,
       calendar: getRadioValue(prefix + '-calendar') || 'solar',
       lunarLeap: document.getElementById(prefix + '-leap').checked,
@@ -615,11 +661,14 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
   function validateFormData(data){
     if(!data.birthDate) return '생년월일을 입력해주세요.';
     if(!data.gender) return '성별을 선택해주세요.';
+    if(data.name && !(window.NameReader && window.NameReader.isValidName(data.name))){
+      return '이름은 한글 2~4자(성 1자 + 이름 1~3자)로 입력해주세요. 비워두셔도 됩니다.';
+    }
     return null;
   }
 
-  document.getElementById('self-fields').innerHTML = formFieldsHTML('self');
-  document.getElementById('partner-fields').innerHTML = formFieldsHTML('partner');
+  document.getElementById('self-fields').innerHTML = formFieldsHTML('self', true);
+  document.getElementById('partner-fields').innerHTML = formFieldsHTML('partner', false);
   bindFormBehavior('self');
   bindFormBehavior('partner');
 
@@ -728,6 +777,7 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     renderSajuTable(chart);
 
     state.tabData = { total: composed.total, love: composed.love, biz: composed.biz, health: composed.health };
+    updateNameTab();
     setActiveTab('total');
 
     renderDaily(state.dailyInfo);
@@ -739,12 +789,90 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
     document.getElementById('share-buttons-row').style.display = 'none';
   }
 
+  // 이름풀이 탭: 이름 입력 시에만 tab-nav에 추가, 미입력 시 제거
+  function updateNameTab(){
+    var nav = document.getElementById('tab-nav');
+    var existing = nav.querySelector('[data-tab="name"]');
+    if(state.nameResult){
+      if(!existing){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tab-btn';
+        btn.dataset.tab = 'name';
+        btn.textContent = '이름풀이';
+        nav.appendChild(btn);
+      }
+    } else if(existing){
+      existing.remove();
+    }
+  }
+
+  function relLabel(rel){
+    return rel === '상생' ? '생(生)' : (rel === '상극' ? '극(剋)' : '비화');
+  }
+
+  function renderNameTab(r){
+    var el = document.getElementById('tab-content');
+    if(!r){
+      el.innerHTML = '<p class="tab-para">이름풀이 데이터를 불러오지 못했습니다. 페이지를 새로고침해주세요.</p>';
+      return;
+    }
+    var html = '';
+
+    // 소리오행 흐름도
+    html += '<div class="reco-section"><div class="reco-section-title">소리오행 흐름</div>';
+    html += '<div class="name-flow-row">';
+    r.syllables.forEach(function(s, i){
+      html += '<div class="name-chip"><span class="ch">' + s.ch + '</span><span class="el">' + s.elements.초성오행 + '</span></div>';
+      if(i < r.soriFlow.pairs.length){
+        var p = r.soriFlow.pairs[i];
+        html += '<div class="name-arrow">→<span class="rel-' + p.rel + '">' + relLabel(p.rel) + '</span></div>';
+      }
+    });
+    html += '</div>';
+    html += '<h3 class="tab-headline" style="font-size:14px;">' + r.soriFlow.verdict + '</h3>';
+    html += '<p class="tab-para">' + r.soriFlow.para + '</p></div>';
+
+    // 4격 수리
+    var suriLabel = { wonhyeong: '원격(元格)', hyeonggyeok: '형격(亨格)', igyeok: '이격(利格)', jeonggyeok: '정격(貞格)' };
+    html += '<div class="reco-section"><div class="reco-section-title">수리 4격 (원형이정)</div><div class="suri-grid">';
+    ['wonhyeong', 'hyeonggyeok', 'igyeok', 'jeonggyeok'].forEach(function(key){
+      var g = r.suri[key];
+      html += '<div class="suri-card">'
+        + '<div class="suri-card-label">' + suriLabel[key] + '</div>'
+        + '<div class="suri-card-num">' + g.num + '획</div>'
+        + '<span class="suri-grade g-' + g.grade + '">' + g.grade + ' · ' + g.name + '</span>'
+        + '<p class="suri-card-para">' + g.para + '</p>'
+        + '</div>';
+    });
+    html += '</div></div>';
+
+    // 사주 궁합(부족 오행 보완 여부)
+    if(r.sajuFit){
+      html += '<div class="reco-section"><div class="reco-section-title">사주와의 궁합</div>'
+        + '<p class="tab-para">' + r.sajuFit.para + '</p></div>';
+    }
+
+    // 종합
+    html += '<div class="reco-section"><div class="reco-section-title">이름풀이 종합</div>';
+    html += '<div class="name-overall-card">'
+      + '<div class="name-overall-score">' + r.overall.score + '</div>'
+      + '<div class="name-overall-text"><p class="h">' + r.overall.headline + '</p><p class="p">' + r.overall.para + '</p></div>'
+      + '</div></div>';
+
+    el.innerHTML = html;
+  }
+
   function setActiveTab(key){
     document.querySelectorAll('.tab-btn').forEach(function(btn){
       btn.classList.toggle('active', btn.dataset.tab === key);
     });
     if(key === 'recommend'){
       renderRecommendTab(state.recommendData);
+      return;
+    }
+    if(key === 'name'){
+      renderNameTab(state.nameResult);
       return;
     }
     var data = state.tabData[key];
@@ -844,6 +972,17 @@ window.APP_CONFIG = window.APP_CONFIG || { aiEndpoint: null };
         state.dailyInfo = window.ContentDB.daily(state.todayResult, chart);
         state.recommendData = (typeof window.ContentDB.recommend === 'function')
           ? window.ContentDB.recommend(chart, data.mbti) : null;
+
+        state.nameResult = null;
+        if(data.name && window.NameReader && typeof window.NameReader.analyze === 'function'){
+          try {
+            state.nameResult = window.NameReader.analyze(data.name, chart);
+          } catch(nameErr){
+            console.error('[MZ사주풀이] 이름풀이 오류:', nameErr);
+            state.nameResult = null;
+          }
+        }
+
         renderResult();
         showScreen('screen-result');
       } catch(err){
