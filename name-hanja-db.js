@@ -1,13 +1,14 @@
 /**
- * name-hanja-db.js — MZ사주풀이 인명 한자 DB (v1.3)
+ * name-hanja-db.js — MZ사주풀이 인명 한자 DB (v1.7)
  * ⚠ 이 파일은 _data/build_db.py 가 공개 데이터셋에서 자동 생성한다. 직접 수정하지 말 것.
- *   (생성일 2026-08-16 / 총 2571자 · 470음절)
+ *   (생성일 2026-08-17 / 총 6819자(다음자 포함) · 고유 6513자 · 478음절)
  *
  * ─────────────────────────────────────────────────────────────────────────
  * 1. 원자료 출처 (모두 공개 데이터셋, 기억이 아닌 원본 파일에서 기계 추출)
  *   [A] 음(音)·뜻(訓) — libhangul hanja.txt (BSD-3, Choe Hwanjin)
  *       https://raw.githubusercontent.com/libhangul/libhangul/main/data/hanja/hanja.txt
- *   [B] 필획(筆劃)·부수 — Unicode Unihan Database, kTotalStrokes / kRSUnicode
+ *   [B] 필획(筆劃)·부수·한국 표준 등재여부 — Unicode Unihan DB,
+ *       kTotalStrokes / kRSUnicode / kIRG_KSource
  *       https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip
  *   [C] 부수번호→원형(原形) 부수 한자 — Unicode CJKRadicals.txt
  *       https://www.unicode.org/Public/UCD/latest/ucd/CJKRadicals.txt
@@ -18,7 +19,7 @@
  *       ("성명학에서 한자의 획수는 康熙字典과 玉篇을 근본으로 하여 원획으로 하여야 합니다")
  *
  * ─────────────────────────────────────────────────────────────────────────
- * 2. 원획(原劃) 산출 규약  ★ SPEC.md v1.3 "부수 보정표" 구현
+ * 2. 원획(原劃) 산출 규약  ★ SPEC.md v1.3 "부수 보정표" 구현 (v1.7도 동일 로직 재사용)
  *   strokes(원획) = [C]의 원형 부수 획수 + kRSUnicode 의 나머지 획수
  *   - 즉 필획에서 "실제 쓰인 변형부수 획수"를 빼고 "원형 부수 획수"를 넣는다.
  *     보정표를 손으로 나열하는 대신 부수번호로 프로그램이 전량 적용하므로
@@ -26,10 +27,9 @@
  *     月육달→肉6, 辶→辵7, 礻→示5, 衤→衣6, 犭→犬4, 灬→火4, 罒→网6)가 모두 자동 충족된다.
  *   - 부수가 변형되지 않은 글자는 원획 = 필획 (예: 家 10, 明 8, 東 8).
  *   - 숫자한자 예외(성명학 관례): 四4 五5 六6 七7 八8 九9 十10.
- *   - 部件(부수 아닌 구성요소)을 Unihan(현대 셈법)과 康熙字典이 다르게 세는 50자
- *     (戴 暑 署 成 城 誠 瘟 異 翼 充 響 邢 姬 考 魄 噓 魔 衛 毓 禽 萬 渗 巡 甕 瓮 禹 魏
- *      甄 魁 裙 龜 廊 擥 隷 朦 猫 薩 乷 屬 瓦 頊 剩 芿 著 節 鑿 兎 把 魂 蒸)는
- *     [E] 대조표 값을 채택했다. 나머지 글자는 자동 계산값이 [E]와 그대로 일치한다.
+ *   - 部件(부수 아닌 구성요소)을 Unihan(현대 셈법)과 康熙字典이 다르게 세는 글자는
+ *     [E] 대조표 값을 채택했다(build_db.py COMPONENT_FIX — v1.3때 50건 + v1.7 확대분
+ *     대조에서 추가로 나온 43건, 합계 93건). 나머지 글자는 자동 계산값이 [E]와 일치한다.
  *
  * 3. 원획 교차검증 결과 (스크립트: _data/verify_wonhoek.py, _data/verify_all.py)
  *   ① 표본 42자 대조 — 42/42 일치 (불일치 0). 변형부수 전 유형 + 무보정 대조군:
@@ -40,27 +40,42 @@
  *      福14 祖10 神10 (礻→示) / 裕13 (衤→衣) / 熱15 烈10 (灬→火) / 羅20 (罒→网) /
  *      家10 明8 星9 東8 金8 (무보정 대조군)
  *      이 표본은 _verify_hanja_db.js 가 매 실행마다 재대조한다.
- *   ② 전수 대조 — DB 2571자 전량을 [E]와 대조: 2,564자 대조 성공 **불일치 0**,
- *      미조회 7자(彌 尹 卷 暖 亐 搭 琿 — 대조처 목록에 없는 글자).
- *      재현 스크립트: _data/verify_all.py (음절 조회 → 개별 조회 폴백)
+ *   ② 전수 대조(v1.7, 확대분 6819자 전량) — [E]와 대조해 셋으로 나뉜다:
+ *      · 일치 4803자 — 프로그램 계산값 그대로 채택.
+ *      · 불일치 43자 — [E] 표(irum.com)의 값이 옳다고 보고 COMPONENT_FIX에
+ *        반영해 그 값으로 교정했다(위 2번 항목의 43건). 즉 최종 출력에는 불일치가 없다.
+ *      · 미조회 1973자 — [E] 대조표 자체에 없는(성명학 사이트가 다루지 않는) 글자.
+ *        이 경우 프로그램 계산값을 그대로 두고 unverified:true 로 표시한다.
+ *      재현 스크립트: _data/verify_all.py (음절 배치 조회 → 개별 조회 폴백, 병렬화).
+ *      원본 결과: _data/verify_all_result.json / 채택한 미조회 목록: _data/unverified_pairs.json
  *
  * 4. 자원오행(jawonElement)
  *   [D] 원문은 한 부수를 여러 오행에 중복 배속하는 경우가 많아(유파별 이설),
  *   **단일 오행에만 등장하는 부수만** 채택하고 중복·미등장 부수는 null 로 둔다.
  *   (SPEC v1.3 "매핑 불가 부수는 jawonElement:null 허용" — UI에서 생략)
- *   현재 1878자에 자원오행이 부여돼 있다.
+ *   현재 5259자에 자원오행이 부여돼 있다.
  *
- * 5. 후보 선별
- *   [A]의 음절별 등재 순서(한글 IME 변환 빈도순)를 우선순위로 삼되,
- *   KS X 1001 상용한자(EUC-KR 인코딩 가능) 범위로 제한하고, 이름에 쓰기 어려운 뜻
- *   (질병·죽음·부정·동물/기물 등)은 키워드로 걸러 음절당 최대 8자를 담는다.
- *   한국 주요 성씨와 이름에 특히 잦은 글자는 build_db.py 의 PRIORITY 목록으로 앞에 고정한다.
+ * 5. 후보 선별 — v1.7 "벽자(僻字) 제외 기준" 확대
+ *   v1.3까지는 KS X 1001(구 KS C 5601, EUC-KR 인코딩 가능) 상용한자 4,888자 범위로만
+ *   제한해 음절당 최대 8자를 담았다. 사장님 실검수 피드백("이름 한자 찾을 때 너무
+ *   제한적")에 따라 v1.7은 그 상한을 없애고, 벽자 제외 기준 자체를
+ *     Unicode kIRG_KSource 가 K0(KS X 1001) 또는 K1(KS X 1002, 구 KS C 5657 한자
+ *     추가표) 로 시작하는 글자 — 즉 "실제로 한국 국가표준(KS)에 등재된 한자" 전량
+ *   으로 넓혔다. K2~K6(PKS C 5700 계열)은 유니코드 IRG 심의용으로 임의 편집된 목록일
+ *   뿐 한국 공식 표준이 아니라는 기록(unicode.org 메일링리스트, 1999)이 있어 채택하지
+ *   않았다 — 근거 불명 확장으로 벽자가 섞여 들어오는 것을 막기 위함.
+ *   [A]의 음절별 등재 순서(한글 IME 변환 빈도순)를 우선순위로 삼되, 이름에 쓰기 어려운
+ *   뜻(질병·죽음·부정·동물/기물 등)은 키워드로 걸러낸다(음절당 상한은 v1.7에서 폐지).
+ *   한국 주요 성씨와 이름에 특히 잦은 글자는 build_db.py 의 PRIORITY 목록으로 앞에
+ *   고정한다(화면 기본 노출 "상위 10 + 더 보기" 순서로 그대로 이어진다).
  *   ※ 선별(어떤 글자를 보여줄지)만 사람이 정하고, 뜻·음·획수 값은 전부 원자료에서 기계 추출한다.
  *   ※ 다음자(多音字, 例 金=금/김)는 음절마다 별도 항목으로 들어가므로
  *      count(항목 총수) ≠ uniqueChars(고유 글자 수)일 수 있다.
  *
  * 필드: ch 한자 / reading 음 / meaning 뜻 / strokes 원획 / pilhoek 필획 /
- *       rad 원형부수 / jawonElement 자원오행(없으면 null)
+ *       rad 원형부수 / jawonElement 자원오행(없으면 null) /
+ *       unverified 원획을 [E] 대조표에서 확인하지 못해 프로그램 계산값을 그대로 쓴
+ *       항목이면 true (총 1973건, UI 표시는 검증 항목과 동일)
  */
 
 (function (global) {
@@ -75,7 +90,31 @@
       {ch:'嘉',meaning:'아름다울',strokes:14,pilhoek:14,rad:'口',jawonElement:null},
       {ch:'可',meaning:'옳을',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
       {ch:'歌',meaning:'노래',strokes:14,pilhoek:14,rad:'欠',jawonElement:null},
-      {ch:'價',meaning:'값',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'}
+      {ch:'價',meaning:'값',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'},
+      {ch:'街',meaning:'거리',strokes:12,pilhoek:12,rad:'行',jawonElement:null},
+      {ch:'伽',meaning:'절',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'柯',meaning:'가지',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'迦',meaning:'부처이름',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토'},
+      {ch:'軻',meaning:'수레 가기 힘들',strokes:12,pilhoek:12,rad:'車',jawonElement:'화'},
+      {ch:'駕',meaning:'멍에',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'嫁',meaning:'시집갈',strokes:13,pilhoek:13,rad:'女',jawonElement:'토'},
+      {ch:'稼',meaning:'심을',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
+      {ch:'哥',meaning:'노래',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'苛',meaning:'매울',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'袈',meaning:'가사',strokes:11,pilhoek:11,rad:'衣',jawonElement:'목'},
+      {ch:'枷',meaning:'목칼',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'珂',meaning:'옥 이름',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'茄',meaning:'가지',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'跏',meaning:'책상다리할',strokes:12,pilhoek:12,rad:'足',jawonElement:'토'},
+      {ch:'斝',meaning:'옥잔',strokes:12,pilhoek:12,rad:'斗',jawonElement:'화',unverified:true},
+      {ch:'舸',meaning:'큰 배',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목'},
+      {ch:'笳',meaning:'갈잎피리',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'哿',meaning:'좋을',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'檟',meaning:'오동나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'珈',meaning:'머리꾸미개',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'傢',meaning:'세간',strokes:12,pilhoek:12,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'咖',meaning:'커피차',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'耞',meaning:'도리깨',strokes:11,pilhoek:11,rad:'耒',jawonElement:null,unverified:true}
     ],
     '강': [
       {ch:'康',meaning:'편안할',strokes:11,pilhoek:11,rad:'广',jawonElement:'목'},
@@ -85,7 +124,34 @@
       {ch:'講',meaning:'강론할',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
       {ch:'降',meaning:'내릴',strokes:14,pilhoek:8,rad:'阜',jawonElement:'토'},
       {ch:'綱',meaning:'벼리',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
-      {ch:'鋼',meaning:'쇠',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'}
+      {ch:'鋼',meaning:'쇠',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'剛',meaning:'굳을',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'},
+      {ch:'疆',meaning:'땅 경계',strokes:19,pilhoek:19,rad:'田',jawonElement:null},
+      {ch:'岡',meaning:'멧동',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'彊',meaning:'굳셀',strokes:16,pilhoek:16,rad:'弓',jawonElement:null},
+      {ch:'崗',meaning:'산등성이',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
+      {ch:'慷',meaning:'강개할',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'腔',meaning:'창자',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'薑',meaning:'생강',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'糠',meaning:'겨',strokes:17,pilhoek:17,rad:'米',jawonElement:'목'},
+      {ch:'絳',meaning:'깊게 붉을',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'襁',meaning:'포대기',strokes:18,pilhoek:17,rad:'衣',jawonElement:'목'},
+      {ch:'羌',meaning:'말 끝낼',strokes:8,pilhoek:7,rad:'羊',jawonElement:'토'},
+      {ch:'堈',meaning:'언덕',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'畺',meaning:'지경',strokes:13,pilhoek:13,rad:'田',jawonElement:null},
+      {ch:'鱇',meaning:'천징어',strokes:22,pilhoek:22,rad:'魚',jawonElement:'수'},
+      {ch:'杠',meaning:'외나무 다리',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
+      {ch:'僵',meaning:'엎드러질',strokes:15,pilhoek:15,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'忼',meaning:'강개할',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'橿',meaning:'참죽나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'茳',meaning:'강리풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'扛',meaning:'마주 들',strokes:7,pilhoek:6,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'殭',meaning:'죽어 썩지 않을',strokes:17,pilhoek:17,rad:'歹',jawonElement:'수',unverified:true},
+      {ch:'矼',meaning:'돌다리',strokes:8,pilhoek:8,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'穅',meaning:'겨',strokes:16,pilhoek:16,rad:'禾',jawonElement:'목'},
+      {ch:'罡',meaning:'강별',strokes:11,pilhoek:10,rad:'网',jawonElement:null,unverified:true},
+      {ch:'羫',meaning:'밭 갈',strokes:14,pilhoek:14,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'豇',meaning:'광저기',strokes:10,pilhoek:10,rad:'豆',jawonElement:null,unverified:true}
     ],
     '건': [
       {ch:'建',meaning:'세울',strokes:9,pilhoek:8,rad:'廴',jawonElement:null},
@@ -95,7 +161,15 @@
       {ch:'巾',meaning:'수건',strokes:3,pilhoek:3,rad:'巾',jawonElement:'목'},
       {ch:'鍵',meaning:'열쇠',strokes:17,pilhoek:16,rad:'金',jawonElement:'금'},
       {ch:'虔',meaning:'정성',strokes:10,pilhoek:10,rad:'虍',jawonElement:null},
-      {ch:'愆',meaning:'어기어질',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'}
+      {ch:'愆',meaning:'어기어질',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'蹇',meaning:'절뚝발이',strokes:17,pilhoek:17,rad:'足',jawonElement:'토'},
+      {ch:'騫',meaning:'이지러질',strokes:20,pilhoek:20,rad:'馬',jawonElement:'화'},
+      {ch:'楗',meaning:'문 빗장',strokes:13,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'褰',meaning:'바지',strokes:16,pilhoek:16,rad:'衣',jawonElement:'목'},
+      {ch:'謇',meaning:'말 더듬거릴',strokes:17,pilhoek:17,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鞬',meaning:'칼집',strokes:18,pilhoek:17,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'揵',meaning:'멜',strokes:13,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'犍',meaning:'불친 소',strokes:13,pilhoek:12,rad:'牛',jawonElement:'토',unverified:true}
     ],
     '겸': [
       {ch:'兼',meaning:'겸할',strokes:10,pilhoek:10,rad:'八',jawonElement:null},
@@ -103,7 +177,13 @@
       {ch:'慊',meaning:'불만족하게 생각할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
       {ch:'箝',meaning:'족집개',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
       {ch:'鉗',meaning:'입 다물',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
-      {ch:'鎌',meaning:'낫',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'}
+      {ch:'鎌',meaning:'낫',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
+      {ch:'歉',meaning:'흉년들',strokes:14,pilhoek:14,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'嗛',meaning:'부족히 여길',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
+      {ch:'縑',meaning:'합사비단',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'傔',meaning:'겸종',strokes:12,pilhoek:12,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'黚',meaning:'얕은 금향빛',strokes:17,pilhoek:17,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'鼸',meaning:'두더쥐',strokes:23,pilhoek:23,rad:'鼠',jawonElement:'수',unverified:true}
     ],
     '경': [
       {ch:'京',meaning:'서울',strokes:8,pilhoek:8,rad:'亠',jawonElement:null},
@@ -113,7 +193,54 @@
       {ch:'輕',meaning:'가벼울',strokes:14,pilhoek:14,rad:'車',jawonElement:'화'},
       {ch:'經',meaning:'경서',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목'},
       {ch:'更',meaning:'고칠',strokes:7,pilhoek:7,rad:'曰',jawonElement:null},
-      {ch:'景',meaning:'볕',strokes:12,pilhoek:12,rad:'日',jawonElement:null}
+      {ch:'景',meaning:'볕',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'庚',meaning:'일곱째 천간',strokes:8,pilhoek:8,rad:'广',jawonElement:'목'},
+      {ch:'競',meaning:'겨룰',strokes:20,pilhoek:20,rad:'立',jawonElement:null},
+      {ch:'境',meaning:'지경',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'竟',meaning:'다할',strokes:11,pilhoek:11,rad:'音',jawonElement:'금'},
+      {ch:'警',meaning:'경계할',strokes:20,pilhoek:19,rad:'言',jawonElement:'금'},
+      {ch:'鏡',meaning:'거울',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'卿',meaning:'벼슬',strokes:12,pilhoek:10,rad:'卩',jawonElement:null},
+      {ch:'頃',meaning:'밭 넓이 단위',strokes:11,pilhoek:11,rad:'頁',jawonElement:'화'},
+      {ch:'徑',meaning:'지름길',strokes:10,pilhoek:10,rad:'彳',jawonElement:'화'},
+      {ch:'硬',meaning:'굳을',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'梗',meaning:'대개',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'瓊',meaning:'옥',strokes:20,pilhoek:18,rad:'玉',jawonElement:'금'},
+      {ch:'儆',meaning:'경계할',strokes:15,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'璟',meaning:'옥 빛',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'炅',meaning:'빛날',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'勁',meaning:'굳셀',strokes:9,pilhoek:9,rad:'力',jawonElement:null},
+      {ch:'磬',meaning:'경쇠',strokes:16,pilhoek:16,rad:'石',jawonElement:'금'},
+      {ch:'頸',meaning:'목',strokes:16,pilhoek:16,rad:'頁',jawonElement:'화'},
+      {ch:'莖',meaning:'줄기',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'脛',meaning:'정강이',strokes:13,pilhoek:11,rad:'肉',jawonElement:null},
+      {ch:'憬',meaning:'깨달을',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'痙',meaning:'심줄 땅길',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수'},
+      {ch:'絅',meaning:'끌어 쥘',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'耿',meaning:'빛날',strokes:10,pilhoek:10,rad:'耳',jawonElement:'화'},
+      {ch:'逕',meaning:'소로',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'璥',meaning:'경옥',strokes:18,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'勍',meaning:'셀',strokes:10,pilhoek:10,rad:'力',jawonElement:null},
+      {ch:'涇',meaning:'통할',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'烱',meaning:'빛날',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
+      {ch:'暻',meaning:'밝을',strokes:16,pilhoek:16,rad:'日',jawonElement:null},
+      {ch:'俓',meaning:'곧을',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'倞',meaning:'굳셀',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'罄',meaning:'빌',strokes:17,pilhoek:17,rad:'缶',jawonElement:'토',unverified:true},
+      {ch:'扃',meaning:'빗장',strokes:9,pilhoek:9,rad:'戶',jawonElement:'목',unverified:true},
+      {ch:'冏',meaning:'빛날',strokes:7,pilhoek:7,rad:'冂',jawonElement:null},
+      {ch:'煢',meaning:'외로울',strokes:13,pilhoek:13,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'鯁',meaning:'생선뼈',strokes:18,pilhoek:18,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'檠',meaning:'도지개',strokes:17,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'綆',meaning:'두레박줄',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'黥',meaning:'묵형할',strokes:20,pilhoek:20,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'褧',meaning:'홑옷',strokes:16,pilhoek:16,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'謦',meaning:'기침',strokes:18,pilhoek:18,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'駉',meaning:'목장',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'熲',meaning:'빛날',strokes:15,pilhoek:15,rad:'火',jawonElement:'화'},
+      {ch:'憼',meaning:'공경할',strokes:17,pilhoek:16,rad:'心',jawonElement:'화'},
+      {ch:'焭',meaning:'근싱할',strokes:12,pilhoek:12,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'顈',meaning:'홑옷',strokes:17,pilhoek:17,rad:'頁',jawonElement:'화',unverified:true}
     ],
     '규': [
       {ch:'珪',meaning:'서옥',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
@@ -123,7 +250,25 @@
       {ch:'糾',meaning:'살필',strokes:8,pilhoek:8,rad:'糸',jawonElement:'목'},
       {ch:'叫',meaning:'부를',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
       {ch:'揆',meaning:'헤아릴',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
-      {ch:'閨',meaning:'안방',strokes:14,pilhoek:14,rad:'門',jawonElement:null}
+      {ch:'閨',meaning:'안방',strokes:14,pilhoek:14,rad:'門',jawonElement:null},
+      {ch:'葵',meaning:'해바라기',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'逵',meaning:'큰길',strokes:15,pilhoek:11,rad:'辵',jawonElement:'토'},
+      {ch:'硅',meaning:'규소',strokes:11,pilhoek:11,rad:'石',jawonElement:'금'},
+      {ch:'竅',meaning:'구멍',strokes:18,pilhoek:18,rad:'穴',jawonElement:'수'},
+      {ch:'赳',meaning:'헌걸찰',strokes:9,pilhoek:9,rad:'走',jawonElement:'화'},
+      {ch:'槻',meaning:'물푸레나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'跬',meaning:'한발자국',strokes:13,pilhoek:13,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'睽',meaning:'어그러질',strokes:14,pilhoek:14,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'虯',meaning:'뿔없는 용',strokes:8,pilhoek:8,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'闚',meaning:'갸웃이 볼',strokes:19,pilhoek:19,rad:'門',jawonElement:null,unverified:true},
+      {ch:'樛',meaning:'나무가지 휘어질',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'糺',meaning:'거둘',strokes:7,pilhoek:7,rad:'糸',jawonElement:'목'},
+      {ch:'楏',meaning:'호미자루',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'嬀',meaning:'성',strokes:15,pilhoek:15,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'暌',meaning:'해질',strokes:13,pilhoek:13,rad:'日',jawonElement:null,unverified:true},
+      {ch:'馗',meaning:'아홉거리',strokes:11,pilhoek:11,rad:'首',jawonElement:'수',unverified:true},
+      {ch:'邽',meaning:'고을이름',strokes:13,pilhoek:8,rad:'邑',jawonElement:'토'},
+      {ch:'嫢',meaning:'가는 허리',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'}
     ],
     '근': [
       {ch:'近',meaning:'가까울',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토'},
@@ -133,7 +278,18 @@
       {ch:'饉',meaning:'푸성귀흉년드는',strokes:20,pilhoek:19,rad:'食',jawonElement:'수'},
       {ch:'瑾',meaning:'붉은옥',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금'},
       {ch:'槿',meaning:'무궁화',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
-      {ch:'覲',meaning:'뵈울',strokes:18,pilhoek:18,rad:'見',jawonElement:'화'}
+      {ch:'覲',meaning:'뵈울',strokes:18,pilhoek:18,rad:'見',jawonElement:'화'},
+      {ch:'芹',meaning:'미나리',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'菫',meaning:'쓴나물',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'劤',meaning:'힘많을',strokes:6,pilhoek:6,rad:'力',jawonElement:null},
+      {ch:'跟',meaning:'발두꿈치',strokes:13,pilhoek:13,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'靳',meaning:'아낄',strokes:13,pilhoek:13,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'卺',meaning:'합환주잔',strokes:8,pilhoek:8,rad:'卩',jawonElement:null,unverified:true},
+      {ch:'厪',meaning:'적을',strokes:13,pilhoek:13,rad:'厂',jawonElement:null,unverified:true},
+      {ch:'巹',meaning:'받들',strokes:9,pilhoek:9,rad:'己',jawonElement:null,unverified:true},
+      {ch:'釿',meaning:'대패',strokes:12,pilhoek:12,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'廑',meaning:'작은집',strokes:14,pilhoek:14,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'漌',meaning:'맑을',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'}
     ],
     '기': [
       {ch:'奇',meaning:'기이할',strokes:8,pilhoek:8,rad:'大',jawonElement:null},
@@ -143,7 +299,83 @@
       {ch:'氣',meaning:'기운',strokes:10,pilhoek:10,rad:'气',jawonElement:'수'},
       {ch:'技',meaning:'재주',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'起',meaning:'일어날',strokes:10,pilhoek:10,rad:'走',jawonElement:'화'},
-      {ch:'期',meaning:'기약할',strokes:12,pilhoek:12,rad:'月',jawonElement:'수'}
+      {ch:'期',meaning:'기약할',strokes:12,pilhoek:12,rad:'月',jawonElement:'수'},
+      {ch:'基',meaning:'터',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'旣',meaning:'이미',strokes:11,pilhoek:11,rad:'无',jawonElement:null},
+      {ch:'幾',meaning:'기미',strokes:12,pilhoek:12,rad:'幺',jawonElement:'화'},
+      {ch:'豈',meaning:'어찌',strokes:10,pilhoek:10,rad:'豆',jawonElement:null},
+      {ch:'器',meaning:'그릇',strokes:16,pilhoek:16,rad:'口',jawonElement:null},
+      {ch:'機',meaning:'틀',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'旗',meaning:'기',strokes:14,pilhoek:14,rad:'方',jawonElement:null},
+      {ch:'紀',meaning:'벼리',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'},
+      {ch:'企',meaning:'꾀할',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'祈',meaning:'빌',strokes:9,pilhoek:8,rad:'示',jawonElement:null},
+      {ch:'乞',meaning:'줄',strokes:3,pilhoek:3,rad:'乙',jawonElement:null},
+      {ch:'騎',meaning:'말탈',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화'},
+      {ch:'寄',meaning:'부칠',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
+      {ch:'畿',meaning:'경기',strokes:15,pilhoek:15,rad:'田',jawonElement:null},
+      {ch:'冀',meaning:'바랄',strokes:16,pilhoek:16,rad:'八',jawonElement:null},
+      {ch:'箕',meaning:'키',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
+      {ch:'耆',meaning:'늙은이',strokes:10,pilhoek:10,rad:'老',jawonElement:'토'},
+      {ch:'岐',meaning:'갈림길',strokes:7,pilhoek:7,rad:'山',jawonElement:'토'},
+      {ch:'沂',meaning:'물 이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'驥',meaning:'천리마',strokes:27,pilhoek:26,rad:'馬',jawonElement:'화'},
+      {ch:'麒',meaning:'기린',strokes:19,pilhoek:19,rad:'鹿',jawonElement:'토'},
+      {ch:'璣',meaning:'구슬',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'琪',meaning:'옥',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'騏',meaning:'털총이',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화'},
+      {ch:'淇',meaning:'강 이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'汽',meaning:'김',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'譏',meaning:'나무랄',strokes:19,pilhoek:19,rad:'言',jawonElement:'금'},
+      {ch:'妓',meaning:'기생',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'},
+      {ch:'嗜',meaning:'즐길',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
+      {ch:'綺',meaning:'비단',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'杞',meaning:'나무 이름',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
+      {ch:'畸',meaning:'뙈기 밭',strokes:13,pilhoek:13,rad:'田',jawonElement:null},
+      {ch:'朞',meaning:'돌',strokes:12,pilhoek:12,rad:'月',jawonElement:'수'},
+      {ch:'肌',meaning:'살',strokes:8,pilhoek:6,rad:'肉',jawonElement:null},
+      {ch:'棋',meaning:'바둑',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'伎',meaning:'재주',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'枳',meaning:'사타구니',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'圻',meaning:'경기',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
+      {ch:'饑',meaning:'흉년들',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'},
+      {ch:'祇',meaning:'토지의 신',strokes:9,pilhoek:8,rad:'示',jawonElement:null},
+      {ch:'夔',meaning:'조심할',strokes:20,pilhoek:21,rad:'夊',jawonElement:null},
+      {ch:'祁',meaning:'성할',strokes:8,pilhoek:6,rad:'示',jawonElement:null},
+      {ch:'磯',meaning:'물가',strokes:17,pilhoek:17,rad:'石',jawonElement:'금'},
+      {ch:'祺',meaning:'복',strokes:13,pilhoek:12,rad:'示',jawonElement:null},
+      {ch:'碁',meaning:'바둑',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
+      {ch:'錡',meaning:'솥',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'玘',meaning:'패옥',strokes:8,pilhoek:7,rad:'玉',jawonElement:'금'},
+      {ch:'璂',meaning:'피변 꾸미개',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'埼',meaning:'언덕머리',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'覬',meaning:'바랄',strokes:17,pilhoek:17,rad:'見',jawonElement:'화',unverified:true},
+      {ch:'耭',meaning:'밭갈',strokes:18,pilhoek:18,rad:'耒',jawonElement:null},
+      {ch:'錤',meaning:'호미',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'曁',meaning:'및',strokes:16,pilhoek:16,rad:'日',jawonElement:null,unverified:true},
+      {ch:'旂',meaning:'기',strokes:10,pilhoek:10,rad:'方',jawonElement:null,unverified:true},
+      {ch:'頎',meaning:'헌걸찰',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'墍',meaning:'맥질할',strokes:14,pilhoek:14,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'鬐',meaning:'갈기',strokes:20,pilhoek:20,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'蟣',meaning:'서캐',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'跂',meaning:'육발',strokes:11,pilhoek:11,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'剞',meaning:'새김칼',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'掎',meaning:'끌',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'蘄',meaning:'풀 이름',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'綦',meaning:'연두빛 비단',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'忮',meaning:'해칠',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'屺',meaning:'민둥산',strokes:6,pilhoek:6,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'愭',meaning:'공손할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'芪',meaning:'단너삼',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'炁',meaning:'기운',strokes:8,pilhoek:8,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'覉',meaning:'구속할',strokes:23,pilhoek:23,rad:'襾',jawonElement:null,unverified:true},
+      {ch:'僛',meaning:'취하여 춤추는 모양',strokes:14,pilhoek:14,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'禨',meaning:'조짐',strokes:17,pilhoek:16,rad:'示',jawonElement:null,unverified:true},
+      {ch:'肵',meaning:'적대',strokes:10,pilhoek:8,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'暣',meaning:'볕기운',strokes:14,pilhoek:14,rad:'日',jawonElement:null},
+      {ch:'綥',meaning:'비단 쑥색',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'蜝',meaning:'방계',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鰭',meaning:'지느러미',strokes:21,pilhoek:21,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '나': [
       {ch:'羅',meaning:'새 그물',strokes:20,pilhoek:19,rad:'网',jawonElement:null},
@@ -153,7 +385,10 @@
       {ch:'儺',meaning:'법도있는',strokes:21,pilhoek:21,rad:'人',jawonElement:'화'},
       {ch:'懦',meaning:'부드러울',strokes:18,pilhoek:17,rad:'心',jawonElement:'화'},
       {ch:'邏',meaning:'돌',strokes:26,pilhoek:22,rad:'辵',jawonElement:'토'},
-      {ch:'喇',meaning:'라마교',strokes:12,pilhoek:12,rad:'口',jawonElement:null}
+      {ch:'喇',meaning:'라마교',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'挪',meaning:'옮길',strokes:11,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'糯',meaning:'찰벼',strokes:20,pilhoek:20,rad:'米',jawonElement:'목'},
+      {ch:'梛',meaning:'나무 이름',strokes:11,pilhoek:10,rad:'木',jawonElement:'목'}
     ],
     '남': [
       {ch:'南',meaning:'남녘',strokes:9,pilhoek:9,rad:'十',jawonElement:null},
@@ -161,7 +396,8 @@
       {ch:'藍',meaning:'쪽',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
       {ch:'楠',meaning:'녹나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
       {ch:'枏',meaning:'녹나무',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
-      {ch:'湳',meaning:'강 이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'}
+      {ch:'湳',meaning:'강 이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'喃',meaning:'재잘거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true}
     ],
     '노': [
       {ch:'盧',meaning:'밥그릇',strokes:16,pilhoek:16,rad:'皿',jawonElement:null},
@@ -171,11 +407,20 @@
       {ch:'努',meaning:'힘쓸',strokes:7,pilhoek:7,rad:'力',jawonElement:null},
       {ch:'爐',meaning:'화초',strokes:20,pilhoek:20,rad:'火',jawonElement:'화'},
       {ch:'駑',meaning:'노둔한 말',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
-      {ch:'帑',meaning:'처자식',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'}
+      {ch:'帑',meaning:'처자식',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'},
+      {ch:'櫓',meaning:'큰 방패',strokes:19,pilhoek:19,rad:'木',jawonElement:'목'},
+      {ch:'瑙',meaning:'마노',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'孥',meaning:'자식',strokes:8,pilhoek:8,rad:'子',jawonElement:'수',unverified:true},
+      {ch:'呶',meaning:'들랠',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'猱',meaning:'못할',strokes:13,pilhoek:12,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'笯',meaning:'새장',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'臑',meaning:'팔마디',strokes:20,pilhoek:18,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'峱',meaning:'산이름',strokes:10,pilhoek:10,rad:'山',jawonElement:'토',unverified:true}
     ],
     '다': [
       {ch:'多',meaning:'많을',strokes:6,pilhoek:6,rad:'夕',jawonElement:null},
-      {ch:'茶',meaning:'차풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'}
+      {ch:'茶',meaning:'차풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'爹',meaning:'아비',strokes:10,pilhoek:10,rad:'父',jawonElement:'목'}
     ],
     '대': [
       {ch:'大',meaning:'클',strokes:3,pilhoek:3,rad:'大',jawonElement:null},
@@ -185,7 +430,18 @@
       {ch:'隊',meaning:'군대',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
       {ch:'貸',meaning:'빌릴',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
       {ch:'戴',meaning:'받들',strokes:18,pilhoek:17,rad:'戈',jawonElement:null},
-      {ch:'垈',meaning:'터',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'}
+      {ch:'垈',meaning:'터',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'袋',meaning:'자루',strokes:11,pilhoek:11,rad:'衣',jawonElement:'목'},
+      {ch:'岱',meaning:'태산',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'黛',meaning:'새파랄',strokes:17,pilhoek:17,rad:'黑',jawonElement:'수'},
+      {ch:'玳',meaning:'대모',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'錞',meaning:'창고달',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'坮',meaning:'집대',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'碓',meaning:'방아',strokes:13,pilhoek:13,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'儓',meaning:'하인',strokes:16,pilhoek:16,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'汏',meaning:'씻을',strokes:7,pilhoek:6,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'旲',meaning:'햇빛',strokes:7,pilhoek:7,rad:'日',jawonElement:null},
+      {ch:'鐓',meaning:'창고달',strokes:20,pilhoek:20,rad:'金',jawonElement:'금',unverified:true}
     ],
     '덕': [
       {ch:'德',meaning:'큰',strokes:15,pilhoek:15,rad:'彳',jawonElement:'화'},
@@ -199,7 +455,52 @@
       {ch:'圖',meaning:'그림',strokes:14,pilhoek:14,rad:'囗',jawonElement:null},
       {ch:'島',meaning:'섬',strokes:10,pilhoek:10,rad:'山',jawonElement:'토'},
       {ch:'到',meaning:'이를',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
-      {ch:'徒',meaning:'무리',strokes:10,pilhoek:10,rad:'彳',jawonElement:'화'}
+      {ch:'徒',meaning:'무리',strokes:10,pilhoek:10,rad:'彳',jawonElement:'화'},
+      {ch:'逃',meaning:'달아날',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
+      {ch:'導',meaning:'이끌',strokes:16,pilhoek:15,rad:'寸',jawonElement:null},
+      {ch:'渡',meaning:'건널',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'途',meaning:'길',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'倒',meaning:'넘어질',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'桃',meaning:'복숭아 나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'跳',meaning:'뛸',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'},
+      {ch:'陶',meaning:'질 그도',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
+      {ch:'塗',meaning:'바를',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'稻',meaning:'벼',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
+      {ch:'挑',meaning:'돋을',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'禱',meaning:'빌',strokes:19,pilhoek:18,rad:'示',jawonElement:null},
+      {ch:'悼',meaning:'애도할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'燾',meaning:'비칠',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'},
+      {ch:'濤',meaning:'물결',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'蹈',meaning:'밟을',strokes:17,pilhoek:17,rad:'足',jawonElement:'토'},
+      {ch:'屠',meaning:'잡을',strokes:12,pilhoek:11,rad:'尸',jawonElement:null},
+      {ch:'滔',meaning:'물 넘칠',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'睹',meaning:'볼',strokes:14,pilhoek:13,rad:'目',jawonElement:'목'},
+      {ch:'掉',meaning:'흔들',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'堵',meaning:'담',strokes:12,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'搗',meaning:'찧을',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
+      {ch:'萄',meaning:'들머루',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'賭',meaning:'노름',strokes:16,pilhoek:15,rad:'貝',jawonElement:'금'},
+      {ch:'淘',meaning:'일',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'覩',meaning:'볼',strokes:16,pilhoek:15,rad:'見',jawonElement:'화'},
+      {ch:'棹',meaning:'노 저을',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'韜',meaning:'활집',strokes:19,pilhoek:19,rad:'韋',jawonElement:'금'},
+      {ch:'嶋',meaning:'섬',strokes:14,pilhoek:14,rad:'山',jawonElement:'토'},
+      {ch:'櫂',meaning:'상앗대',strokes:18,pilhoek:18,rad:'木',jawonElement:'목'},
+      {ch:'叨',meaning:'탐할',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'鼗',meaning:'땡땡이',strokes:19,pilhoek:19,rad:'鼓',jawonElement:'금',unverified:true},
+      {ch:'擣',meaning:'찧을',strokes:18,pilhoek:17,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'饕',meaning:'탐할',strokes:22,pilhoek:22,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'涂',meaning:'길',strokes:11,pilhoek:10,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'闍',meaning:'성문 층대',strokes:17,pilhoek:16,rad:'門',jawonElement:null,unverified:true},
+      {ch:'弢',meaning:'활집',strokes:8,pilhoek:8,rad:'弓',jawonElement:null,unverified:true},
+      {ch:'稌',meaning:'찰벼',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
+      {ch:'鞱',meaning:'너그러울',strokes:19,pilhoek:19,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'搯',meaning:'두드릴',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'檮',meaning:'그루터기',strokes:18,pilhoek:18,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'慆',meaning:'기뻐할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'壔',meaning:'작은 성',strokes:17,pilhoek:17,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'掏',meaning:'가릴 할',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鞀',meaning:'소고',strokes:14,pilhoek:14,rad:'革',jawonElement:'금',unverified:true}
     ],
     '동': [
       {ch:'董',meaning:'바로잡을',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
@@ -209,11 +510,38 @@
       {ch:'動',meaning:'움직일',strokes:11,pilhoek:11,rad:'力',jawonElement:null},
       {ch:'洞',meaning:'마을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'童',meaning:'아이',strokes:12,pilhoek:12,rad:'立',jawonElement:null},
-      {ch:'銅',meaning:'구리',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'}
+      {ch:'銅',meaning:'구리',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'},
+      {ch:'凍',meaning:'얼',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'},
+      {ch:'桐',meaning:'오동나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'棟',meaning:'용마루',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'憧',meaning:'동경할',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'胴',meaning:'큰 창자',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'仝',meaning:'같을',strokes:5,pilhoek:5,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'潼',meaning:'물 이름',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'錬',meaning:'보습날',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'僮',meaning:'아이',strokes:14,pilhoek:14,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'蕫',meaning:'황모',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'彤',meaning:'붉은 칠',strokes:7,pilhoek:7,rad:'彡',jawonElement:null},
+      {ch:'侗',meaning:'무지할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'峒',meaning:'산이름',strokes:9,pilhoek:9,rad:'山',jawonElement:'토'},
+      {ch:'蝀',meaning:'무지개',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수'},
+      {ch:'涷',meaning:'마룻대',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'垌',meaning:'항아리',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
+      {ch:'朣',meaning:'달 뜰',strokes:18,pilhoek:16,rad:'月',jawonElement:'수'},
+      {ch:'橦',meaning:'나무이름',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'茼',meaning:'쏙갓',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'哃',meaning:'클말할',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'苳',meaning:'겨울살이',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鮗',meaning:'전어',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '라': [
       {ch:'羅',meaning:'새그물',strokes:20,pilhoek:19,rad:'网',jawonElement:null},
-      {ch:'邏',meaning:'돌',strokes:26,pilhoek:22,rad:'辵',jawonElement:'토'}
+      {ch:'邏',meaning:'돌',strokes:26,pilhoek:22,rad:'辵',jawonElement:'토'},
+      {ch:'囉',meaning:'소리 읽힐',strokes:22,pilhoek:22,rad:'口',jawonElement:null,unverified:true},
+      {ch:'鑼',meaning:'징',strokes:27,pilhoek:27,rad:'金',jawonElement:'금'},
+      {ch:'瘰',meaning:'연주창',strokes:16,pilhoek:16,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'倮',meaning:'알몸',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'驘',meaning:'옹 솥',strokes:23,pilhoek:23,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '리': [
       {ch:'李',meaning:'오얏',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
@@ -223,7 +551,37 @@
       {ch:'異',meaning:'다를',strokes:12,pilhoek:11,rad:'田',jawonElement:null},
       {ch:'吏',meaning:'관리',strokes:6,pilhoek:6,rad:'口',jawonElement:null},
       {ch:'離',meaning:'떠날',strokes:19,pilhoek:18,rad:'隹',jawonElement:'화'},
-      {ch:'履',meaning:'밟을',strokes:15,pilhoek:15,rad:'尸',jawonElement:null}
+      {ch:'履',meaning:'밟을',strokes:15,pilhoek:15,rad:'尸',jawonElement:null},
+      {ch:'裏',meaning:'속',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'梨',meaning:'태나무',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'罹',meaning:'만날',strokes:17,pilhoek:16,rad:'网',jawonElement:null},
+      {ch:'裡',meaning:'옷속',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목'},
+      {ch:'籬',meaning:'울타리',strokes:25,pilhoek:24,rad:'竹',jawonElement:'목'},
+      {ch:'俚',meaning:'속될',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'痢',meaning:'설사',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수'},
+      {ch:'悧',meaning:'영리할',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'羸',meaning:'파리할',strokes:19,pilhoek:19,rad:'羊',jawonElement:'토'},
+      {ch:'釐',meaning:'다스릴',strokes:18,pilhoek:18,rad:'里',jawonElement:null},
+      {ch:'狸',meaning:'이리',strokes:11,pilhoek:10,rad:'犬',jawonElement:null},
+      {ch:'犁',meaning:'얼룩소',strokes:11,pilhoek:11,rad:'牛',jawonElement:'토'},
+      {ch:'璃',meaning:'유리',strokes:16,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'鯉',meaning:'잉어',strokes:18,pilhoek:18,rad:'魚',jawonElement:'수'},
+      {ch:'唎',meaning:'가는 소리',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'莉',meaning:'말리',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'浬',meaning:'해리',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'漓',meaning:'스며들',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'莅',meaning:'다다를',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'离',meaning:'산신',strokes:11,pilhoek:10,rad:'禸',jawonElement:null},
+      {ch:'螭',meaning:'교륭',strokes:17,pilhoek:16,rad:'虫',jawonElement:'수'},
+      {ch:'俐',meaning:'똑똑할',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'嫠',meaning:'과부',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'貍',meaning:'삵',strokes:14,pilhoek:14,rad:'豸',jawonElement:'수',unverified:true},
+      {ch:'邐',meaning:'이어질',strokes:26,pilhoek:22,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'涖',meaning:'다다를',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'哩',meaning:'어조사',strokes:10,pilhoek:10,rad:'口',jawonElement:null,unverified:true},
+      {ch:'蜊',meaning:'참조개',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'黐',meaning:'끈끈이',strokes:22,pilhoek:22,rad:'黍',jawonElement:'목',unverified:true},
+      {ch:'剺',meaning:'벗길',strokes:13,pilhoek:13,rad:'刀',jawonElement:'금',unverified:true}
     ],
     '명': [
       {ch:'明',meaning:'밝을',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
@@ -233,7 +591,12 @@
       {ch:'銘',meaning:'새길',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'},
       {ch:'溟',meaning:'바다',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'皿',meaning:'그릇',strokes:5,pilhoek:5,rad:'皿',jawonElement:null},
-      {ch:'螟',meaning:'며루',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수'}
+      {ch:'螟',meaning:'며루',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수'},
+      {ch:'酩',meaning:'취한 모양',strokes:13,pilhoek:13,rad:'酉',jawonElement:null},
+      {ch:'蓂',meaning:'담벽풀',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'茗',meaning:'차 싹',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'椧',meaning:'홈 통',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'洺',meaning:'강 이름',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'}
     ],
     '문': [
       {ch:'文',meaning:'무늬',strokes:4,pilhoek:4,rad:'文',jawonElement:'목'},
@@ -243,7 +606,16 @@
       {ch:'紊',meaning:'얽힐',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
       {ch:'汶',meaning:'내 이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
       {ch:'紋',meaning:'무늬',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
-      {ch:'吻',meaning:'입가',strokes:7,pilhoek:7,rad:'口',jawonElement:null}
+      {ch:'吻',meaning:'입가',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'刎',meaning:'자를',strokes:6,pilhoek:6,rad:'刀',jawonElement:'금'},
+      {ch:'們',meaning:'무리',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'雯',meaning:'구름 무늬',strokes:12,pilhoek:12,rad:'雨',jawonElement:'수'},
+      {ch:'捫',meaning:'어루만질',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'懣',meaning:'번거로울',strokes:18,pilhoek:18,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'抆',meaning:'닦을',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'炆',meaning:'따뜻할',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'匁',meaning:'몸메',strokes:4,pilhoek:4,rad:'勹',jawonElement:null,unverified:true},
+      {ch:'璊',meaning:'붉은 옥',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금',unverified:true}
     ],
     '미': [
       {ch:'美',meaning:'아름다울',strokes:9,pilhoek:9,rad:'羊',jawonElement:'토'},
@@ -253,7 +625,28 @@
       {ch:'微',meaning:'작을',strokes:13,pilhoek:13,rad:'彳',jawonElement:'화'},
       {ch:'迷',meaning:'전념할',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
       {ch:'眉',meaning:'노인',strokes:9,pilhoek:9,rad:'目',jawonElement:'목'},
-      {ch:'彌',meaning:'두루',strokes:17,pilhoek:17,rad:'弓',jawonElement:null}
+      {ch:'彌',meaning:'두루',strokes:17,pilhoek:17,rad:'弓',jawonElement:null,unverified:true},
+      {ch:'靡',meaning:'쓰러질',strokes:19,pilhoek:19,rad:'非',jawonElement:'수'},
+      {ch:'媚',meaning:'풍치가 아름다울',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
+      {ch:'薇',meaning:'고비',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'楣',meaning:'문미',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'湄',meaning:'물 가',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'嵋',meaning:'산이름',strokes:12,pilhoek:12,rad:'山',jawonElement:'토'},
+      {ch:'渼',meaning:'물놀이',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'謎',meaning:'수수께끼',strokes:17,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'黴',meaning:'검을',strokes:23,pilhoek:23,rad:'黑',jawonElement:'수'},
+      {ch:'梶',meaning:'나무 끝',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'弭',meaning:'활고자',strokes:9,pilhoek:9,rad:'弓',jawonElement:null,unverified:true},
+      {ch:'糜',meaning:'죽',strokes:17,pilhoek:17,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'縻',meaning:'얽어맬',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'亹',meaning:'힘쓸',strokes:21,pilhoek:22,rad:'亠',jawonElement:null,unverified:true},
+      {ch:'瀰',meaning:'물 넓을',strokes:21,pilhoek:20,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'麋',meaning:'큰사슴',strokes:17,pilhoek:17,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'敉',meaning:'어루만질',strokes:10,pilhoek:10,rad:'攴',jawonElement:'금',unverified:true},
+      {ch:'媺',meaning:'착하고 아름다울',strokes:13,pilhoek:13,rad:'女',jawonElement:'토'},
+      {ch:'娓',meaning:'장황할',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'蘼',meaning:'장미',strokes:25,pilhoek:22,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'媄',meaning:'빛 고울',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'}
     ],
     '민': [
       {ch:'敏',meaning:'민첩할',strokes:11,pilhoek:11,rad:'攴',jawonElement:'금'},
@@ -263,7 +656,16 @@
       {ch:'珉',meaning:'아름다운돌',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
       {ch:'玟',meaning:'옥돌',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'},
       {ch:'民',meaning:'백성',strokes:5,pilhoek:5,rad:'氏',jawonElement:'화'},
-      {ch:'岷',meaning:'산이름',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'}
+      {ch:'岷',meaning:'산이름',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'緡',meaning:'입힐',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'黽',meaning:'힘쓸',strokes:13,pilhoek:13,rad:'黽',jawonElement:'토',unverified:true},
+      {ch:'閩',meaning:'종족이름',strokes:14,pilhoek:14,rad:'門',jawonElement:null},
+      {ch:'忞',meaning:'강인할',strokes:8,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'暋',meaning:'굳셀',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
+      {ch:'忟',meaning:'강인할',strokes:8,pilhoek:7,rad:'心',jawonElement:'화'},
+      {ch:'罠',meaning:'그물',strokes:11,pilhoek:10,rad:'网',jawonElement:null},
+      {ch:'苠',meaning:'속대',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鰵',meaning:'대구',strokes:22,pilhoek:22,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '보': [
       {ch:'步',meaning:'걸을',strokes:7,pilhoek:7,rad:'止',jawonElement:'토'},
@@ -273,7 +675,19 @@
       {ch:'補',meaning:'도울',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목'},
       {ch:'普',meaning:'널리',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
       {ch:'譜',meaning:'계보',strokes:19,pilhoek:19,rad:'言',jawonElement:'금'},
-      {ch:'輔',meaning:'도울',strokes:14,pilhoek:14,rad:'車',jawonElement:'화'}
+      {ch:'輔',meaning:'도울',strokes:14,pilhoek:14,rad:'車',jawonElement:'화'},
+      {ch:'甫',meaning:'클',strokes:7,pilhoek:7,rad:'用',jawonElement:'수'},
+      {ch:'堡',meaning:'작은 성',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'潽',meaning:'물이름',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'菩',meaning:'보살',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'洑',meaning:'보',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'褓',meaning:'포대기',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'珤',meaning:'보배',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'湺',meaning:'보',strokes:12,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'俌',meaning:'도울',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'黼',meaning:'수',strokes:19,pilhoek:19,rad:'黹',jawonElement:null,unverified:true},
+      {ch:'葆',meaning:'풀 더부룩할',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鴇',meaning:'능에',strokes:15,pilhoek:15,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '복': [
       {ch:'卜',meaning:'점칠',strokes:2,pilhoek:2,rad:'卜',jawonElement:null},
@@ -283,7 +697,21 @@
       {ch:'覆',meaning:'도리어',strokes:18,pilhoek:18,rad:'襾',jawonElement:null},
       {ch:'馥',meaning:'향기',strokes:18,pilhoek:18,rad:'香',jawonElement:'목'},
       {ch:'僕',meaning:'시중꾼',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
-      {ch:'撲',meaning:'닦을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'}
+      {ch:'撲',meaning:'닦을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'匐',meaning:'길',strokes:11,pilhoek:11,rad:'勹',jawonElement:null},
+      {ch:'鰒',meaning:'전복',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수'},
+      {ch:'宓',meaning:'성',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
+      {ch:'茯',meaning:'복령',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'蔔',meaning:'무우',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'輹',meaning:'복토',strokes:16,pilhoek:16,rad:'車',jawonElement:'화'},
+      {ch:'扑',meaning:'칠',strokes:6,pilhoek:5,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'幞',meaning:'건',strokes:15,pilhoek:15,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'濮',meaning:'강 이름',strokes:18,pilhoek:17,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'鵩',meaning:'새 이름',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'蝮',meaning:'살무사',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'墣',meaning:'흙덩이',strokes:15,pilhoek:15,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'蝠',meaning:'박쥐',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'箙',meaning:'전동',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목',unverified:true}
     ],
     '병': [
       {ch:'兵',meaning:'군사',strokes:7,pilhoek:7,rad:'八',jawonElement:null},
@@ -293,7 +721,19 @@
       {ch:'炳',meaning:'밝을',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
       {ch:'柄',meaning:'자루',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
       {ch:'倂',meaning:'아우를',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
-      {ch:'昺',meaning:'밝을',strokes:9,pilhoek:9,rad:'日',jawonElement:null}
+      {ch:'昺',meaning:'밝을',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'昞',meaning:'밝을',strokes:9,pilhoek:9,rad:'日',jawonElement:null,unverified:true},
+      {ch:'餠',meaning:'떡',strokes:17,pilhoek:16,rad:'食',jawonElement:'수'},
+      {ch:'幷',meaning:'아우를',strokes:8,pilhoek:8,rad:'干',jawonElement:'목'},
+      {ch:'騈',meaning:'나란히 할',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화'},
+      {ch:'輧',meaning:'거마 소리',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'棅',meaning:'자루',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'迸',meaning:'달아날',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'缾',meaning:'두레박',strokes:12,pilhoek:12,rad:'缶',jawonElement:'토',unverified:true},
+      {ch:'塀',meaning:'담',strokes:12,pilhoek:12,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'絣',meaning:'무늬없는 비단',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鉼',meaning:'판금',strokes:16,pilhoek:14,rad:'金',jawonElement:'금'},
+      {ch:'鋲',meaning:'넓은 못',strokes:15,pilhoek:15,rad:'金',jawonElement:'금',unverified:true}
     ],
     '상': [
       {ch:'上',meaning:'위',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
@@ -303,7 +743,37 @@
       {ch:'賞',meaning:'상줄',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
       {ch:'商',meaning:'헤아릴',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
       {ch:'尙',meaning:'오히려',strokes:8,pilhoek:8,rad:'小',jawonElement:null},
-      {ch:'喪',meaning:'상사',strokes:12,pilhoek:12,rad:'口',jawonElement:null}
+      {ch:'喪',meaning:'상사',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'傷',meaning:'상할',strokes:13,pilhoek:13,rad:'人',jawonElement:'화'},
+      {ch:'霜',meaning:'서리',strokes:17,pilhoek:17,rad:'雨',jawonElement:'수'},
+      {ch:'狀',meaning:'형상',strokes:8,pilhoek:8,rad:'犬',jawonElement:null},
+      {ch:'嘗',meaning:'맛볼',strokes:14,pilhoek:14,rad:'口',jawonElement:null},
+      {ch:'詳',meaning:'자세할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'祥',meaning:'상서로울',strokes:11,pilhoek:10,rad:'示',jawonElement:null},
+      {ch:'床',meaning:'평상',strokes:7,pilhoek:7,rad:'广',jawonElement:'목'},
+      {ch:'桑',meaning:'뽕나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'像',meaning:'형상',strokes:14,pilhoek:13,rad:'人',jawonElement:'화'},
+      {ch:'償',meaning:'갚을',strokes:17,pilhoek:17,rad:'人',jawonElement:'화'},
+      {ch:'裳',meaning:'치마',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'庠',meaning:'학교',strokes:9,pilhoek:9,rad:'广',jawonElement:'목'},
+      {ch:'箱',meaning:'상자',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
+      {ch:'爽',meaning:'시원할',strokes:11,pilhoek:11,rad:'爻',jawonElement:null},
+      {ch:'觴',meaning:'잔',strokes:18,pilhoek:18,rad:'角',jawonElement:'목'},
+      {ch:'翔',meaning:'빙빙돌아날',strokes:12,pilhoek:12,rad:'羽',jawonElement:'화'},
+      {ch:'孀',meaning:'과부',strokes:20,pilhoek:20,rad:'女',jawonElement:'토'},
+      {ch:'廂',meaning:'행랑',strokes:12,pilhoek:12,rad:'广',jawonElement:'목'},
+      {ch:'湘',meaning:'강이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'牀',meaning:'평상',strokes:8,pilhoek:8,rad:'爿',jawonElement:null},
+      {ch:'橡',meaning:'상수리나무',strokes:16,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'峠',meaning:'고개',strokes:9,pilhoek:9,rad:'山',jawonElement:'토'},
+      {ch:'甞',meaning:'맛볼',strokes:13,pilhoek:13,rad:'甘',jawonElement:'토',unverified:true},
+      {ch:'顙',meaning:'이마',strokes:19,pilhoek:19,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'徜',meaning:'노닐',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'緗',meaning:'담황색',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'晌',meaning:'정오',strokes:10,pilhoek:10,rad:'日',jawonElement:null,unverified:true},
+      {ch:'塽',meaning:'높고밝은땅',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'鎟',meaning:'방울소리',strokes:18,pilhoek:18,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鬺',meaning:'삶을',strokes:21,pilhoek:21,rad:'鬲',jawonElement:null,unverified:true}
     ],
     '서': [
       {ch:'序',meaning:'차례',strokes:7,pilhoek:7,rad:'广',jawonElement:'목'},
@@ -313,7 +783,36 @@
       {ch:'西',meaning:'서녘',strokes:6,pilhoek:6,rad:'襾',jawonElement:null},
       {ch:'書',meaning:'쓸',strokes:10,pilhoek:10,rad:'曰',jawonElement:null},
       {ch:'庶',meaning:'여러',strokes:11,pilhoek:11,rad:'广',jawonElement:'목'},
-      {ch:'署',meaning:'관청',strokes:15,pilhoek:13,rad:'网',jawonElement:null}
+      {ch:'署',meaning:'관청',strokes:15,pilhoek:13,rad:'网',jawonElement:null},
+      {ch:'恕',meaning:'용서할',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'緖',meaning:'실마리',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'誓',meaning:'맹세할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'敍',meaning:'차례',strokes:11,pilhoek:11,rad:'攴',jawonElement:'금'},
+      {ch:'曙',meaning:'새벽',strokes:18,pilhoek:17,rad:'日',jawonElement:null},
+      {ch:'棲',meaning:'살',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'胥',meaning:'서로',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'黍',meaning:'기장',strokes:12,pilhoek:12,rad:'黍',jawonElement:'목'},
+      {ch:'鼠',meaning:'쥐',strokes:13,pilhoek:13,rad:'鼠',jawonElement:'수'},
+      {ch:'犀',meaning:'무소',strokes:12,pilhoek:12,rad:'牛',jawonElement:'토'},
+      {ch:'薯',meaning:'참마',strokes:20,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'嶼',meaning:'섬',strokes:17,pilhoek:16,rad:'山',jawonElement:'토'},
+      {ch:'抒',meaning:'풀',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'壻',meaning:'사위',strokes:12,pilhoek:12,rad:'士',jawonElement:null},
+      {ch:'栖',meaning:'깃들일',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'筮',meaning:'점대',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목'},
+      {ch:'鋤',meaning:'호미',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'絮',meaning:'솜',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'墅',meaning:'농막',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'捿',meaning:'깃들일',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'婿',meaning:'사위',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
+      {ch:'紓',meaning:'느슨할',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'噬',meaning:'씹을',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true},
+      {ch:'鉏',meaning:'호미',strokes:13,pilhoek:13,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'湑',meaning:'거를',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'澨',meaning:'물가',strokes:17,pilhoek:16,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'芧',meaning:'상수리',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'揟',meaning:'나무이름',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'耡',meaning:'구실이름',strokes:13,pilhoek:13,rad:'耒',jawonElement:null,unverified:true}
     ],
     '석': [
       {ch:'石',meaning:'돌',strokes:5,pilhoek:5,rad:'石',jawonElement:'금'},
@@ -323,7 +822,20 @@
       {ch:'惜',meaning:'아낄',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
       {ch:'釋',meaning:'풀',strokes:20,pilhoek:20,rad:'釆',jawonElement:null},
       {ch:'析',meaning:'가를',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
-      {ch:'錫',meaning:'주석',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'}
+      {ch:'錫',meaning:'주석',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'奭',meaning:'클',strokes:15,pilhoek:15,rad:'大',jawonElement:null},
+      {ch:'碩',meaning:'클',strokes:14,pilhoek:14,rad:'石',jawonElement:'금'},
+      {ch:'晳',meaning:'밝을',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'潟',meaning:'개펄',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'汐',meaning:'조수',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
+      {ch:'淅',meaning:'쌀일',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'蓆',meaning:'자리',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'腊',meaning:'포',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'蜥',meaning:'도마뱀',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鉐',meaning:'놋쇠',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'晰',meaning:'밝을',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'矽',meaning:'석비레',strokes:8,pilhoek:8,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'鼫',meaning:'석서',strokes:18,pilhoek:18,rad:'鼠',jawonElement:'수'}
     ],
     '선': [
       {ch:'宣',meaning:'베풀',strokes:9,pilhoek:9,rad:'宀',jawonElement:null},
@@ -333,13 +845,55 @@
       {ch:'單',meaning:'고을이름',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'線',meaning:'실',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
       {ch:'選',meaning:'가릴',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'},
-      {ch:'鮮',meaning:'고울',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수'}
+      {ch:'鮮',meaning:'고울',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수'},
+      {ch:'洗',meaning:'율이름',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'旋',meaning:'돌',strokes:11,pilhoek:11,rad:'方',jawonElement:null},
+      {ch:'禪',meaning:'봉선',strokes:17,pilhoek:16,rad:'示',jawonElement:null},
+      {ch:'膳',meaning:'반찬',strokes:18,pilhoek:16,rad:'肉',jawonElement:null},
+      {ch:'扇',meaning:'사립문',strokes:10,pilhoek:10,rad:'戶',jawonElement:'목'},
+      {ch:'煽',meaning:'부칠',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'璿',meaning:'아름다운옥',strokes:19,pilhoek:18,rad:'玉',jawonElement:'금'},
+      {ch:'璇',meaning:'아름다운옥',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'瑄',meaning:'도리옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'癬',meaning:'옴',strokes:22,pilhoek:22,rad:'疒',jawonElement:'수'},
+      {ch:'腺',meaning:'샘',strokes:15,pilhoek:13,rad:'肉',jawonElement:null},
+      {ch:'亘',meaning:'구할',strokes:6,pilhoek:6,rad:'二',jawonElement:null},
+      {ch:'羨',meaning:'부러워할',strokes:13,pilhoek:13,rad:'羊',jawonElement:'토'},
+      {ch:'銑',meaning:'끌',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'},
+      {ch:'蟬',meaning:'매미',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수'},
+      {ch:'詵',meaning:'많을',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'饍',meaning:'반찬',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'},
+      {ch:'嬋',meaning:'고울',strokes:15,pilhoek:15,rad:'女',jawonElement:'토'},
+      {ch:'霰',meaning:'별',strokes:20,pilhoek:20,rad:'雨',jawonElement:'수'},
+      {ch:'僊',meaning:'춤출',strokes:13,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'跣',meaning:'맨발',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'},
+      {ch:'鐥',meaning:'복자',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'},
+      {ch:'渲',meaning:'바림',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'琁',meaning:'옥',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'敾',meaning:'글잘쓸',strokes:16,pilhoek:16,rad:'攴',jawonElement:'금'},
+      {ch:'尠',meaning:'적을',strokes:13,pilhoek:13,rad:'小',jawonElement:null,unverified:true},
+      {ch:'譔',meaning:'가르칠',strokes:19,pilhoek:19,rad:'言',jawonElement:'금'},
+      {ch:'鏇',meaning:'갈이틀',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'騸',meaning:'불깔',strokes:20,pilhoek:20,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'愃',meaning:'쾌할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'墡',meaning:'백토',strokes:15,pilhoek:15,rad:'土',jawonElement:'토'},
+      {ch:'筅',meaning:'솔',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鱻',meaning:'생선',strokes:33,pilhoek:33,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'嫙',meaning:'예쁠',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'},
+      {ch:'歚',meaning:'고을',strokes:16,pilhoek:16,rad:'欠',jawonElement:null},
+      {ch:'鱓',meaning:'두렁허리',strokes:23,pilhoek:23,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '섭': [
       {ch:'葉',meaning:'고을이름',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
       {ch:'涉',meaning:'물 건널',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
       {ch:'攝',meaning:'끌',strokes:22,pilhoek:21,rad:'手',jawonElement:'목'},
-      {ch:'燮',meaning:'불에 익힐',strokes:17,pilhoek:17,rad:'火',jawonElement:'화'}
+      {ch:'燮',meaning:'불에 익힐',strokes:17,pilhoek:17,rad:'火',jawonElement:'화'},
+      {ch:'躡',meaning:'밟을',strokes:25,pilhoek:25,rad:'足',jawonElement:'토'},
+      {ch:'囁',meaning:'말하려다 멈출',strokes:21,pilhoek:21,rad:'口',jawonElement:null,unverified:true},
+      {ch:'聶',meaning:'소곤거릴',strokes:18,pilhoek:18,rad:'耳',jawonElement:'화',unverified:true},
+      {ch:'鑷',meaning:'쪽집게',strokes:26,pilhoek:26,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'灄',meaning:'흠치르르할',strokes:22,pilhoek:21,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'顳',meaning:'귀밑 뼈',strokes:27,pilhoek:27,rad:'頁',jawonElement:'화',unverified:true}
     ],
     '성': [
       {ch:'成',meaning:'이룰',strokes:7,pilhoek:6,rad:'戈',jawonElement:null},
@@ -349,7 +903,18 @@
       {ch:'姓',meaning:'일가',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
       {ch:'城',meaning:'보루',strokes:10,pilhoek:9,rad:'土',jawonElement:'토'},
       {ch:'誠',meaning:'미쁠',strokes:14,pilhoek:13,rad:'言',jawonElement:'금'},
-      {ch:'聖',meaning:'성인',strokes:13,pilhoek:13,rad:'耳',jawonElement:'화'}
+      {ch:'聖',meaning:'성인',strokes:13,pilhoek:13,rad:'耳',jawonElement:'화'},
+      {ch:'聲',meaning:'소리',strokes:17,pilhoek:17,rad:'耳',jawonElement:'화'},
+      {ch:'盛',meaning:'담을',strokes:12,pilhoek:11,rad:'皿',jawonElement:null},
+      {ch:'晟',meaning:'밝을',strokes:11,pilhoek:10,rad:'日',jawonElement:null},
+      {ch:'醒',meaning:'술 깰',strokes:16,pilhoek:16,rad:'酉',jawonElement:null},
+      {ch:'宬',meaning:'사고',strokes:10,pilhoek:9,rad:'宀',jawonElement:null},
+      {ch:'惺',meaning:'깨달을',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'腥',meaning:'비린내',strokes:15,pilhoek:13,rad:'肉',jawonElement:null},
+      {ch:'珹',meaning:'옥이름',strokes:12,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'猩',meaning:'성성이',strokes:13,pilhoek:12,rad:'犬',jawonElement:null},
+      {ch:'筬',meaning:'바디',strokes:13,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'騂',meaning:'붉은 소',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '세': [
       {ch:'世',meaning:'세상',strokes:5,pilhoek:5,rad:'一',jawonElement:null},
@@ -359,7 +924,11 @@
       {ch:'洗',meaning:'씻을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'勢',meaning:'권세',strokes:13,pilhoek:13,rad:'力',jawonElement:null},
       {ch:'稅',meaning:'구실',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
-      {ch:'貰',meaning:'빌릴',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'}
+      {ch:'貰',meaning:'빌릴',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
+      {ch:'笹',meaning:'가는 대',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
+      {ch:'洒',meaning:'씻을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'繐',meaning:'가늘고 성긴 베',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'帨',meaning:'차는 수건',strokes:10,pilhoek:10,rad:'巾',jawonElement:'목',unverified:true}
     ],
     '소': [
       {ch:'蘇',meaning:'차조기',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
@@ -369,7 +938,52 @@
       {ch:'笑',meaning:'웃음',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목'},
       {ch:'消',meaning:'다할',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
       {ch:'素',meaning:'흴',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
-      {ch:'召',meaning:'부를',strokes:5,pilhoek:5,rad:'口',jawonElement:null}
+      {ch:'召',meaning:'부를',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
+      {ch:'昭',meaning:'소명할',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'訴',meaning:'하소연할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'掃',meaning:'쓸',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'燒',meaning:'불 붙을',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'騷',meaning:'흔들릴',strokes:20,pilhoek:19,rad:'馬',jawonElement:'화'},
+      {ch:'疎',meaning:'성길',strokes:12,pilhoek:12,rad:'疋',jawonElement:null},
+      {ch:'蔬',meaning:'나물',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'巢',meaning:'새집',strokes:11,pilhoek:11,rad:'巛',jawonElement:'수'},
+      {ch:'紹',meaning:'이을',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'邵',meaning:'땅이름',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'沼',meaning:'못',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'蕭',meaning:'쑥',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'宵',meaning:'밤',strokes:10,pilhoek:10,rad:'宀',jawonElement:null},
+      {ch:'逍',meaning:'노닐',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'簫',meaning:'퉁소',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목'},
+      {ch:'搔',meaning:'긁을',strokes:14,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'遡',meaning:'맞이할',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토'},
+      {ch:'梳',meaning:'얼레빗',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'塑',meaning:'허수아비',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'甦',meaning:'깨어날',strokes:12,pilhoek:12,rad:'生',jawonElement:null},
+      {ch:'瘙',meaning:'옴',strokes:15,pilhoek:14,rad:'疒',jawonElement:'수'},
+      {ch:'疏',meaning:'뚫릴',strokes:12,pilhoek:12,rad:'疋',jawonElement:null},
+      {ch:'嘯',meaning:'휘파람',strokes:16,pilhoek:16,rad:'口',jawonElement:null},
+      {ch:'銷',meaning:'녹을',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'韶',meaning:'아름다울',strokes:14,pilhoek:14,rad:'音',jawonElement:'금'},
+      {ch:'瀟',meaning:'물 맑을',strokes:21,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'炤',meaning:'밝을',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
+      {ch:'溯',meaning:'거슬러 올라갈',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'篠',meaning:'가는 대',strokes:17,pilhoek:16,rad:'竹',jawonElement:'목'},
+      {ch:'霄',meaning:'하늘',strokes:15,pilhoek:15,rad:'雨',jawonElement:'수'},
+      {ch:'泝',meaning:'거슬러 올라갈',strokes:9,pilhoek:8,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'埽',meaning:'쓸',strokes:11,pilhoek:11,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'翛',meaning:'날개치는 소리',strokes:13,pilhoek:12,rad:'羽',jawonElement:'화',unverified:true},
+      {ch:'愬',meaning:'고할',strokes:14,pilhoek:14,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'酥',meaning:'타락죽',strokes:12,pilhoek:12,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'繅',meaning:'고치 실 뽑을',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'卲',meaning:'높을',strokes:7,pilhoek:7,rad:'卩',jawonElement:null},
+      {ch:'蛸',meaning:'연가시 알집',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'俏',meaning:'거문고 뒤치는 소리',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'捎',meaning:'덜',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'佋',meaning:'소개할',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嗉',meaning:'멀떠구니',strokes:13,pilhoek:13,rad:'口',jawonElement:null,unverified:true},
+      {ch:'筱',meaning:'가는 대',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'樔',meaning:'풀막',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'膆',meaning:'살찔',strokes:16,pilhoek:14,rad:'肉',jawonElement:null,unverified:true}
     ],
     '수': [
       {ch:'守',meaning:'지킬',strokes:6,pilhoek:6,rad:'宀',jawonElement:null},
@@ -379,7 +993,74 @@
       {ch:'秀',meaning:'빼어날',strokes:7,pilhoek:7,rad:'禾',jawonElement:'목'},
       {ch:'洙',meaning:'물가',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'水',meaning:'물',strokes:4,pilhoek:4,rad:'水',jawonElement:'수'},
-      {ch:'手',meaning:'손',strokes:4,pilhoek:4,rad:'手',jawonElement:'목'}
+      {ch:'手',meaning:'손',strokes:4,pilhoek:4,rad:'手',jawonElement:'목'},
+      {ch:'數',meaning:'헤아릴',strokes:15,pilhoek:15,rad:'攴',jawonElement:'금'},
+      {ch:'首',meaning:'머리',strokes:9,pilhoek:9,rad:'首',jawonElement:'수'},
+      {ch:'授',meaning:'줄',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'收',meaning:'모을',strokes:6,pilhoek:6,rad:'攴',jawonElement:'금'},
+      {ch:'雖',meaning:'비록',strokes:17,pilhoek:17,rad:'隹',jawonElement:'화'},
+      {ch:'壽',meaning:'목숨',strokes:14,pilhoek:14,rad:'士',jawonElement:null},
+      {ch:'須',meaning:'수염',strokes:12,pilhoek:12,rad:'頁',jawonElement:'화'},
+      {ch:'誰',meaning:'누구',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'愁',meaning:'염려할',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'遂',meaning:'사무칠',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'隨',meaning:'따를',strokes:21,pilhoek:14,rad:'阜',jawonElement:'토'},
+      {ch:'囚',meaning:'갇힐',strokes:5,pilhoek:5,rad:'囗',jawonElement:null},
+      {ch:'殊',meaning:'베일',strokes:10,pilhoek:10,rad:'歹',jawonElement:'수'},
+      {ch:'輸',meaning:'떨어뜨릴',strokes:16,pilhoek:16,rad:'車',jawonElement:'화'},
+      {ch:'需',meaning:'음식',strokes:14,pilhoek:14,rad:'雨',jawonElement:'수'},
+      {ch:'獸',meaning:'짐승',strokes:19,pilhoek:19,rad:'犬',jawonElement:null},
+      {ch:'垂',meaning:'드리울',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'帥',meaning:'주장할',strokes:9,pilhoek:9,rad:'巾',jawonElement:'목'},
+      {ch:'睡',meaning:'졸음',strokes:13,pilhoek:13,rad:'目',jawonElement:'목'},
+      {ch:'搜',meaning:'찾을',strokes:14,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'隋',meaning:'수나라',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
+      {ch:'髓',meaning:'뼛속 기름',strokes:23,pilhoek:21,rad:'骨',jawonElement:null},
+      {ch:'蒐',meaning:'꼭두서니',strokes:16,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'酬',meaning:'술 권할',strokes:13,pilhoek:13,rad:'酉',jawonElement:null},
+      {ch:'羞',meaning:'부끄러울',strokes:11,pilhoek:10,rad:'羊',jawonElement:'토'},
+      {ch:'繡',meaning:'성씨',strokes:18,pilhoek:19,rad:'糸',jawonElement:'목'},
+      {ch:'粹',meaning:'정할',strokes:14,pilhoek:14,rad:'米',jawonElement:'목'},
+      {ch:'袖',meaning:'소매',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목'},
+      {ch:'瘦',meaning:'파리할',strokes:15,pilhoek:14,rad:'疒',jawonElement:'수'},
+      {ch:'竪',meaning:'세울',strokes:13,pilhoek:13,rad:'立',jawonElement:null},
+      {ch:'狩',meaning:'겨울사냥',strokes:10,pilhoek:9,rad:'犬',jawonElement:null},
+      {ch:'嫂',meaning:'형수',strokes:13,pilhoek:12,rad:'女',jawonElement:'토'},
+      {ch:'穗',meaning:'이삭',strokes:17,pilhoek:17,rad:'禾',jawonElement:'목'},
+      {ch:'脩',meaning:'포',strokes:13,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'戍',meaning:'수자리',strokes:6,pilhoek:6,rad:'戈',jawonElement:null},
+      {ch:'綏',meaning:'편안할',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목'},
+      {ch:'藪',meaning:'큰 늪',strokes:21,pilhoek:18,rad:'艸',jawonElement:'목'},
+      {ch:'綬',meaning:'인끈',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'邃',meaning:'깊숙할',strokes:21,pilhoek:17,rad:'辵',jawonElement:'토'},
+      {ch:'鬚',meaning:'턱수염',strokes:22,pilhoek:22,rad:'髟',jawonElement:'화'},
+      {ch:'岫',meaning:'바위구멍',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'燧',meaning:'봉화',strokes:17,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'隧',meaning:'구멍',strokes:21,pilhoek:14,rad:'阜',jawonElement:'토'},
+      {ch:'嗽',meaning:'기침할',strokes:14,pilhoek:14,rad:'口',jawonElement:null},
+      {ch:'漱',meaning:'양치질할',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'琇',meaning:'귀막이',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'峀',meaning:'바위굴',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'茱',meaning:'수유',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'璲',meaning:'서옥',strokes:18,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'蓚',meaning:'기쁠',strokes:16,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'銹',meaning:'동록',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'叟',meaning:'어른',strokes:10,pilhoek:9,rad:'又',jawonElement:null,unverified:true},
+      {ch:'讎',meaning:'짝',strokes:23,pilhoek:23,rad:'言',jawonElement:'금'},
+      {ch:'售',meaning:'팔',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'豎',meaning:'세울',strokes:15,pilhoek:15,rad:'豆',jawonElement:null},
+      {ch:'睟',meaning:'똑바로 볼',strokes:13,pilhoek:13,rad:'目',jawonElement:'목'},
+      {ch:'陲',meaning:'변방',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'祟',meaning:'빌미',strokes:10,pilhoek:10,rad:'示',jawonElement:null,unverified:true},
+      {ch:'瞍',meaning:'장님',strokes:15,pilhoek:14,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'颼',meaning:'바람소리',strokes:19,pilhoek:18,rad:'風',jawonElement:'목',unverified:true},
+      {ch:'殳',meaning:'치다',strokes:4,pilhoek:4,rad:'殳',jawonElement:'금',unverified:true},
+      {ch:'廋',meaning:'숨길',strokes:13,pilhoek:12,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'溲',meaning:'반족할',strokes:14,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'膄',meaning:'파리할',strokes:16,pilhoek:13,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'脺',meaning:'얼굴 윤택할',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'籔',meaning:'조리',strokes:21,pilhoek:21,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'饈',meaning:'드릴',strokes:20,pilhoek:18,rad:'食',jawonElement:'수',unverified:true}
     ],
     '승': [
       {ch:'勝',meaning:'이길',strokes:12,pilhoek:12,rad:'力',jawonElement:null},
@@ -389,7 +1070,10 @@
       {ch:'僧',meaning:'중',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
       {ch:'升',meaning:'오를',strokes:4,pilhoek:4,rad:'十',jawonElement:null},
       {ch:'繩',meaning:'법',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목'},
-      {ch:'丞',meaning:'이을',strokes:6,pilhoek:6,rad:'一',jawonElement:null}
+      {ch:'丞',meaning:'이을',strokes:6,pilhoek:6,rad:'一',jawonElement:null},
+      {ch:'陞',meaning:'오를',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토'},
+      {ch:'蠅',meaning:'파리',strokes:19,pilhoek:19,rad:'虫',jawonElement:'수'},
+      {ch:'鬙',meaning:'터럭 더부룩할',strokes:22,pilhoek:22,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '시': [
       {ch:'時',meaning:'때',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
@@ -399,7 +1083,42 @@
       {ch:'施',meaning:'베풀',strokes:9,pilhoek:9,rad:'方',jawonElement:null},
       {ch:'示',meaning:'보일',strokes:5,pilhoek:5,rad:'示',jawonElement:null},
       {ch:'市',meaning:'흥정할',strokes:5,pilhoek:5,rad:'巾',jawonElement:'목'},
-      {ch:'視',meaning:'볼',strokes:12,pilhoek:11,rad:'示',jawonElement:null}
+      {ch:'視',meaning:'볼',strokes:12,pilhoek:11,rad:'示',jawonElement:null},
+      {ch:'試',meaning:'더듬을',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'侍',meaning:'모실',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'矢',meaning:'살',strokes:5,pilhoek:5,rad:'矢',jawonElement:'금'},
+      {ch:'柴',meaning:'섶',strokes:9,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'屍',meaning:'송장',strokes:9,pilhoek:9,rad:'尸',jawonElement:null},
+      {ch:'諡',meaning:'행장',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'匙',meaning:'열쇠',strokes:11,pilhoek:11,rad:'匕',jawonElement:null},
+      {ch:'猜',meaning:'두려워할',strokes:12,pilhoek:11,rad:'犬',jawonElement:null},
+      {ch:'媤',meaning:'시집',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
+      {ch:'尸',meaning:'시동',strokes:3,pilhoek:3,rad:'尸',jawonElement:null},
+      {ch:'恃',meaning:'믿을',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
+      {ch:'蓍',meaning:'뺑대쑥',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'豕',meaning:'돝',strokes:7,pilhoek:7,rad:'豕',jawonElement:'수'},
+      {ch:'翅',meaning:'날개',strokes:10,pilhoek:10,rad:'羽',jawonElement:'화'},
+      {ch:'屎',meaning:'변',strokes:9,pilhoek:9,rad:'尸',jawonElement:null},
+      {ch:'嘶',meaning:'말 울',strokes:15,pilhoek:15,rad:'口',jawonElement:null},
+      {ch:'蒔',meaning:'소회향',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'枾',meaning:'감',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'啻',meaning:'뿐',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'厮',meaning:'부릴',strokes:14,pilhoek:14,rad:'厂',jawonElement:null,unverified:true},
+      {ch:'緦',meaning:'보름새베',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'澌',meaning:'물 잦을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'廝',meaning:'부릴',strokes:15,pilhoek:15,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'柹',meaning:'감',strokes:9,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'偲',meaning:'살피고 힘쓸',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'禔',meaning:'복',strokes:14,pilhoek:13,rad:'示',jawonElement:null},
+      {ch:'諟',meaning:'이',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'兕',meaning:'외뿔난 소',strokes:8,pilhoek:7,rad:'儿',jawonElement:null,unverified:true},
+      {ch:'豉',meaning:'메주',strokes:11,pilhoek:11,rad:'豆',jawonElement:null,unverified:true},
+      {ch:'塒',meaning:'홰',strokes:13,pilhoek:13,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'顋',meaning:'뺨',strokes:18,pilhoek:18,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'枲',meaning:'수삼',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'諰',meaning:'곧은말',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'釃',meaning:'술 거를',strokes:26,pilhoek:26,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'鍉',meaning:'열쇠',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true}
     ],
     '식': [
       {ch:'食',meaning:'밥',strokes:9,pilhoek:9,rad:'食',jawonElement:'수'},
@@ -409,7 +1128,15 @@
       {ch:'飾',meaning:'꾸밀',strokes:14,pilhoek:13,rad:'食',jawonElement:'수'},
       {ch:'湜',meaning:'물 맑을',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
       {ch:'殖',meaning:'심을',strokes:12,pilhoek:12,rad:'歹',jawonElement:'수'},
-      {ch:'軾',meaning:'수레 안에서 절할',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'}
+      {ch:'軾',meaning:'수레 안에서 절할',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'},
+      {ch:'蝕',meaning:'일식',strokes:15,pilhoek:14,rad:'虫',jawonElement:'수'},
+      {ch:'拭',meaning:'닦을',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'熄',meaning:'불 꺼질',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'寔',meaning:'이',strokes:12,pilhoek:12,rad:'宀',jawonElement:null},
+      {ch:'埴',meaning:'흙 이길',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'篒',meaning:'대밥통',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
+      {ch:'栻',meaning:'점판',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'媳',meaning:'며느리',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true}
     ],
     '신': [
       {ch:'申',meaning:'펼',strokes:5,pilhoek:5,rad:'田',jawonElement:null},
@@ -419,7 +1146,31 @@
       {ch:'臣',meaning:'신하',strokes:6,pilhoek:6,rad:'臣',jawonElement:null},
       {ch:'新',meaning:'새',strokes:13,pilhoek:13,rad:'斤',jawonElement:null},
       {ch:'神',meaning:'천신',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
-      {ch:'愼',meaning:'삼갈',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'}
+      {ch:'愼',meaning:'삼갈',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'伸',meaning:'펼',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'晨',meaning:'샛별',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'紳',meaning:'큰 띠',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'訊',meaning:'물을',strokes:10,pilhoek:10,rad:'言',jawonElement:'금'},
+      {ch:'迅',meaning:'빠를',strokes:10,pilhoek:6,rad:'辵',jawonElement:'토'},
+      {ch:'腎',meaning:'콩팥',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'燼',meaning:'깜부기불',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'},
+      {ch:'宸',meaning:'집',strokes:10,pilhoek:10,rad:'宀',jawonElement:null},
+      {ch:'薪',meaning:'섶',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'呻',meaning:'읊조릴',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'蜃',meaning:'큰 조개',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수'},
+      {ch:'娠',meaning:'아이밸',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'藎',meaning:'갈골',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'莘',meaning:'약 이름',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'侁',meaning:'여럿이 행함',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'矧',meaning:'하물며',strokes:9,pilhoek:9,rad:'矢',jawonElement:'금',unverified:true},
+      {ch:'贐',meaning:'노자',strokes:21,pilhoek:21,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'哂',meaning:'빙그레 웃을',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'汛',meaning:'물뿌릴',strokes:7,pilhoek:6,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'脤',meaning:'사직제 지낸 고기',strokes:13,pilhoek:11,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'駪',meaning:'말 우물거릴',strokes:16,pilhoek:16,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'噺',meaning:'이야기',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true},
+      {ch:'囟',meaning:'숨구멍',strokes:6,pilhoek:6,rad:'囗',jawonElement:null,unverified:true},
+      {ch:'姺',meaning:'나라이름',strokes:9,pilhoek:9,rad:'女',jawonElement:'토',unverified:true}
     ],
     '아': [
       {ch:'兒',meaning:'아이',strokes:8,pilhoek:8,rad:'儿',jawonElement:null},
@@ -429,7 +1180,23 @@
       {ch:'娥',meaning:'예쁠',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
       {ch:'餓',meaning:'굶을',strokes:16,pilhoek:15,rad:'食',jawonElement:'수'},
       {ch:'芽',meaning:'싹',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
-      {ch:'牙',meaning:'대장 기',strokes:4,pilhoek:4,rad:'牙',jawonElement:null}
+      {ch:'牙',meaning:'대장 기',strokes:4,pilhoek:4,rad:'牙',jawonElement:null},
+      {ch:'阿',meaning:'언덕',strokes:13,pilhoek:7,rad:'阜',jawonElement:'토'},
+      {ch:'衙',meaning:'마을',strokes:13,pilhoek:13,rad:'行',jawonElement:null},
+      {ch:'俄',meaning:'갑자기',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'訝',meaning:'맞아들일',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'},
+      {ch:'啞',meaning:'벙어리',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
+      {ch:'鴉',meaning:'갈가마귀',strokes:15,pilhoek:15,rad:'鳥',jawonElement:'화'},
+      {ch:'峨',meaning:'산 높을',strokes:10,pilhoek:10,rad:'山',jawonElement:'토'},
+      {ch:'鵝',meaning:'거위',strokes:18,pilhoek:18,rad:'鳥',jawonElement:'화'},
+      {ch:'莪',meaning:'지칭개',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'蛾',meaning:'누에나방',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수'},
+      {ch:'迓',meaning:'마중할',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'哦',meaning:'놀람의 어조사',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'丫',meaning:'가장귀',strokes:3,pilhoek:3,rad:'丨',jawonElement:null},
+      {ch:'娿',meaning:'아리따울',strokes:11,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'笌',meaning:'대싹',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목'},
+      {ch:'錏',meaning:'투구의 목가림',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true}
     ],
     '안': [
       {ch:'安',meaning:'편안할',strokes:6,pilhoek:6,rad:'宀',jawonElement:null},
@@ -438,13 +1205,20 @@
       {ch:'岸',meaning:'물가 언덕',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
       {ch:'按',meaning:'살필',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
       {ch:'晏',meaning:'편안할',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
-      {ch:'鮟',meaning:'천징어',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수'}
+      {ch:'鮟',meaning:'천징어',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수'},
+      {ch:'犴',meaning:'들개',strokes:7,pilhoek:6,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'贋',meaning:'가짜',strokes:19,pilhoek:19,rad:'貝',jawonElement:'금',unverified:true}
     ],
     '언': [
       {ch:'言',meaning:'말씀',strokes:7,pilhoek:7,rad:'言',jawonElement:'금'},
       {ch:'焉',meaning:'어찌',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
       {ch:'彦',meaning:'선비',strokes:9,pilhoek:9,rad:'彡',jawonElement:null},
-      {ch:'偃',meaning:'누울',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'}
+      {ch:'偃',meaning:'누울',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'讞',meaning:'죄 의논할',strokes:27,pilhoek:27,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'嫣',meaning:'생긋생긋 웃을',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'},
+      {ch:'鄢',meaning:'땅이름',strokes:18,pilhoek:13,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'鼴',meaning:'두더쥐',strokes:22,pilhoek:22,rad:'鼠',jawonElement:'수',unverified:true},
+      {ch:'匽',meaning:'숨길',strokes:9,pilhoek:9,rad:'匸',jawonElement:'토',unverified:true}
     ],
     '여': [
       {ch:'呂',meaning:'풍류',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
@@ -454,7 +1228,24 @@
       {ch:'與',meaning:'더불어',strokes:14,pilhoek:13,rad:'臼',jawonElement:'토'},
       {ch:'余',meaning:'자기',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
       {ch:'汝',meaning:'물 이름',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
-      {ch:'旅',meaning:'베풀',strokes:10,pilhoek:10,rad:'方',jawonElement:null}
+      {ch:'旅',meaning:'베풀',strokes:10,pilhoek:10,rad:'方',jawonElement:null},
+      {ch:'予',meaning:'자기',strokes:4,pilhoek:4,rad:'亅',jawonElement:null},
+      {ch:'麗',meaning:'고울',strokes:19,pilhoek:19,rad:'鹿',jawonElement:'토'},
+      {ch:'輿',meaning:'수레바탕',strokes:17,pilhoek:17,rad:'車',jawonElement:'화'},
+      {ch:'勵',meaning:'힘쓸',strokes:17,pilhoek:16,rad:'力',jawonElement:null},
+      {ch:'廬',meaning:'초가',strokes:19,pilhoek:19,rad:'广',jawonElement:'목'},
+      {ch:'礪',meaning:'돌 단단할',strokes:20,pilhoek:19,rad:'石',jawonElement:'금'},
+      {ch:'驪',meaning:'가라말',strokes:29,pilhoek:29,rad:'馬',jawonElement:'화'},
+      {ch:'閭',meaning:'마을',strokes:15,pilhoek:14,rad:'門',jawonElement:null},
+      {ch:'黎',meaning:'무리',strokes:15,pilhoek:15,rad:'黍',jawonElement:'목'},
+      {ch:'濾',meaning:'씻을',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
+      {ch:'歟',meaning:'그런가할 어조사',strokes:18,pilhoek:17,rad:'欠',jawonElement:null},
+      {ch:'轝',meaning:'가마',strokes:21,pilhoek:20,rad:'車',jawonElement:'화'},
+      {ch:'茹',meaning:'띠 뿌리',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'璵',meaning:'보배옥',strokes:19,pilhoek:17,rad:'玉',jawonElement:'금'},
+      {ch:'艅',meaning:'나룻배',strokes:13,pilhoek:13,rad:'舟',jawonElement:'목'},
+      {ch:'礖',meaning:'여돌',strokes:19,pilhoek:18,rad:'石',jawonElement:'금'},
+      {ch:'舁',meaning:'마주들',strokes:10,pilhoek:9,rad:'臼',jawonElement:'토',unverified:true}
     ],
     '연': [
       {ch:'延',meaning:'닿을',strokes:7,pilhoek:6,rad:'廴',jawonElement:null},
@@ -464,7 +1255,52 @@
       {ch:'然',meaning:'그러할',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'},
       {ch:'連',meaning:'이을',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
       {ch:'煙',meaning:'연기',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
-      {ch:'練',meaning:'이길',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'}
+      {ch:'練',meaning:'이길',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'硏',meaning:'연마할',strokes:11,pilhoek:11,rad:'石',jawonElement:'금'},
+      {ch:'鍊',meaning:'불린 쇠',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'宴',meaning:'잔치할',strokes:10,pilhoek:10,rad:'宀',jawonElement:null},
+      {ch:'緣',meaning:'인연',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'演',meaning:'펼칠',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'憐',meaning:'사랑할',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'戀',meaning:'생각할',strokes:23,pilhoek:23,rad:'心',jawonElement:'화'},
+      {ch:'聯',meaning:'잇닿을',strokes:17,pilhoek:17,rad:'耳',jawonElement:'화'},
+      {ch:'蓮',meaning:'연밥',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'燃',meaning:'연등절',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'軟',meaning:'부드러울',strokes:11,pilhoek:11,rad:'車',jawonElement:'화'},
+      {ch:'淵',meaning:'못',strokes:12,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'燕',meaning:'제비',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'沿',meaning:'물 따라 내려갈',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'鉛',meaning:'납',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'衍',meaning:'성할',strokes:9,pilhoek:9,rad:'行',jawonElement:null},
+      {ch:'硯',meaning:'벼루',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'漣',meaning:'물 놀이칠',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'筵',meaning:'대자리',strokes:13,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'輦',meaning:'당길',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'椽',meaning:'서까래',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'鳶',meaning:'솔개',strokes:14,pilhoek:14,rad:'鳥',jawonElement:'화'},
+      {ch:'撚',meaning:'잡을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'煉',meaning:'쇠 불릴',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'烟',meaning:'연기',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
+      {ch:'沇',meaning:'물흐르는모양',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'涎',meaning:'침',strokes:11,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'堧',meaning:'빈 땅',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'嚥',meaning:'침 삼킬',strokes:19,pilhoek:19,rad:'口',jawonElement:null},
+      {ch:'挻',meaning:'당길',strokes:11,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'秊',meaning:'해',strokes:8,pilhoek:8,rad:'禾',jawonElement:'목'},
+      {ch:'縯',meaning:'길',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
+      {ch:'讌',meaning:'잔치',strokes:23,pilhoek:23,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'臙',meaning:'목구멍',strokes:22,pilhoek:20,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'莚',meaning:'만연할',strokes:13,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'掾',meaning:'아전',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'悁',meaning:'분할',strokes:11,pilhoek:10,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'兗',meaning:'고을이름',strokes:9,pilhoek:9,rad:'儿',jawonElement:null},
+      {ch:'埏',meaning:'땅 가장자리',strokes:10,pilhoek:9,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'渷',meaning:'물 이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'鷰',meaning:'제비',strokes:23,pilhoek:23,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'嬿',meaning:'아름다울',strokes:19,pilhoek:19,rad:'女',jawonElement:'토'},
+      {ch:'囦',meaning:'물 깊을',strokes:7,pilhoek:7,rad:'囗',jawonElement:null,unverified:true},
+      {ch:'曣',meaning:'청명할',strokes:20,pilhoek:20,rad:'日',jawonElement:null},
+      {ch:'櫞',meaning:'연나무',strokes:19,pilhoek:19,rad:'木',jawonElement:'목',unverified:true}
     ],
     '열': [
       {ch:'說',meaning:'기꺼울',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
@@ -474,7 +1310,9 @@
       {ch:'烈',meaning:'불 활활 붙을',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
       {ch:'劣',meaning:'못날',strokes:6,pilhoek:6,rad:'力',jawonElement:null},
       {ch:'裂',meaning:'비단 자투리',strokes:12,pilhoek:12,rad:'衣',jawonElement:'목'},
-      {ch:'閱',meaning:'군대 점호할',strokes:15,pilhoek:15,rad:'門',jawonElement:null}
+      {ch:'閱',meaning:'군대 점호할',strokes:15,pilhoek:15,rad:'門',jawonElement:null},
+      {ch:'咽',meaning:'목 멜',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'噎',meaning:'목 멜',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true}
     ],
     '영': [
       {ch:'永',meaning:'길',strokes:5,pilhoek:5,rad:'水',jawonElement:'수'},
@@ -484,7 +1322,48 @@
       {ch:'詠',meaning:'읊을',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
       {ch:'泳',meaning:'헤엄칠',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'瑛',meaning:'옥빛',strokes:14,pilhoek:12,rad:'玉',jawonElement:'금'},
-      {ch:'玲',meaning:'옥소리 쟁그렁거릴',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'}
+      {ch:'玲',meaning:'옥소리 쟁그렁거릴',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'瑩',meaning:'귀막이 옥',strokes:15,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'令',meaning:'하여금',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'領',meaning:'옷깃',strokes:14,pilhoek:14,rad:'頁',jawonElement:'화'},
+      {ch:'迎',meaning:'맞을',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토'},
+      {ch:'寧',meaning:'편안할',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
+      {ch:'靈',meaning:'신령',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'},
+      {ch:'嶺',meaning:'고개',strokes:17,pilhoek:17,rad:'山',jawonElement:'토'},
+      {ch:'影',meaning:'그림자',strokes:15,pilhoek:15,rad:'彡',jawonElement:null},
+      {ch:'映',meaning:'비칠',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'零',meaning:'부서질',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수'},
+      {ch:'盈',meaning:'가득할',strokes:9,pilhoek:9,rad:'皿',jawonElement:null},
+      {ch:'塋',meaning:'산소',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'鈴',meaning:'방울',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'暎',meaning:'비칠',strokes:13,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'穎',meaning:'이삭',strokes:16,pilhoek:16,rad:'禾',jawonElement:'목'},
+      {ch:'纓',meaning:'갓끈',strokes:23,pilhoek:23,rad:'糸',jawonElement:'목'},
+      {ch:'聆',meaning:'들을',strokes:11,pilhoek:11,rad:'耳',jawonElement:'화'},
+      {ch:'怜',meaning:'영리할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'楹',meaning:'기둥',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'瀛',meaning:'큰 바다',strokes:20,pilhoek:19,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'潁',meaning:'물 이름',strokes:15,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'嶸',meaning:'산 높을',strokes:17,pilhoek:17,rad:'山',jawonElement:'토'},
+      {ch:'霙',meaning:'구름 피어오를',strokes:17,pilhoek:16,rad:'雨',jawonElement:'수'},
+      {ch:'獰',meaning:'영악할',strokes:18,pilhoek:17,rad:'犬',jawonElement:null},
+      {ch:'濚',meaning:'물 돌아나갈',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'渶',meaning:'물 맑을',strokes:13,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'瀯',meaning:'물소리',strokes:21,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'羚',meaning:'영양',strokes:11,pilhoek:11,rad:'羊',jawonElement:'토'},
+      {ch:'煐',meaning:'빛날',strokes:13,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'瓔',meaning:'옥돌',strokes:22,pilhoek:21,rad:'玉',jawonElement:'금'},
+      {ch:'鍈',meaning:'방울소리',strokes:17,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'嬰',meaning:'더할',strokes:17,pilhoek:17,rad:'女',jawonElement:'토'},
+      {ch:'咏',meaning:'노래할',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'贏',meaning:'이문 남길',strokes:20,pilhoek:20,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'縈',meaning:'얽힐',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'嬴',meaning:'성씨',strokes:16,pilhoek:16,rad:'女',jawonElement:'토'},
+      {ch:'郢',meaning:'땅이름',strokes:14,pilhoek:9,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'癭',meaning:'목 혹',strokes:22,pilhoek:22,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'韺',meaning:'풍류이름',strokes:18,pilhoek:17,rad:'音',jawonElement:'금',unverified:true},
+      {ch:'碤',meaning:'물 속 돌',strokes:14,pilhoek:13,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'蠑',meaning:'도마뱀',strokes:20,pilhoek:20,rad:'虫',jawonElement:'수'}
     ],
     '예': [
       {ch:'禮',meaning:'예도',strokes:18,pilhoek:17,rad:'示',jawonElement:null},
@@ -494,7 +1373,37 @@
       {ch:'芮',meaning:'풀 뾰족뾰족할',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
       {ch:'例',meaning:'본보기',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
       {ch:'豫',meaning:'기쁠',strokes:16,pilhoek:15,rad:'豕',jawonElement:'수'},
-      {ch:'銳',meaning:'날카로울',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'}
+      {ch:'銳',meaning:'날카로울',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'預',meaning:'미리',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화'},
+      {ch:'泄',meaning:'내칠',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'醴',meaning:'단술',strokes:20,pilhoek:20,rad:'酉',jawonElement:null},
+      {ch:'濊',meaning:'물 넘칠',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'詣',meaning:'이를',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'曳',meaning:'끌',strokes:6,pilhoek:6,rad:'曰',jawonElement:null},
+      {ch:'裔',meaning:'옷 뒷자락',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'穢',meaning:'거칠',strokes:18,pilhoek:18,rad:'禾',jawonElement:'목'},
+      {ch:'洩',meaning:'날개 훨훨칠',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'乂',meaning:'다스릴',strokes:2,pilhoek:2,rad:'丿',jawonElement:null},
+      {ch:'倪',meaning:'도울',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'霓',meaning:'암무지개',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수'},
+      {ch:'猊',meaning:'사자',strokes:12,pilhoek:11,rad:'犬',jawonElement:null},
+      {ch:'汭',meaning:'물 이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'蘂',meaning:'꽃술',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
+      {ch:'叡',meaning:'밝을',strokes:16,pilhoek:16,rad:'又',jawonElement:null},
+      {ch:'隸',meaning:'노비',strokes:17,pilhoek:17,rad:'隶',jawonElement:'수',unverified:true},
+      {ch:'翳',meaning:'어조사',strokes:17,pilhoek:17,rad:'羽',jawonElement:'화',unverified:true},
+      {ch:'繄',meaning:'검푸른 비단',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'蕊',meaning:'꽃술',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'獩',meaning:'민족이름',strokes:17,pilhoek:16,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'枘',meaning:'자루',strokes:8,pilhoek:8,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'拽',meaning:'당길',strokes:10,pilhoek:9,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'蜺',meaning:'말매미',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鷖',meaning:'갈매기',strokes:22,pilhoek:22,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'囈',meaning:'잠꼬대할',strokes:22,pilhoek:21,rad:'口',jawonElement:null,unverified:true},
+      {ch:'麑',meaning:'아기사슴',strokes:19,pilhoek:19,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'嫛',meaning:'유순할',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'掜',meaning:'부칠',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'苅',meaning:'자를',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '오': [
       {ch:'吳',meaning:'큰소리 지를',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
@@ -504,7 +1413,46 @@
       {ch:'吾',meaning:'자기',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
       {ch:'烏',meaning:'검을',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
       {ch:'悟',meaning:'깨우칠',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
-      {ch:'汚',meaning:'웅덩이',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'}
+      {ch:'汚',meaning:'웅덩이',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
+      {ch:'娛',meaning:'즐거울',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'傲',meaning:'즐길',strokes:13,pilhoek:12,rad:'人',jawonElement:'화'},
+      {ch:'奧',meaning:'속',strokes:13,pilhoek:13,rad:'大',jawonElement:null},
+      {ch:'梧',meaning:'머귀나무',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'墺',meaning:'방 구들',strokes:16,pilhoek:15,rad:'土',jawonElement:'토'},
+      {ch:'伍',meaning:'다섯 사람',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'寤',meaning:'잠 깨어날',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
+      {ch:'懊',meaning:'번뇌할',strokes:17,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'澳',meaning:'깊을',strokes:17,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'鰲',meaning:'큰 자라',strokes:22,pilhoek:21,rad:'魚',jawonElement:'수'},
+      {ch:'鼇',meaning:'매우 큰 자라',strokes:24,pilhoek:23,rad:'黽',jawonElement:'토'},
+      {ch:'晤',meaning:'밝을',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'敖',meaning:'거만할',strokes:11,pilhoek:10,rad:'攴',jawonElement:'금'},
+      {ch:'塢',meaning:'산 언덕',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'熬',meaning:'볶을',strokes:15,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'獒',meaning:'사나운 개',strokes:15,pilhoek:14,rad:'犬',jawonElement:null},
+      {ch:'筽',meaning:'버들 고리',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목'},
+      {ch:'俉',meaning:'맞이할',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'旿',meaning:'밝을',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
+      {ch:'忤',meaning:'거스릴',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'媪',meaning:'할미',strokes:12,pilhoek:12,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'遨',meaning:'노닐',strokes:18,pilhoek:13,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'鏖',meaning:'구리동이',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'襖',meaning:'도포',strokes:19,pilhoek:17,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'驁',meaning:'준마',strokes:21,pilhoek:20,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'窹',meaning:'아궁이',strokes:16,pilhoek:16,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'迕',meaning:'만날',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'鼯',meaning:'날다람쥐',strokes:20,pilhoek:20,rad:'鼠',jawonElement:'수',unverified:true},
+      {ch:'聱',meaning:'못 들은채 할',strokes:17,pilhoek:16,rad:'耳',jawonElement:'화',unverified:true},
+      {ch:'唔',meaning:'글 읽는 소리',strokes:10,pilhoek:10,rad:'口',jawonElement:null,unverified:true},
+      {ch:'慠',meaning:'거만할',strokes:15,pilhoek:13,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'謷',meaning:'중얼거릴',strokes:18,pilhoek:17,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'隩',meaning:'감출',strokes:21,pilhoek:14,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'捂',meaning:'부닥칠',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鏊',meaning:'번철',strokes:19,pilhoek:18,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'仵',meaning:'짝',strokes:6,pilhoek:6,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'俣',meaning:'갈래질',strokes:9,pilhoek:9,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'圬',meaning:'흙손',strokes:6,pilhoek:6,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'茣',meaning:'차조기',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '옥': [
       {ch:'玉',meaning:'구슬',strokes:5,pilhoek:5,rad:'玉',jawonElement:'금'},
@@ -518,7 +1466,14 @@
       {ch:'蘊',meaning:'쌓일',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
       {ch:'縕',meaning:'묵은 솜',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
       {ch:'瘟',meaning:'온역',strokes:15,pilhoek:14,rad:'疒',jawonElement:'수'},
-      {ch:'瑥',meaning:'사람이름',strokes:15,pilhoek:13,rad:'玉',jawonElement:'금'}
+      {ch:'瑥',meaning:'사람이름',strokes:15,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'氳',meaning:'기운 성할',strokes:14,pilhoek:14,rad:'气',jawonElement:'수',unverified:true},
+      {ch:'韞',meaning:'감출',strokes:19,pilhoek:18,rad:'韋',jawonElement:'금',unverified:true},
+      {ch:'昷',meaning:'어질',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'薀',meaning:'쌓일',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'轀',meaning:'온량차',strokes:17,pilhoek:17,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'饂',meaning:'밀 국수',strokes:19,pilhoek:17,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'鰮',meaning:'멸치',strokes:21,pilhoek:21,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '완': [
       {ch:'完',meaning:'완전할',strokes:7,pilhoek:7,rad:'宀',jawonElement:null},
@@ -528,7 +1483,23 @@
       {ch:'婉',meaning:'순할',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
       {ch:'阮',meaning:'성씨',strokes:12,pilhoek:6,rad:'阜',jawonElement:'토'},
       {ch:'琓',meaning:'구슬',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
-      {ch:'玩',meaning:'보배',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'}
+      {ch:'玩',meaning:'보배',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'},
+      {ch:'浣',meaning:'옷 빨',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'腕',meaning:'팔뚝',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'翫',meaning:'익숙할',strokes:15,pilhoek:15,rad:'羽',jawonElement:'화'},
+      {ch:'椀',meaning:'주발',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'琬',meaning:'보석',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'碗',meaning:'그릇',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
+      {ch:'梡',meaning:'네 발 도마',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'脘',meaning:'중완',strokes:13,pilhoek:11,rad:'肉',jawonElement:null},
+      {ch:'豌',meaning:'동부',strokes:15,pilhoek:15,rad:'豆',jawonElement:null},
+      {ch:'岏',meaning:'산 뾰족할',strokes:7,pilhoek:7,rad:'山',jawonElement:'토'},
+      {ch:'盌',meaning:'은 바리',strokes:10,pilhoek:10,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'刓',meaning:'깎을',strokes:6,pilhoek:6,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'涴',meaning:'물 굽이쳐 흐를',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'忨',meaning:'탐할',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'垸',meaning:'회 섞어 바를',strokes:10,pilhoek:10,rad:'土',jawonElement:'토'},
+      {ch:'妧',meaning:'좋을',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'}
     ],
     '요': [
       {ch:'要',meaning:'구할',strokes:9,pilhoek:9,rad:'襾',jawonElement:null},
@@ -538,7 +1509,50 @@
       {ch:'謠',meaning:'노래',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
       {ch:'僚',meaning:'벗',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
       {ch:'遙',meaning:'멀',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토'},
-      {ch:'陶',meaning:'화락할',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'}
+      {ch:'陶',meaning:'화락할',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
+      {ch:'搖',meaning:'흔들',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
+      {ch:'腰',meaning:'허리',strokes:15,pilhoek:13,rad:'肉',jawonElement:null},
+      {ch:'遼',meaning:'멀',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'},
+      {ch:'堯',meaning:'높을',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'妖',meaning:'생긋생긋 웃는 모양',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'},
+      {ch:'耀',meaning:'빛날',strokes:20,pilhoek:20,rad:'羽',jawonElement:'화'},
+      {ch:'療',meaning:'병 나을',strokes:17,pilhoek:17,rad:'疒',jawonElement:'수'},
+      {ch:'曜',meaning:'해 비칠',strokes:18,pilhoek:18,rad:'日',jawonElement:null},
+      {ch:'姚',meaning:'어여쁠',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'擾',meaning:'길들일',strokes:19,pilhoek:18,rad:'手',jawonElement:'목'},
+      {ch:'撓',meaning:'긁을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'饒',meaning:'용서할',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'},
+      {ch:'邀',meaning:'맞을',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토'},
+      {ch:'夭',meaning:'어여쁠',strokes:4,pilhoek:4,rad:'大',jawonElement:null},
+      {ch:'寮',meaning:'동관',strokes:15,pilhoek:15,rad:'宀',jawonElement:null},
+      {ch:'僥',meaning:'난장이',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'燎',meaning:'뜰에 세운 횃불',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'窈',meaning:'고요할',strokes:10,pilhoek:10,rad:'穴',jawonElement:'수'},
+      {ch:'凹',meaning:'오목할',strokes:5,pilhoek:5,rad:'凵',jawonElement:null},
+      {ch:'拗',meaning:'고집스러울',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'窯',meaning:'기와가마',strokes:15,pilhoek:15,rad:'穴',jawonElement:'수'},
+      {ch:'寥',meaning:'잠잠할',strokes:14,pilhoek:14,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'繞',meaning:'얽힐',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목'},
+      {ch:'瑤',meaning:'아름다운 옥',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'蓼',meaning:'병 나을',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'嶢',meaning:'높을',strokes:15,pilhoek:15,rad:'山',jawonElement:'토'},
+      {ch:'繇',meaning:'따를',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
+      {ch:'橈',meaning:'노',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'燿',meaning:'비칠',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'},
+      {ch:'蟯',meaning:'촌백충',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수'},
+      {ch:'幺',meaning:'작을',strokes:3,pilhoek:3,rad:'幺',jawonElement:'화',unverified:true},
+      {ch:'徭',meaning:'부릴',strokes:13,pilhoek:13,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'澆',meaning:'걸찰',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'徼',meaning:'돌아다닐',strokes:16,pilhoek:16,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'殀',meaning:'단명할',strokes:8,pilhoek:8,rad:'歹',jawonElement:'수',unverified:true},
+      {ch:'蕘',meaning:'나무할',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'遶',meaning:'둘릴',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'窅',meaning:'까마득할',strokes:10,pilhoek:10,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'鷂',meaning:'장끼',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'穾',meaning:'깊숙할',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'墝',meaning:'메마른 밭',strokes:15,pilhoek:15,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'偠',meaning:'허리 가늘',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嬈',meaning:'예쁜체 할',strokes:15,pilhoek:15,rad:'女',jawonElement:'토',unverified:true}
     ],
     '용': [
       {ch:'龍',meaning:'용',strokes:16,pilhoek:16,rad:'龍',jawonElement:'토'},
@@ -548,7 +1562,29 @@
       {ch:'勇',meaning:'날랠',strokes:9,pilhoek:9,rad:'力',jawonElement:null},
       {ch:'庸',meaning:'쓸',strokes:11,pilhoek:11,rad:'广',jawonElement:'목'},
       {ch:'踊',meaning:'뛸',strokes:14,pilhoek:14,rad:'足',jawonElement:'토'},
-      {ch:'鏞',meaning:'큰 쇠북',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'}
+      {ch:'鏞',meaning:'큰 쇠북',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'茸',meaning:'풀 뾰죽뾰죽 날',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'鎔',meaning:'불릴',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
+      {ch:'傭',meaning:'지을',strokes:13,pilhoek:13,rad:'人',jawonElement:'화'},
+      {ch:'溶',meaning:'물 질펀히 흐를',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'熔',meaning:'거푸집',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'聳',meaning:'솟을',strokes:17,pilhoek:17,rad:'耳',jawonElement:'화'},
+      {ch:'湧',meaning:'물솟을',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'蓉',meaning:'연꽃',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'涌',meaning:'물 넘칠',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'冗',meaning:'한산할',strokes:4,pilhoek:4,rad:'冖',jawonElement:null},
+      {ch:'墉',meaning:'작은 성',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'甬',meaning:'물 솟아 오를',strokes:7,pilhoek:7,rad:'用',jawonElement:'수'},
+      {ch:'慂',meaning:'권할',strokes:14,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'榕',meaning:'용나무',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'埇',meaning:'골목길',strokes:10,pilhoek:10,rad:'土',jawonElement:'토'},
+      {ch:'舂',meaning:'방아 찧을',strokes:11,pilhoek:11,rad:'臼',jawonElement:'토',unverified:true},
+      {ch:'宂',meaning:'번잡할',strokes:5,pilhoek:5,rad:'宀',jawonElement:null},
+      {ch:'踴',meaning:'뛸',strokes:16,pilhoek:16,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'憃',meaning:'천치',strokes:15,pilhoek:15,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'嵱',meaning:'봉우리 쭝굿쭝굿할',strokes:13,pilhoek:13,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'蛹',meaning:'번데기',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'傛',meaning:'혁혁할',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'}
     ],
     '우': [
       {ch:'雨',meaning:'비',strokes:8,pilhoek:8,rad:'雨',jawonElement:'수'},
@@ -558,7 +1594,42 @@
       {ch:'祐',meaning:'도울',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
       {ch:'禹',meaning:'하우씨',strokes:9,pilhoek:9,rad:'禸',jawonElement:null},
       {ch:'瑀',meaning:'옥돌',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
-      {ch:'右',meaning:'오른쪽',strokes:5,pilhoek:5,rad:'口',jawonElement:null}
+      {ch:'右',meaning:'오른쪽',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
+      {ch:'牛',meaning:'소',strokes:4,pilhoek:4,rad:'牛',jawonElement:'토'},
+      {ch:'友',meaning:'벗',strokes:4,pilhoek:4,rad:'又',jawonElement:null},
+      {ch:'又',meaning:'용서할',strokes:2,pilhoek:2,rad:'又',jawonElement:null},
+      {ch:'于',meaning:'여기',strokes:3,pilhoek:3,rad:'二',jawonElement:null},
+      {ch:'尤',meaning:'가장',strokes:4,pilhoek:4,rad:'尢',jawonElement:null},
+      {ch:'憂',meaning:'상제될',strokes:15,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'遇',meaning:'만날',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'羽',meaning:'깃',strokes:6,pilhoek:6,rad:'羽',jawonElement:'화'},
+      {ch:'郵',meaning:'역말',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토'},
+      {ch:'偶',meaning:'짝지울',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'迂',meaning:'피할',strokes:10,pilhoek:6,rad:'辵',jawonElement:'토'},
+      {ch:'虞',meaning:'염려할',strokes:13,pilhoek:13,rad:'虍',jawonElement:null},
+      {ch:'寓',meaning:'살',strokes:12,pilhoek:12,rad:'宀',jawonElement:null},
+      {ch:'隅',meaning:'모퉁이',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
+      {ch:'禑',meaning:'복',strokes:14,pilhoek:13,rad:'示',jawonElement:null},
+      {ch:'雩',meaning:'기우제',strokes:11,pilhoek:11,rad:'雨',jawonElement:'수'},
+      {ch:'紆',meaning:'얽힐',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'},
+      {ch:'盂',meaning:'바리',strokes:8,pilhoek:8,rad:'皿',jawonElement:null},
+      {ch:'旴',meaning:'해 돋을',strokes:7,pilhoek:7,rad:'日',jawonElement:null},
+      {ch:'芋',meaning:'토란',strokes:9,pilhoek:6,rad:'艸',jawonElement:'목'},
+      {ch:'藕',meaning:'연뿌리',strokes:21,pilhoek:18,rad:'艸',jawonElement:'목'},
+      {ch:'玗',meaning:'옥돌',strokes:8,pilhoek:7,rad:'玉',jawonElement:'금'},
+      {ch:'嵎',meaning:'산모퉁이',strokes:12,pilhoek:12,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'釪',meaning:'요령',strokes:11,pilhoek:11,rad:'金',jawonElement:'금'},
+      {ch:'耦',meaning:'쟁기',strokes:15,pilhoek:15,rad:'耒',jawonElement:null,unverified:true},
+      {ch:'踽',meaning:'타달거릴',strokes:16,pilhoek:16,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'喁',meaning:'서로 부를',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'竽',meaning:'큰 생황',strokes:9,pilhoek:9,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'耰',meaning:'고무래',strokes:21,pilhoek:21,rad:'耒',jawonElement:null,unverified:true},
+      {ch:'麀',meaning:'암사슴',strokes:13,pilhoek:13,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'麌',meaning:'숫사슴',strokes:18,pilhoek:18,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'鍝',meaning:'귀고리',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'吽',meaning:'개 짖는 소리',strokes:7,pilhoek:7,rad:'口',jawonElement:null,unverified:true},
+      {ch:'謣',meaning:'망령되게 말할',strokes:18,pilhoek:18,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'齲',meaning:'충치',strokes:24,pilhoek:24,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '운': [
       {ch:'雲',meaning:'구름',strokes:12,pilhoek:12,rad:'雨',jawonElement:'수'},
@@ -568,7 +1639,15 @@
       {ch:'芸',meaning:'향풀',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
       {ch:'暈',meaning:'무리',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
       {ch:'隕',meaning:'곤란할',strokes:18,pilhoek:12,rad:'阜',jawonElement:'토'},
-      {ch:'耘',meaning:'길 맬',strokes:10,pilhoek:10,rad:'耒',jawonElement:null}
+      {ch:'耘',meaning:'길 맬',strokes:10,pilhoek:10,rad:'耒',jawonElement:null},
+      {ch:'蕓',meaning:'평지',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'澐',meaning:'큰 물결',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'橒',meaning:'나무 무늬',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'熉',meaning:'누른 빛',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'紜',meaning:'얼크러질',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'惲',meaning:'의논할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'沄',meaning:'물 콸콸 흐를',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'篔',meaning:'왕대나무',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목'}
     ],
     '원': [
       {ch:'元',meaning:'으뜸',strokes:4,pilhoek:4,rad:'儿',jawonElement:null},
@@ -578,7 +1657,35 @@
       {ch:'媛',meaning:'아리따운 여자',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
       {ch:'遠',meaning:'멀',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토'},
       {ch:'園',meaning:'동산',strokes:13,pilhoek:13,rad:'囗',jawonElement:null},
-      {ch:'願',meaning:'하고자할',strokes:19,pilhoek:19,rad:'頁',jawonElement:'화'}
+      {ch:'願',meaning:'하고자할',strokes:19,pilhoek:19,rad:'頁',jawonElement:'화'},
+      {ch:'圓',meaning:'둥글',strokes:13,pilhoek:13,rad:'囗',jawonElement:null},
+      {ch:'怨',meaning:'분낼',strokes:9,pilhoek:9,rad:'心',jawonElement:'화'},
+      {ch:'院',meaning:'원집',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토'},
+      {ch:'員',meaning:'관원',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'援',meaning:'당길',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'瑗',meaning:'도리옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'袁',meaning:'옷 치렁거릴',strokes:10,pilhoek:10,rad:'衣',jawonElement:'목'},
+      {ch:'寃',meaning:'원통할',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
+      {ch:'猿',meaning:'잔나비',strokes:14,pilhoek:13,rad:'犬',jawonElement:null},
+      {ch:'鴛',meaning:'숫원앙새',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화'},
+      {ch:'阮',meaning:'원나라',strokes:12,pilhoek:6,rad:'阜',jawonElement:'토'},
+      {ch:'轅',meaning:'진문',strokes:17,pilhoek:17,rad:'車',jawonElement:'화'},
+      {ch:'垣',meaning:'낮은 담',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
+      {ch:'爰',meaning:'당길',strokes:9,pilhoek:9,rad:'爪',jawonElement:null},
+      {ch:'愿',meaning:'정성',strokes:14,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'湲',meaning:'물소리',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'沅',meaning:'물 이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'嫄',meaning:'여자이름',strokes:13,pilhoek:13,rad:'女',jawonElement:'토'},
+      {ch:'洹',meaning:'흐를',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'冤',meaning:'원통할',strokes:10,pilhoek:10,rad:'冖',jawonElement:null},
+      {ch:'鵷',meaning:'원추새',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'蜿',meaning:'굼틀거릴',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'黿',meaning:'큰 자라',strokes:17,pilhoek:17,rad:'黽',jawonElement:'토',unverified:true},
+      {ch:'謜',meaning:'천천히 말할',strokes:17,pilhoek:17,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'杬',meaning:'몸 주무를',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'楥',meaning:'떡갈나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'芫',meaning:'고기 잡는 풀',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鋺',meaning:'저울 바탕',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'}
     ],
     '웅': [
       {ch:'雄',meaning:'수컷',strokes:12,pilhoek:12,rad:'隹',jawonElement:'화'},
@@ -592,24 +1699,104 @@
       {ch:'裕',meaning:'넉넉할',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목'},
       {ch:'兪',meaning:'그럴',strokes:9,pilhoek:9,rad:'入',jawonElement:null},
       {ch:'流',meaning:'흐를',strokes:10,pilhoek:10,rad:'水',jawonElement:'수'},
-      {ch:'由',meaning:'말미암을',strokes:5,pilhoek:5,rad:'田',jawonElement:null}
+      {ch:'由',meaning:'말미암을',strokes:5,pilhoek:5,rad:'田',jawonElement:null},
+      {ch:'油',meaning:'기름',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'留',meaning:'머무를',strokes:10,pilhoek:10,rad:'田',jawonElement:null},
+      {ch:'猶',meaning:'같을',strokes:13,pilhoek:12,rad:'犬',jawonElement:null},
+      {ch:'遺',meaning:'남을',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'},
+      {ch:'遊',meaning:'놀',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'酉',meaning:'별',strokes:7,pilhoek:7,rad:'酉',jawonElement:null},
+      {ch:'幼',meaning:'사랑할',strokes:5,pilhoek:5,rad:'幺',jawonElement:'화'},
+      {ch:'惟',meaning:'꾀할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'類',meaning:'같을',strokes:19,pilhoek:19,rad:'頁',jawonElement:'화'},
+      {ch:'悠',meaning:'멀',strokes:11,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'誘',meaning:'꾀일',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'乳',meaning:'젖',strokes:8,pilhoek:8,rad:'乙',jawonElement:null},
+      {ch:'儒',meaning:'선비',strokes:16,pilhoek:16,rad:'人',jawonElement:'화'},
+      {ch:'維',meaning:'벼리',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'愈',meaning:'나을',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'幽',meaning:'그윽할',strokes:9,pilhoek:9,rad:'幺',jawonElement:'화'},
+      {ch:'劉',meaning:'이길',strokes:15,pilhoek:15,rad:'刀',jawonElement:'금'},
+      {ch:'踰',meaning:'넘을',strokes:16,pilhoek:16,rad:'足',jawonElement:'토'},
+      {ch:'庾',meaning:'노적',strokes:12,pilhoek:11,rad:'广',jawonElement:'목'},
+      {ch:'楡',meaning:'느름나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'紐',meaning:'단추',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
+      {ch:'癒',meaning:'병 나을',strokes:18,pilhoek:18,rad:'疒',jawonElement:'수'},
+      {ch:'諭',meaning:'고할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'游',meaning:'헤엄칠',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'宥',meaning:'너그러울',strokes:9,pilhoek:9,rad:'宀',jawonElement:null},
+      {ch:'喩',meaning:'깨우쳐 줄',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'溜',meaning:'처마물',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'鍮',meaning:'놋쇠',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'琉',meaning:'유리돌',strokes:11,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'愉',meaning:'기뻐할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'柚',meaning:'유자',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'蹂',meaning:'밟을',strokes:16,pilhoek:16,rad:'足',jawonElement:'토'},
+      {ch:'揄',meaning:'당길',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'攸',meaning:'곳',strokes:7,pilhoek:7,rad:'攴',jawonElement:'금'},
+      {ch:'猷',meaning:'꾀',strokes:13,pilhoek:13,rad:'犬',jawonElement:null},
+      {ch:'逾',meaning:'지날',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'濡',meaning:'적실',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'孺',meaning:'젖먹이',strokes:17,pilhoek:17,rad:'子',jawonElement:'수'},
+      {ch:'臾',meaning:'잠간',strokes:9,pilhoek:8,rad:'臼',jawonElement:'토'},
+      {ch:'瑜',meaning:'아름다운 옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'侑',meaning:'도울',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'硫',meaning:'석류황',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'杻',meaning:'싸리',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'萸',meaning:'수유',strokes:15,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'洧',meaning:'물이름',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'楢',meaning:'부드러운 나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'釉',meaning:'물건 빛날',strokes:12,pilhoek:12,rad:'釆',jawonElement:null},
+      {ch:'籲',meaning:'부르짖을',strokes:32,pilhoek:32,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'帷',meaning:'휘장',strokes:11,pilhoek:11,rad:'巾',jawonElement:'목'},
+      {ch:'牖',meaning:'엇살창',strokes:15,pilhoek:15,rad:'片',jawonElement:'목'},
+      {ch:'壝',meaning:'토담',strokes:19,pilhoek:18,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'囿',meaning:'엔담',strokes:9,pilhoek:9,rad:'囗',jawonElement:null},
+      {ch:'腴',meaning:'아랫배 살찔',strokes:15,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'逌',meaning:'빙그레할',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'莠',meaning:'추할',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'糅',meaning:'섞일',strokes:15,pilhoek:15,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'揉',meaning:'풀',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'蕕',meaning:'냄새나는 풀',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蕤',meaning:'더북할',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'窬',meaning:'판장문',strokes:14,pilhoek:14,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'黝',meaning:'검푸를',strokes:17,pilhoek:17,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'窳',meaning:'이지러질',strokes:15,pilhoek:15,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'呦',meaning:'사슴 우는 소리',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'褕',meaning:'쾌자',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'泑',meaning:'물빛이 검을',strokes:9,pilhoek:8,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'冘',meaning:'머뭇거릴',strokes:4,pilhoek:4,rad:'冖',jawonElement:null,unverified:true},
+      {ch:'蚴',meaning:'굼틀거릴',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'蝤',meaning:'하루살이',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鼬',meaning:'청서',strokes:18,pilhoek:18,rad:'鼠',jawonElement:'수',unverified:true},
+      {ch:'斿',meaning:'깃발',strokes:9,pilhoek:9,rad:'方',jawonElement:null,unverified:true},
+      {ch:'蚰',meaning:'노래기',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鞣',meaning:'다룬 가죽',strokes:18,pilhoek:18,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'龥',meaning:'부르짖을',strokes:26,pilhoek:26,rad:'龠',jawonElement:'화',unverified:true}
     ],
     '윤': [
-      {ch:'尹',meaning:'다스릴',strokes:4,pilhoek:4,rad:'丿',jawonElement:null},
+      {ch:'尹',meaning:'다스릴',strokes:4,pilhoek:4,rad:'丿',jawonElement:null,unverified:true},
       {ch:'允',meaning:'미쁠',strokes:4,pilhoek:4,rad:'儿',jawonElement:null},
       {ch:'潤',meaning:'불을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
       {ch:'胤',meaning:'맏아들',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
       {ch:'鈗',meaning:'창',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'},
       {ch:'玧',meaning:'귀막이 구슬',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'},
       {ch:'倫',meaning:'인륜',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
-      {ch:'輪',meaning:'바퀴',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'}
+      {ch:'輪',meaning:'바퀴',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'崙',meaning:'나라이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
+      {ch:'淪',meaning:'물놀이칠',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'贇',meaning:'예블',strokes:19,pilhoek:19,rad:'貝',jawonElement:'금'},
+      {ch:'勻',meaning:'가지런할',strokes:4,pilhoek:4,rad:'勹',jawonElement:null},
+      {ch:'奫',meaning:'물 깊을',strokes:14,pilhoek:15,rad:'大',jawonElement:null}
     ],
     '율': [
       {ch:'律',meaning:'법',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화'},
       {ch:'栗',meaning:'밤',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
       {ch:'率',meaning:'헤아릴',strokes:11,pilhoek:11,rad:'玄',jawonElement:'수'},
       {ch:'慄',meaning:'쭈그릴',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
-      {ch:'聿',meaning:'마침내',strokes:6,pilhoek:6,rad:'聿',jawonElement:null}
+      {ch:'聿',meaning:'마침내',strokes:6,pilhoek:6,rad:'聿',jawonElement:null},
+      {ch:'潏',meaning:'물 흐를',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'矞',meaning:'상서구름',strokes:12,pilhoek:12,rad:'矛',jawonElement:'금'}
     ],
     '은': [
       {ch:'銀',meaning:'은',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'},
@@ -619,7 +1806,19 @@
       {ch:'垠',meaning:'언덕',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
       {ch:'隱',meaning:'아낄',strokes:22,pilhoek:16,rad:'阜',jawonElement:'토'},
       {ch:'圻',meaning:'언덕',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
-      {ch:'慇',meaning:'공손할',strokes:14,pilhoek:14,rad:'心',jawonElement:'화'}
+      {ch:'慇',meaning:'공손할',strokes:14,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'訔',meaning:'시비할',strokes:10,pilhoek:10,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'听',meaning:'벙긋거릴',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'憖',meaning:'물을',strokes:16,pilhoek:16,rad:'心',jawonElement:'화'},
+      {ch:'嚚',meaning:'말다툼할',strokes:18,pilhoek:18,rad:'口',jawonElement:null,unverified:true},
+      {ch:'狺',meaning:'뭇 개 짖는 소리',strokes:11,pilhoek:10,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'溵',meaning:'물소리',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'檼',meaning:'집 마룻대',strokes:18,pilhoek:18,rad:'木',jawonElement:'목'},
+      {ch:'垽',meaning:'해감',strokes:10,pilhoek:10,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'鄞',meaning:'땅이름',strokes:18,pilhoek:13,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'圁',meaning:'물이름',strokes:10,pilhoek:10,rad:'囗',jawonElement:null},
+      {ch:'珢',meaning:'옥돌',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'齗',meaning:'잇몸',strokes:19,pilhoek:19,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '의': [
       {ch:'衣',meaning:'옷',strokes:6,pilhoek:6,rad:'衣',jawonElement:'목'},
@@ -629,7 +1828,28 @@
       {ch:'醫',meaning:'의원',strokes:18,pilhoek:18,rad:'酉',jawonElement:null},
       {ch:'矣',meaning:'어조사',strokes:7,pilhoek:7,rad:'矢',jawonElement:'금'},
       {ch:'議',meaning:'말할',strokes:20,pilhoek:20,rad:'言',jawonElement:'금'},
-      {ch:'宜',meaning:'옳을',strokes:8,pilhoek:8,rad:'宀',jawonElement:null}
+      {ch:'宜',meaning:'옳을',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
+      {ch:'儀',meaning:'꼴',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'},
+      {ch:'疑',meaning:'두려워할',strokes:14,pilhoek:14,rad:'疋',jawonElement:null},
+      {ch:'誼',meaning:'옳을',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'擬',meaning:'의논할',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'毅',meaning:'굳셀',strokes:15,pilhoek:15,rad:'殳',jawonElement:'금'},
+      {ch:'椅',meaning:'가래나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'縊',meaning:'목 맬',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'倚',meaning:'기댈',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'懿',meaning:'아름다울',strokes:22,pilhoek:22,rad:'心',jawonElement:'화'},
+      {ch:'蟻',meaning:'왕개미',strokes:19,pilhoek:19,rad:'虫',jawonElement:'수'},
+      {ch:'薏',meaning:'연밥',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'艤',meaning:'배 닿을',strokes:19,pilhoek:19,rad:'舟',jawonElement:'목'},
+      {ch:'錡',meaning:'세발 가마',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'猗',meaning:'불 깐 개',strokes:12,pilhoek:11,rad:'犬',jawonElement:null},
+      {ch:'嶷',meaning:'산이름',strokes:17,pilhoek:17,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'欹',meaning:'아름답다할',strokes:12,pilhoek:12,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'漪',meaning:'물놀이칠',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'儗',meaning:'서로 못믿을',strokes:16,pilhoek:16,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'劓',meaning:'코 베일',strokes:16,pilhoek:16,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'饐',meaning:'밥 쉴',strokes:21,pilhoek:20,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'礒',meaning:'바위',strokes:18,pilhoek:18,rad:'石',jawonElement:'금',unverified:true}
     ],
     '이': [
       {ch:'李',meaning:'오얏',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
@@ -639,7 +1859,45 @@
       {ch:'利',meaning:'날카로울',strokes:7,pilhoek:7,rad:'刀',jawonElement:'금'},
       {ch:'理',meaning:'다스릴',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
       {ch:'異',meaning:'다를',strokes:12,pilhoek:11,rad:'田',jawonElement:null},
-      {ch:'以',meaning:'쓸',strokes:5,pilhoek:4,rad:'人',jawonElement:'화'}
+      {ch:'以',meaning:'쓸',strokes:5,pilhoek:4,rad:'人',jawonElement:'화'},
+      {ch:'而',meaning:'너',strokes:6,pilhoek:6,rad:'而',jawonElement:'수'},
+      {ch:'已',meaning:'이미',strokes:3,pilhoek:3,rad:'己',jawonElement:null},
+      {ch:'移',meaning:'옮길',strokes:11,pilhoek:11,rad:'禾',jawonElement:'목'},
+      {ch:'易',meaning:'쉬울',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
+      {ch:'吏',meaning:'아전',strokes:6,pilhoek:6,rad:'口',jawonElement:null},
+      {ch:'離',meaning:'떠날',strokes:19,pilhoek:18,rad:'隹',jawonElement:'화'},
+      {ch:'履',meaning:'가죽신',strokes:15,pilhoek:15,rad:'尸',jawonElement:null},
+      {ch:'裏',meaning:'옷 안',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'伊',meaning:'저',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'夷',meaning:'평평할',strokes:6,pilhoek:6,rad:'大',jawonElement:null},
+      {ch:'泥',meaning:'물이 더러워질',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'珥',meaning:'귀막이 옥',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'弛',meaning:'늦출',strokes:6,pilhoek:6,rad:'弓',jawonElement:null},
+      {ch:'貳',meaning:'버금',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
+      {ch:'怡',meaning:'기쁠',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'罹',meaning:'만날',strokes:17,pilhoek:16,rad:'网',jawonElement:null},
+      {ch:'餌',meaning:'미끼',strokes:15,pilhoek:14,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'裡',meaning:'옷속',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목'},
+      {ch:'痍',meaning:'상할',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수'},
+      {ch:'爾',meaning:'너',strokes:14,pilhoek:14,rad:'爻',jawonElement:null},
+      {ch:'痢',meaning:'이질',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수'},
+      {ch:'姨',meaning:'이모',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'貽',meaning:'끼칠',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
+      {ch:'邇',meaning:'가까울',strokes:21,pilhoek:17,rad:'辵',jawonElement:'토'},
+      {ch:'彛',meaning:'떳떳할',strokes:16,pilhoek:16,rad:'彐',jawonElement:null},
+      {ch:'肄',meaning:'익힐',strokes:13,pilhoek:13,rad:'聿',jawonElement:null},
+      {ch:'苡',meaning:'율무',strokes:11,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'飴',meaning:'엿',strokes:14,pilhoek:13,rad:'食',jawonElement:'수'},
+      {ch:'荑',meaning:'흰 비름',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'彝',meaning:'떳떳할',strokes:18,pilhoek:18,rad:'彐',jawonElement:null},
+      {ch:'迤',meaning:'든든할',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'訑',meaning:'자랑할',strokes:10,pilhoek:10,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'詑',meaning:'자랑할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'洟',meaning:'콧물',strokes:10,pilhoek:9,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'咿',meaning:'선웃음칠',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'栮',meaning:'버섯',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'隶',meaning:'밑',strokes:8,pilhoek:8,rad:'隶',jawonElement:'수',unverified:true},
+      {ch:'鮧',meaning:'창자젓',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '익': [
       {ch:'益',meaning:'더할',strokes:10,pilhoek:10,rad:'皿',jawonElement:null},
@@ -648,7 +1906,10 @@
       {ch:'溺',meaning:'약할',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'匿',meaning:'숨길',strokes:11,pilhoek:10,rad:'匸',jawonElement:'토'},
       {ch:'謚',meaning:'웃을',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
-      {ch:'瀷',meaning:'강이름',strokes:21,pilhoek:20,rad:'水',jawonElement:'수'}
+      {ch:'瀷',meaning:'강이름',strokes:21,pilhoek:20,rad:'水',jawonElement:'수'},
+      {ch:'弋',meaning:'주살',strokes:3,pilhoek:3,rad:'弋',jawonElement:null,unverified:true},
+      {ch:'鷁',meaning:'익새',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'熤',meaning:'빛날',strokes:15,pilhoek:15,rad:'火',jawonElement:'화'}
     ],
     '인': [
       {ch:'印',meaning:'도장',strokes:6,pilhoek:5,rad:'卩',jawonElement:null},
@@ -658,7 +1919,31 @@
       {ch:'引',meaning:'끌',strokes:4,pilhoek:4,rad:'弓',jawonElement:null},
       {ch:'寅',meaning:'세째지지',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
       {ch:'忍',meaning:'참을',strokes:7,pilhoek:7,rad:'心',jawonElement:'화'},
-      {ch:'隣',meaning:'이웃',strokes:20,pilhoek:14,rad:'阜',jawonElement:'토'}
+      {ch:'鄰',meaning:'이웃',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토'},
+      {ch:'隣',meaning:'이웃',strokes:20,pilhoek:14,rad:'阜',jawonElement:'토'},
+      {ch:'姻',meaning:'혼인',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'咽',meaning:'목구멍',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'麟',meaning:'기린',strokes:23,pilhoek:23,rad:'鹿',jawonElement:'토'},
+      {ch:'刃',meaning:'칼날',strokes:3,pilhoek:3,rad:'刀',jawonElement:'금'},
+      {ch:'湮',meaning:'없어질',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'鱗',meaning:'비늘',strokes:23,pilhoek:23,rad:'魚',jawonElement:'수'},
+      {ch:'吝',meaning:'아낄',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'燐',meaning:'반딧불',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'靭',meaning:'질긴 고기',strokes:12,pilhoek:12,rad:'革',jawonElement:'금'},
+      {ch:'璘',meaning:'옥빛',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'茵',meaning:'자리',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'絪',meaning:'기운',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'靷',meaning:'가슴걸이',strokes:13,pilhoek:13,rad:'革',jawonElement:'금'},
+      {ch:'藺',meaning:'골풀',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
+      {ch:'堙',meaning:'막을',strokes:12,pilhoek:12,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'仞',meaning:'길',strokes:5,pilhoek:5,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'禋',meaning:'제사지낼',strokes:14,pilhoek:13,rad:'示',jawonElement:null,unverified:true},
+      {ch:'夤',meaning:'조심할',strokes:14,pilhoek:14,rad:'夕',jawonElement:null,unverified:true},
+      {ch:'氤',meaning:'기운성할',strokes:10,pilhoek:10,rad:'气',jawonElement:'수'},
+      {ch:'裀',meaning:'요',strokes:12,pilhoek:11,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'扨',meaning:'그러하나',strokes:7,pilhoek:6,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'籾',meaning:'벼',strokes:9,pilhoek:9,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'芢',meaning:'씨',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'}
     ],
     '일': [
       {ch:'一',meaning:'한',strokes:1,pilhoek:1,rad:'一',jawonElement:null},
@@ -668,7 +1953,9 @@
       {ch:'佾',meaning:'춤',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
       {ch:'溢',meaning:'넘칠',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'佚',meaning:'편안할',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
-      {ch:'馹',meaning:'역말',strokes:14,pilhoek:14,rad:'馬',jawonElement:'화'}
+      {ch:'馹',meaning:'역말',strokes:14,pilhoek:14,rad:'馬',jawonElement:'화'},
+      {ch:'軼',meaning:'앞지를',strokes:12,pilhoek:12,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'泆',meaning:'끊을',strokes:9,pilhoek:8,rad:'水',jawonElement:'수',unverified:true}
     ],
     '자': [
       {ch:'子',meaning:'아들',strokes:3,pilhoek:3,rad:'子',jawonElement:'수'},
@@ -678,7 +1965,44 @@
       {ch:'資',meaning:'재물',strokes:13,pilhoek:13,rad:'貝',jawonElement:'금'},
       {ch:'姿',meaning:'맵시',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
       {ch:'玆',meaning:'이',strokes:10,pilhoek:10,rad:'玄',jawonElement:'수'},
-      {ch:'紫',meaning:'자주빛',strokes:11,pilhoek:12,rad:'糸',jawonElement:'목'}
+      {ch:'紫',meaning:'자주빛',strokes:11,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'滋',meaning:'불을',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'疵',meaning:'흠',strokes:10,pilhoek:11,rad:'疒',jawonElement:'수'},
+      {ch:'雌',meaning:'암컷',strokes:13,pilhoek:14,rad:'隹',jawonElement:'화'},
+      {ch:'磁',meaning:'자석',strokes:15,pilhoek:14,rad:'石',jawonElement:'금'},
+      {ch:'炙',meaning:'고기구을',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'諮',meaning:'물을',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'藉',meaning:'깔개',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'煮',meaning:'삶을',strokes:13,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'仔',meaning:'자세할',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'蔗',meaning:'사탕수수',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'瓷',meaning:'오지그릇',strokes:11,pilhoek:10,rad:'瓦',jawonElement:null},
+      {ch:'咨',meaning:'물을',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'孜',meaning:'힘쓸',strokes:7,pilhoek:7,rad:'子',jawonElement:'수'},
+      {ch:'茨',meaning:'가시나무',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'茲',meaning:'무성할',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'貲',meaning:'재물',strokes:12,pilhoek:13,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'孶',meaning:'부지런할',strokes:14,pilhoek:13,rad:'子',jawonElement:'수',unverified:true},
+      {ch:'赭',meaning:'붉은흙',strokes:16,pilhoek:15,rad:'赤',jawonElement:'화',unverified:true},
+      {ch:'粢',meaning:'피',strokes:12,pilhoek:12,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'髭',meaning:'코밑수염',strokes:15,pilhoek:16,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'觜',meaning:'털뿔',strokes:13,pilhoek:13,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'泚',meaning:'맑을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'柘',meaning:'산뽕나무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'耔',meaning:'복돋을',strokes:9,pilhoek:9,rad:'耒',jawonElement:null,unverified:true},
+      {ch:'鷓',meaning:'자고',strokes:22,pilhoek:22,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'眥',meaning:'흘길',strokes:10,pilhoek:11,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'鶿',meaning:'가마우지',strokes:21,pilhoek:20,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'牸',meaning:'암컷',strokes:10,pilhoek:10,rad:'牛',jawonElement:'토',unverified:true},
+      {ch:'胾',meaning:'고깃점',strokes:12,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'呰',meaning:'주차할',strokes:8,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'鎡',meaning:'호미',strokes:18,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'莿',meaning:'풀가시',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鮓',meaning:'젓',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'嬨',meaning:'계집성품너그러고순할',strokes:17,pilhoek:16,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'孖',meaning:'쌍둥이',strokes:6,pilhoek:6,rad:'子',jawonElement:'수',unverified:true},
+      {ch:'茈',meaning:'지치',strokes:11,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'頿',meaning:'코밑수염',strokes:17,pilhoek:18,rad:'頁',jawonElement:'화',unverified:true}
     ],
     '장': [
       {ch:'張',meaning:'베풀',strokes:11,pilhoek:11,rad:'弓',jawonElement:null},
@@ -688,7 +2012,51 @@
       {ch:'將',meaning:'장차',strokes:11,pilhoek:11,rad:'寸',jawonElement:null},
       {ch:'章',meaning:'문채',strokes:11,pilhoek:11,rad:'音',jawonElement:'금'},
       {ch:'壯',meaning:'씩씩할',strokes:7,pilhoek:7,rad:'士',jawonElement:null},
-      {ch:'狀',meaning:'모양 형상',strokes:8,pilhoek:8,rad:'犬',jawonElement:null}
+      {ch:'狀',meaning:'모양 형상',strokes:8,pilhoek:8,rad:'犬',jawonElement:null},
+      {ch:'掌',meaning:'손바닥',strokes:12,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'丈',meaning:'어른',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
+      {ch:'腸',meaning:'창자',strokes:15,pilhoek:13,rad:'肉',jawonElement:null},
+      {ch:'帳',meaning:'휘장 장막',strokes:11,pilhoek:11,rad:'巾',jawonElement:'목'},
+      {ch:'障',meaning:'막을',strokes:19,pilhoek:13,rad:'阜',jawonElement:'토'},
+      {ch:'葬',meaning:'장사 지낼',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'藏',meaning:'감출',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'莊',meaning:'엄할',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'墻',meaning:'담',strokes:16,pilhoek:16,rad:'土',jawonElement:'토'},
+      {ch:'裝',meaning:'차려 입을',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'粧',meaning:'단장할',strokes:12,pilhoek:12,rad:'米',jawonElement:'목'},
+      {ch:'臟',meaning:'오장',strokes:24,pilhoek:21,rad:'肉',jawonElement:null},
+      {ch:'匠',meaning:'장인',strokes:6,pilhoek:6,rad:'匚',jawonElement:null},
+      {ch:'庄',meaning:'장중할',strokes:6,pilhoek:6,rad:'广',jawonElement:'목'},
+      {ch:'璋',meaning:'서옥',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'樟',meaning:'녹나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'杖',meaning:'지팡이',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
+      {ch:'仗',meaning:'병장기',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'獐',meaning:'노루',strokes:15,pilhoek:14,rad:'犬',jawonElement:null},
+      {ch:'醬',meaning:'장',strokes:18,pilhoek:18,rad:'酉',jawonElement:null},
+      {ch:'漿',meaning:'미음',strokes:15,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'檣',meaning:'돛대',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'薔',meaning:'물여뀌',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
+      {ch:'奬',meaning:'도울',strokes:14,pilhoek:14,rad:'大',jawonElement:null},
+      {ch:'臧',meaning:'착할',strokes:14,pilhoek:14,rad:'臣',jawonElement:null},
+      {ch:'贓',meaning:'장물',strokes:21,pilhoek:21,rad:'貝',jawonElement:'금'},
+      {ch:'牆',meaning:'담',strokes:17,pilhoek:17,rad:'爿',jawonElement:null},
+      {ch:'欌',meaning:'장농',strokes:22,pilhoek:21,rad:'木',jawonElement:'목'},
+      {ch:'暲',meaning:'햇발이 돋아올',strokes:15,pilhoek:15,rad:'日',jawonElement:null},
+      {ch:'瘴',meaning:'장기',strokes:16,pilhoek:16,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'嶂',meaning:'높고 가파른 산',strokes:14,pilhoek:14,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'鏘',meaning:'금옥 소리',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'漳',meaning:'강이름',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'萇',meaning:'나무 이름',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'奘',meaning:'클',strokes:10,pilhoek:10,rad:'大',jawonElement:null},
+      {ch:'賬',meaning:'치부책',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'麞',meaning:'노루',strokes:22,pilhoek:22,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'牂',meaning:'암양',strokes:10,pilhoek:10,rad:'爿',jawonElement:null,unverified:true},
+      {ch:'妝',meaning:'꾸밀',strokes:7,pilhoek:7,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'嬙',meaning:'궁녀',strokes:16,pilhoek:16,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'廧',meaning:'담',strokes:16,pilhoek:16,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'鄣',meaning:'나라이름',strokes:18,pilhoek:13,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'羘',meaning:'수양',strokes:10,pilhoek:10,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'餦',meaning:'산자',strokes:17,pilhoek:16,rad:'食',jawonElement:'수',unverified:true}
     ],
     '재': [
       {ch:'在',meaning:'있을',strokes:6,pilhoek:6,rad:'土',jawonElement:'토'},
@@ -698,7 +2066,17 @@
       {ch:'財',meaning:'재물',strokes:10,pilhoek:10,rad:'貝',jawonElement:'금'},
       {ch:'哉',meaning:'비로소',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
       {ch:'栽',meaning:'심을',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
-      {ch:'載',meaning:'실을',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'}
+      {ch:'載',meaning:'실을',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'},
+      {ch:'災',meaning:'천벌',strokes:7,pilhoek:7,rad:'火',jawonElement:'화'},
+      {ch:'裁',meaning:'헤아릴',strokes:12,pilhoek:12,rad:'衣',jawonElement:'목'},
+      {ch:'宰',meaning:'주관할',strokes:10,pilhoek:10,rad:'宀',jawonElement:null},
+      {ch:'滓',meaning:'찌끼',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'齋',meaning:'재계할',strokes:17,pilhoek:17,rad:'齊',jawonElement:'토'},
+      {ch:'梓',meaning:'가래나무',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'縡',meaning:'일',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'渽',meaning:'맑을',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'齎',meaning:'쌀',strokes:21,pilhoek:21,rad:'齊',jawonElement:'토'},
+      {ch:'纔',meaning:'비롯할',strokes:23,pilhoek:23,rad:'糸',jawonElement:'목',unverified:true}
     ],
     '정': [
       {ch:'鄭',meaning:'나라이름',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토'},
@@ -708,7 +2086,69 @@
       {ch:'政',meaning:'정사',strokes:8,pilhoek:9,rad:'攴',jawonElement:'금'},
       {ch:'情',meaning:'뜻',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
       {ch:'庭',meaning:'뜰',strokes:10,pilhoek:9,rad:'广',jawonElement:'목'},
-      {ch:'停',meaning:'머무를',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'}
+      {ch:'停',meaning:'머무를',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'精',meaning:'정교할',strokes:14,pilhoek:14,rad:'米',jawonElement:'목'},
+      {ch:'靜',meaning:'고요할',strokes:16,pilhoek:16,rad:'靑',jawonElement:'목'},
+      {ch:'貞',meaning:'곧을',strokes:9,pilhoek:9,rad:'貝',jawonElement:'금'},
+      {ch:'井',meaning:'우물',strokes:4,pilhoek:4,rad:'二',jawonElement:null},
+      {ch:'淨',meaning:'맑을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'頂',meaning:'이마',strokes:11,pilhoek:11,rad:'頁',jawonElement:'화'},
+      {ch:'廷',meaning:'조정',strokes:7,pilhoek:6,rad:'廴',jawonElement:null},
+      {ch:'征',meaning:'칠',strokes:8,pilhoek:8,rad:'彳',jawonElement:'화'},
+      {ch:'程',meaning:'법',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
+      {ch:'亭',meaning:'정자',strokes:9,pilhoek:9,rad:'亠',jawonElement:null},
+      {ch:'整',meaning:'가지런할',strokes:16,pilhoek:16,rad:'攴',jawonElement:'금'},
+      {ch:'訂',meaning:'바로잡을',strokes:9,pilhoek:9,rad:'言',jawonElement:'금'},
+      {ch:'晶',meaning:'수정',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'呈',meaning:'보일',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'鼎',meaning:'솥',strokes:13,pilhoek:12,rad:'鼎',jawonElement:null},
+      {ch:'旌',meaning:'장목기',strokes:11,pilhoek:11,rad:'方',jawonElement:null},
+      {ch:'挺',meaning:'빼어날',strokes:11,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'禎',meaning:'상서로울',strokes:14,pilhoek:13,rad:'示',jawonElement:null},
+      {ch:'偵',meaning:'정탐할',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'汀',meaning:'물가',strokes:6,pilhoek:5,rad:'水',jawonElement:'수'},
+      {ch:'楨',meaning:'담틀 마구리대',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'艇',meaning:'거룻배',strokes:13,pilhoek:12,rad:'舟',jawonElement:'목'},
+      {ch:'珽',meaning:'옥 이름',strokes:12,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'靖',meaning:'다스릴',strokes:13,pilhoek:13,rad:'靑',jawonElement:'목'},
+      {ch:'釘',meaning:'창',strokes:10,pilhoek:10,rad:'金',jawonElement:'금'},
+      {ch:'幀',meaning:'그림족자',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목'},
+      {ch:'錠',meaning:'촛대',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'碇',meaning:'닻돌',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
+      {ch:'穽',meaning:'구덩이',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수'},
+      {ch:'町',meaning:'밭 두덕',strokes:7,pilhoek:7,rad:'田',jawonElement:null},
+      {ch:'酊',meaning:'비틀거릴',strokes:9,pilhoek:9,rad:'酉',jawonElement:null},
+      {ch:'炡',meaning:'데칠',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
+      {ch:'霆',meaning:'벼락',strokes:15,pilhoek:14,rad:'雨',jawonElement:'수'},
+      {ch:'渟',meaning:'물 고일',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'淀',meaning:'배댈',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'晸',meaning:'해돋는모양',strokes:12,pilhoek:13,rad:'日',jawonElement:null},
+      {ch:'綎',meaning:'띠술',strokes:13,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'鉦',meaning:'징',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'瀞',meaning:'맑을',strokes:20,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'玎',meaning:'옥소리',strokes:7,pilhoek:6,rad:'玉',jawonElement:'금'},
+      {ch:'諪',meaning:'고를',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'檉',meaning:'능수버들',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'姃',meaning:'계집단정할',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'柾',meaning:'나무결 바를',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'湞',meaning:'물이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'鋌',meaning:'화살촉',strokes:15,pilhoek:14,rad:'金',jawonElement:'금'},
+      {ch:'証',meaning:'간할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'筳',meaning:'대쪽',strokes:13,pilhoek:12,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'靚',meaning:'단장할',strokes:15,pilhoek:15,rad:'靑',jawonElement:'목'},
+      {ch:'酲',meaning:'술병',strokes:14,pilhoek:14,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'梃',meaning:'외줄기',strokes:11,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'怔',meaning:'황겁할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'叮',meaning:'정성스러울',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'棖',meaning:'문설주',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'莛',meaning:'풀 줄거리',strokes:13,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'婷',meaning:'아리따울',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
+      {ch:'珵',meaning:'노리개',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'疔',meaning:'헌데',strokes:7,pilhoek:7,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'桯',meaning:'서안',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'佂',meaning:'두려워할',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'掟',meaning:'둘러칠',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'遉',meaning:'순라군',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토',unverified:true}
     ],
     '제': [
       {ch:'諸',meaning:'모든',strokes:16,pilhoek:15,rad:'言',jawonElement:'금'},
@@ -718,7 +2158,37 @@
       {ch:'祭',meaning:'제사',strokes:11,pilhoek:11,rad:'示',jawonElement:null},
       {ch:'除',meaning:'섬돌',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토'},
       {ch:'帝',meaning:'임금',strokes:9,pilhoek:9,rad:'巾',jawonElement:'목'},
-      {ch:'製',meaning:'만들',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목'}
+      {ch:'製',meaning:'만들',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'制',meaning:'억제할',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
+      {ch:'濟',meaning:'나루',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'提',meaning:'끌',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'際',meaning:'사이',strokes:19,pilhoek:13,rad:'阜',jawonElement:'토'},
+      {ch:'齊',meaning:'가지런할',strokes:14,pilhoek:14,rad:'齊',jawonElement:'토'},
+      {ch:'堤',meaning:'둑',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'劑',meaning:'약 지을',strokes:16,pilhoek:16,rad:'刀',jawonElement:'금'},
+      {ch:'悌',meaning:'공경할',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'蹄',meaning:'굽',strokes:16,pilhoek:16,rad:'足',jawonElement:'토'},
+      {ch:'梯',meaning:'사다리',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'啼',meaning:'울',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'霽',meaning:'갤',strokes:22,pilhoek:22,rad:'雨',jawonElement:'수'},
+      {ch:'薺',meaning:'냉이',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'醍',meaning:'맑은 술',strokes:16,pilhoek:16,rad:'酉',jawonElement:null},
+      {ch:'荑',meaning:'띠싹',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'儕',meaning:'동배',strokes:16,pilhoek:16,rad:'人',jawonElement:'화'},
+      {ch:'躋',meaning:'오를',strokes:21,pilhoek:21,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'擠',meaning:'물리칠',strokes:18,pilhoek:17,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'娣',meaning:'여동생',strokes:10,pilhoek:10,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'禔',meaning:'복',strokes:14,pilhoek:13,rad:'示',jawonElement:null},
+      {ch:'睇',meaning:'흘끗 볼',strokes:12,pilhoek:12,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'稊',meaning:'강아지풀',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'瑅',meaning:'제당',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'鯷',meaning:'메기',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'緹',meaning:'붉은 비단',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'踶',meaning:'찰',strokes:16,pilhoek:16,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'猘',meaning:'미친개',strokes:12,pilhoek:11,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'韲',meaning:'양념할',strokes:19,pilhoek:19,rad:'韭',jawonElement:null,unverified:true},
+      {ch:'鍗',meaning:'큰 가마',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鮧',meaning:'복',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '조': [
       {ch:'趙',meaning:'조나라',strokes:14,pilhoek:14,rad:'走',jawonElement:'화'},
@@ -728,7 +2198,69 @@
       {ch:'助',meaning:'도울',strokes:7,pilhoek:7,rad:'力',jawonElement:null},
       {ch:'鳥',meaning:'새',strokes:11,pilhoek:11,rad:'鳥',jawonElement:'화'},
       {ch:'調',meaning:'고를',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
-      {ch:'造',meaning:'지을',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'}
+      {ch:'造',meaning:'지을',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'早',meaning:'새벽',strokes:6,pilhoek:6,rad:'日',jawonElement:null},
+      {ch:'兆',meaning:'조짐',strokes:6,pilhoek:6,rad:'儿',jawonElement:null},
+      {ch:'條',meaning:'가지',strokes:11,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'照',meaning:'비출',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'操',meaning:'잡을',strokes:17,pilhoek:16,rad:'手',jawonElement:'목'},
+      {ch:'租',meaning:'구실',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목'},
+      {ch:'弔',meaning:'조상할',strokes:4,pilhoek:4,rad:'弓',jawonElement:null},
+      {ch:'潮',meaning:'조수',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'組',meaning:'끈',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'跳',meaning:'뛸',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'},
+      {ch:'祚',meaning:'복',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'燥',meaning:'마를',strokes:17,pilhoek:17,rad:'火',jawonElement:'화'},
+      {ch:'措',meaning:'둘',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'遭',meaning:'만날',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토'},
+      {ch:'釣',meaning:'낚시',strokes:11,pilhoek:11,rad:'金',jawonElement:'금'},
+      {ch:'彫',meaning:'새길',strokes:11,pilhoek:11,rad:'彡',jawonElement:null},
+      {ch:'曹',meaning:'무리',strokes:11,pilhoek:11,rad:'曰',jawonElement:null},
+      {ch:'詔',meaning:'고할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'粗',meaning:'거칠',strokes:11,pilhoek:11,rad:'米',jawonElement:'목'},
+      {ch:'漕',meaning:'배로 실어 나를',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'稠',meaning:'빽빽할',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'藻',meaning:'조류',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
+      {ch:'肇',meaning:'비롯할',strokes:14,pilhoek:14,rad:'聿',jawonElement:null},
+      {ch:'嘲',meaning:'조롱할',strokes:15,pilhoek:15,rad:'口',jawonElement:null},
+      {ch:'爪',meaning:'손톱',strokes:4,pilhoek:4,rad:'爪',jawonElement:null},
+      {ch:'眺',meaning:'바라볼',strokes:11,pilhoek:11,rad:'目',jawonElement:'목'},
+      {ch:'躁',meaning:'떠들',strokes:20,pilhoek:20,rad:'足',jawonElement:'토'},
+      {ch:'棗',meaning:'대추나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'繰',meaning:'야청 통견',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목'},
+      {ch:'雕',meaning:'독수리',strokes:16,pilhoek:16,rad:'隹',jawonElement:'화'},
+      {ch:'俎',meaning:'도마',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'窕',meaning:'정숙할',strokes:11,pilhoek:11,rad:'穴',jawonElement:'수'},
+      {ch:'槽',meaning:'구유',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'晁',meaning:'아침',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
+      {ch:'璪',meaning:'면루관 드림 옥',strokes:18,pilhoek:17,rad:'玉',jawonElement:'금'},
+      {ch:'噪',meaning:'떠들썩할',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true},
+      {ch:'皁',meaning:'하인',strokes:7,pilhoek:7,rad:'白',jawonElement:null,unverified:true},
+      {ch:'祧',meaning:'조묘',strokes:11,pilhoek:10,rad:'示',jawonElement:null,unverified:true},
+      {ch:'胙',meaning:'복',strokes:11,pilhoek:9,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'糶',meaning:'쌀 내어 팔',strokes:25,pilhoek:25,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'竈',meaning:'부엌',strokes:21,pilhoek:21,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'刁',meaning:'바라',strokes:2,pilhoek:2,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'譟',meaning:'시끄러울',strokes:20,pilhoek:20,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鵰',meaning:'수리',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'澡',meaning:'씻을',strokes:17,pilhoek:16,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'蜩',meaning:'매미',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'臊',meaning:'누릴',strokes:19,pilhoek:17,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'嘈',meaning:'지껄일',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'佻',meaning:'방정맞을',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'蔦',meaning:'담쟁이',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'銚',meaning:'쟁개비',strokes:14,pilhoek:14,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'糙',meaning:'매조미쌀',strokes:17,pilhoek:16,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'找',meaning:'채울',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'誂',meaning:'꾈',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'傮',meaning:'마칠',strokes:13,pilhoek:13,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嬥',meaning:'날씬할',strokes:17,pilhoek:17,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'笊',meaning:'조리',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'絩',meaning:'견직물 날실 수',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'艚',meaning:'거룻배',strokes:17,pilhoek:17,rad:'舟',jawonElement:'목',unverified:true},
+      {ch:'鈟',meaning:'낚시',strokes:12,pilhoek:12,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鋽',meaning:'불리지 않은 쇠',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鯛',meaning:'도미',strokes:19,pilhoek:19,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '종': [
       {ch:'終',meaning:'끝낼',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
@@ -738,7 +2270,22 @@
       {ch:'鐘',meaning:'쇠북',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'},
       {ch:'縱',meaning:'세로',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
       {ch:'琮',meaning:'옥홀',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
-      {ch:'綜',meaning:'모을',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'}
+      {ch:'綜',meaning:'모을',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'踪',meaning:'자취',strokes:15,pilhoek:15,rad:'足',jawonElement:'토'},
+      {ch:'慫',meaning:'권할',strokes:15,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'鍾',meaning:'술병',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'淙',meaning:'물 소리',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'悰',meaning:'즐길',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'棕',meaning:'종려나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'倧',meaning:'상고 신인',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'蹤',meaning:'자취',strokes:18,pilhoek:18,rad:'足',jawonElement:'토'},
+      {ch:'瘇',meaning:'수종',strokes:14,pilhoek:14,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'螽',meaning:'누리',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'粽',meaning:'주악',strokes:14,pilhoek:14,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'伀',meaning:'두려워할',strokes:6,pilhoek:6,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'慒',meaning:'생각할',strokes:15,pilhoek:14,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'樅',meaning:'전나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'瑽',meaning:'패옥소리',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금'}
     ],
     '주': [
       {ch:'朱',meaning:'붉을',strokes:6,pilhoek:6,rad:'木',jawonElement:'목'},
@@ -748,7 +2295,54 @@
       {ch:'走',meaning:'달릴',strokes:7,pilhoek:7,rad:'走',jawonElement:'화'},
       {ch:'注',meaning:'물댈',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'晝',meaning:'낮',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
-      {ch:'宙',meaning:'집',strokes:8,pilhoek:8,rad:'宀',jawonElement:null}
+      {ch:'宙',meaning:'집',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
+      {ch:'酒',meaning:'술',strokes:10,pilhoek:10,rad:'酉',jawonElement:null},
+      {ch:'州',meaning:'고을',strokes:6,pilhoek:6,rad:'巛',jawonElement:'수'},
+      {ch:'周',meaning:'두루',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'柱',meaning:'기둥',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'洲',meaning:'섬',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'株',meaning:'그루',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'奏',meaning:'아뢸',strokes:9,pilhoek:9,rad:'大',jawonElement:null},
+      {ch:'鑄',meaning:'쇠 부어 만들',strokes:22,pilhoek:22,rad:'金',jawonElement:'금'},
+      {ch:'駐',meaning:'머무를',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'疇',meaning:'밭두둑',strokes:19,pilhoek:19,rad:'田',jawonElement:null},
+      {ch:'週',meaning:'돌',strokes:15,pilhoek:11,rad:'辵',jawonElement:'토'},
+      {ch:'躊',meaning:'머뭇거릴',strokes:21,pilhoek:21,rad:'足',jawonElement:'토'},
+      {ch:'註',meaning:'주낼',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'紬',meaning:'명주',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'做',meaning:'지을',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'稠',meaning:'빽빽할',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'廚',meaning:'부엌',strokes:15,pilhoek:15,rad:'广',jawonElement:'목'},
+      {ch:'紂',meaning:'껑거리끈',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'},
+      {ch:'嗾',meaning:'시킬',strokes:14,pilhoek:14,rad:'口',jawonElement:null},
+      {ch:'呪',meaning:'빌',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'輳',meaning:'모일',strokes:16,pilhoek:16,rad:'車',jawonElement:'화'},
+      {ch:'胄',meaning:'후사',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'籌',meaning:'투호 살',strokes:20,pilhoek:20,rad:'竹',jawonElement:'목'},
+      {ch:'湊',meaning:'모일',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'綢',meaning:'얽힐',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'澍',meaning:'단비',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'炷',meaning:'심지',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
+      {ch:'姝',meaning:'예쁠',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'侏',meaning:'난쟁이',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'霔',meaning:'장마',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'肘',meaning:'팔꿈치',strokes:9,pilhoek:7,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'儔',meaning:'무리',strokes:16,pilhoek:16,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'拄',meaning:'떠받칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'裯',meaning:'홑이불',strokes:14,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'遒',meaning:'다가설',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'賙',meaning:'진휼할',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'輈',meaning:'끌채',strokes:13,pilhoek:13,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'幬',meaning:'휘장',strokes:17,pilhoek:17,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'腠',meaning:'살결',strokes:15,pilhoek:13,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'霌',meaning:'운우 모양',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'硃',meaning:'주사',strokes:11,pilhoek:11,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'蔟',meaning:'태주',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'尌',meaning:'세울',strokes:12,pilhoek:12,rad:'寸',jawonElement:null,unverified:true},
+      {ch:'籒',meaning:'주문',strokes:21,pilhoek:21,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'蛀',meaning:'나무좀',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'趎',meaning:'사람이름',strokes:13,pilhoek:13,rad:'走',jawonElement:'화',unverified:true},
+      {ch:'鉒',meaning:'쇳돌',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'}
     ],
     '준': [
       {ch:'準',meaning:'법',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
@@ -758,7 +2352,30 @@
       {ch:'駿',meaning:'준마',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화'},
       {ch:'埈',meaning:'높을',strokes:10,pilhoek:10,rad:'土',jawonElement:'토'},
       {ch:'濬',meaning:'칠',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
-      {ch:'遵',meaning:'좇을',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'}
+      {ch:'遵',meaning:'좇을',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'},
+      {ch:'准',meaning:'법',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'},
+      {ch:'晙',meaning:'밝을',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'樽',meaning:'술그릇',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'竣',meaning:'마칠',strokes:12,pilhoek:12,rad:'立',jawonElement:null},
+      {ch:'蠢',meaning:'꿈틀거릴',strokes:21,pilhoek:21,rad:'虫',jawonElement:'수'},
+      {ch:'儁',meaning:'영특할',strokes:15,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'雋',meaning:'새살찔',strokes:13,pilhoek:12,rad:'隹',jawonElement:'화'},
+      {ch:'畯',meaning:'농부',strokes:12,pilhoek:12,rad:'田',jawonElement:null},
+      {ch:'逡',meaning:'뒷걸음칠',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'寯',meaning:'모일',strokes:16,pilhoek:15,rad:'宀',jawonElement:null},
+      {ch:'焌',meaning:'불땔',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
+      {ch:'蹲',meaning:'걸터앉을',strokes:19,pilhoek:19,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'隼',meaning:'새매',strokes:10,pilhoek:10,rad:'隹',jawonElement:'화'},
+      {ch:'餕',meaning:'대궁',strokes:16,pilhoek:15,rad:'食',jawonElement:'수'},
+      {ch:'撙',meaning:'누를',strokes:16,pilhoek:15,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'惷',meaning:'어수선할',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'綧',meaning:'피륙의 폭의 넓이',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'噂',meaning:'수군거릴',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'皴',meaning:'주름',strokes:12,pilhoek:12,rad:'皮',jawonElement:null},
+      {ch:'埻',meaning:'과녘',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'鐏',meaning:'창고달',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'},
+      {ch:'鱒',meaning:'송어',strokes:23,pilhoek:23,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'鵔',meaning:'금계',strokes:18,pilhoek:18,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '중': [
       {ch:'中',meaning:'가운데',strokes:4,pilhoek:4,rad:'丨',jawonElement:null},
@@ -774,7 +2391,43 @@
       {ch:'址',meaning:'터',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
       {ch:'芝',meaning:'지초',strokes:10,pilhoek:6,rad:'艸',jawonElement:'목'},
       {ch:'地',meaning:'땅',strokes:6,pilhoek:6,rad:'土',jawonElement:'토'},
-      {ch:'至',meaning:'이를',strokes:6,pilhoek:6,rad:'至',jawonElement:'토'}
+      {ch:'至',meaning:'이를',strokes:6,pilhoek:6,rad:'至',jawonElement:'토'},
+      {ch:'紙',meaning:'종이',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
+      {ch:'持',meaning:'가질',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'指',meaning:'손가락',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'識',meaning:'표할',strokes:19,pilhoek:19,rad:'言',jawonElement:'금'},
+      {ch:'支',meaning:'가를',strokes:4,pilhoek:4,rad:'支',jawonElement:'토'},
+      {ch:'只',meaning:'다만',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
+      {ch:'枝',meaning:'가지',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'誌',meaning:'기록할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'旨',meaning:'맛있을',strokes:6,pilhoek:6,rad:'日',jawonElement:null},
+      {ch:'脂',meaning:'기름',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'肢',meaning:'사지',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
+      {ch:'祉',meaning:'복',strokes:9,pilhoek:8,rad:'示',jawonElement:null},
+      {ch:'咫',meaning:'길이',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'摯',meaning:'잡을',strokes:15,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'枳',meaning:'탱자나무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'祗',meaning:'공경할',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'祇',meaning:'마침',strokes:9,pilhoek:8,rad:'示',jawonElement:null},
+      {ch:'砥',meaning:'숫돌',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'},
+      {ch:'贄',meaning:'폐백',strokes:18,pilhoek:18,rad:'貝',jawonElement:'금'},
+      {ch:'漬',meaning:'담글',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'沚',meaning:'물가',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'芷',meaning:'구리때',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'墀',meaning:'계단 위의 공지',strokes:14,pilhoek:15,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'秪',meaning:'벼 처음 익을',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'躓',meaning:'넘어질',strokes:22,pilhoek:22,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'舐',meaning:'핥을',strokes:10,pilhoek:10,rad:'舌',jawonElement:null,unverified:true},
+      {ch:'踟',meaning:'머뭇거릴',strokes:15,pilhoek:15,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'篪',meaning:'저 이름',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鷙',meaning:'맹금',strokes:22,pilhoek:22,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'榰',meaning:'주춧돌',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'坻',meaning:'모래섬',strokes:8,pilhoek:8,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'扺',meaning:'손바닥',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'軹',meaning:'굴대 머리',strokes:12,pilhoek:12,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'泜',meaning:'강 이름',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'阯',meaning:'터',strokes:12,pilhoek:6,rad:'阜',jawonElement:'토'},
+      {ch:'鮨',meaning:'젓갈',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '진': [
       {ch:'眞',meaning:'참',strokes:10,pilhoek:10,rad:'目',jawonElement:'목'},
@@ -784,7 +2437,40 @@
       {ch:'珍',meaning:'보배',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
       {ch:'晉',meaning:'나아갈',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
       {ch:'進',meaning:'나아갈',strokes:15,pilhoek:11,rad:'辵',jawonElement:'토'},
-      {ch:'盡',meaning:'다할',strokes:14,pilhoek:14,rad:'皿',jawonElement:null}
+      {ch:'盡',meaning:'다할',strokes:14,pilhoek:14,rad:'皿',jawonElement:null},
+      {ch:'辰',meaning:'다섯째지지',strokes:7,pilhoek:7,rad:'辰',jawonElement:'토'},
+      {ch:'震',meaning:'벼락',strokes:15,pilhoek:15,rad:'雨',jawonElement:'수'},
+      {ch:'鎭',meaning:'누를',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
+      {ch:'塵',meaning:'띠끌',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'津',meaning:'나루',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'秦',meaning:'벼 이름',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목'},
+      {ch:'診',meaning:'볼',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'疹',meaning:'홍역',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
+      {ch:'賑',meaning:'구휼할',strokes:14,pilhoek:14,rad:'貝',jawonElement:'금'},
+      {ch:'晋',meaning:'나아갈',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
+      {ch:'軫',meaning:'수레 뒤턱 나무',strokes:12,pilhoek:12,rad:'車',jawonElement:'화'},
+      {ch:'搢',meaning:'꽂을',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
+      {ch:'臻',meaning:'이를',strokes:16,pilhoek:16,rad:'至',jawonElement:'토'},
+      {ch:'殄',meaning:'끊어질',strokes:9,pilhoek:9,rad:'歹',jawonElement:'수'},
+      {ch:'縉',meaning:'분홍빛',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'榛',meaning:'개암나무',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'袗',meaning:'홑옷',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목'},
+      {ch:'瑨',meaning:'아름다운 돌',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'畛',meaning:'두렁길',strokes:10,pilhoek:10,rad:'田',jawonElement:null},
+      {ch:'璡',meaning:'옥돌',strokes:17,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'縝',meaning:'삼실',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'瞋',meaning:'부릅뜰',strokes:15,pilhoek:15,rad:'目',jawonElement:'목'},
+      {ch:'溱',meaning:'많을',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'桭',meaning:'평고대',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'蔯',meaning:'더워지기',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'趁',meaning:'좇을',strokes:12,pilhoek:12,rad:'走',jawonElement:'화',unverified:true},
+      {ch:'稹',meaning:'떨기로 날',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
+      {ch:'蓁',meaning:'우거질',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'珒',meaning:'옥 이름',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'鬒',meaning:'숱 많을',strokes:20,pilhoek:20,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'侲',meaning:'동자',strokes:9,pilhoek:9,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'鉁',meaning:'보배',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'螴',meaning:'설렐',strokes:17,pilhoek:16,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '찬': [
       {ch:'讚',meaning:'기릴',strokes:26,pilhoek:26,rad:'言',jawonElement:'금'},
@@ -794,7 +2480,22 @@
       {ch:'餐',meaning:'먹을',strokes:16,pilhoek:16,rad:'食',jawonElement:'수'},
       {ch:'鑽',meaning:'끌',strokes:27,pilhoek:27,rad:'金',jawonElement:'금'},
       {ch:'璨',meaning:'빛날',strokes:18,pilhoek:17,rad:'玉',jawonElement:'금'},
-      {ch:'撰',meaning:'지을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'}
+      {ch:'撰',meaning:'지을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'饌',meaning:'반찬',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'},
+      {ch:'纂',meaning:'모을',strokes:20,pilhoek:20,rad:'糸',jawonElement:'목'},
+      {ch:'簒',meaning:'빼앗을',strokes:17,pilhoek:17,rad:'竹',jawonElement:'목'},
+      {ch:'竄',meaning:'숨길',strokes:18,pilhoek:18,rad:'穴',jawonElement:'수'},
+      {ch:'纘',meaning:'이을',strokes:25,pilhoek:25,rad:'糸',jawonElement:'목'},
+      {ch:'粲',meaning:'정미',strokes:13,pilhoek:13,rad:'米',jawonElement:'목'},
+      {ch:'澯',meaning:'맑을',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'攢',meaning:'모일',strokes:23,pilhoek:22,rad:'手',jawonElement:'목'},
+      {ch:'爨',meaning:'불땔',strokes:29,pilhoek:30,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'欑',meaning:'모일',strokes:23,pilhoek:23,rad:'木',jawonElement:'목'},
+      {ch:'巑',meaning:'높이 솟을',strokes:22,pilhoek:22,rad:'山',jawonElement:'토'},
+      {ch:'趲',meaning:'놀라 흩어질',strokes:26,pilhoek:26,rad:'走',jawonElement:'화',unverified:true},
+      {ch:'儧',meaning:'모일',strokes:17,pilhoek:17,rad:'人',jawonElement:'화'},
+      {ch:'儹',meaning:'모을',strokes:21,pilhoek:21,rad:'人',jawonElement:'화'},
+      {ch:'劗',meaning:'끊을',strokes:21,pilhoek:21,rad:'刀',jawonElement:'금',unverified:true}
     ],
     '창': [
       {ch:'唱',meaning:'노래',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
@@ -804,7 +2505,29 @@
       {ch:'蒼',meaning:'푸를',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
       {ch:'暢',meaning:'펼',strokes:14,pilhoek:14,rad:'日',jawonElement:null},
       {ch:'彰',meaning:'밝을',strokes:14,pilhoek:14,rad:'彡',jawonElement:null},
-      {ch:'滄',meaning:'찰',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'}
+      {ch:'滄',meaning:'찰',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'敞',meaning:'높을',strokes:12,pilhoek:12,rad:'攴',jawonElement:'금'},
+      {ch:'昶',meaning:'밝을',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'倡',meaning:'여광대',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'漲',meaning:'불을',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'槍',meaning:'창',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'脹',meaning:'배부를',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'娼',meaning:'몸 파는 여자',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
+      {ch:'猖',meaning:'미쳐 날뛸',strokes:12,pilhoek:11,rad:'犬',jawonElement:null},
+      {ch:'菖',meaning:'창포',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'廠',meaning:'헛간',strokes:15,pilhoek:15,rad:'广',jawonElement:'목'},
+      {ch:'艙',meaning:'선창',strokes:16,pilhoek:16,rad:'舟',jawonElement:'목'},
+      {ch:'搶',meaning:'닿을',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鬯',meaning:'술',strokes:10,pilhoek:10,rad:'鬯',jawonElement:'목',unverified:true},
+      {ch:'刱',meaning:'비롯할',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'蹌',meaning:'추창할',strokes:17,pilhoek:17,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'氅',meaning:'새털',strokes:16,pilhoek:16,rad:'毛',jawonElement:'화',unverified:true},
+      {ch:'惝',meaning:'멍할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'窻',meaning:'창',strokes:16,pilhoek:16,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'窗',meaning:'창',strokes:12,pilhoek:12,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'瑲',meaning:'옥 소리',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'凔',meaning:'찰',strokes:12,pilhoek:12,rad:'冫',jawonElement:'수',unverified:true},
+      {ch:'戧',meaning:'다칠',strokes:14,pilhoek:14,rad:'戈',jawonElement:null,unverified:true}
     ],
     '채': [
       {ch:'采',meaning:'캘',strokes:8,pilhoek:8,rad:'釆',jawonElement:null},
@@ -814,7 +2537,11 @@
       {ch:'菜',meaning:'나물',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
       {ch:'埰',meaning:'사패땅',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
       {ch:'寨',meaning:'나무우리',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
-      {ch:'綵',meaning:'비단',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'}
+      {ch:'綵',meaning:'비단',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'寀',meaning:'녹봉',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
+      {ch:'砦',meaning:'울타리',strokes:10,pilhoek:11,rad:'石',jawonElement:'금'},
+      {ch:'茝',meaning:'구리때',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'棌',meaning:'참나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'}
     ],
     '천': [
       {ch:'天',meaning:'하늘',strokes:4,pilhoek:4,rad:'大',jawonElement:null},
@@ -824,7 +2551,34 @@
       {ch:'淺',meaning:'얕을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
       {ch:'遷',meaning:'옮길',strokes:19,pilhoek:15,rad:'辵',jawonElement:'토'},
       {ch:'薦',meaning:'천거할',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
-      {ch:'踐',meaning:'밟을',strokes:15,pilhoek:15,rad:'足',jawonElement:'토'}
+      {ch:'踐',meaning:'밟을',strokes:15,pilhoek:15,rad:'足',jawonElement:'토'},
+      {ch:'串',meaning:'꿸',strokes:7,pilhoek:7,rad:'丨',jawonElement:null},
+      {ch:'釧',meaning:'팔찌',strokes:11,pilhoek:11,rad:'金',jawonElement:'금'},
+      {ch:'擅',meaning:'멋대로',strokes:17,pilhoek:16,rad:'手',jawonElement:'목'},
+      {ch:'穿',meaning:'뚫을',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수'},
+      {ch:'喘',meaning:'헐떡거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'闡',meaning:'열',strokes:20,pilhoek:20,rad:'門',jawonElement:null},
+      {ch:'阡',meaning:'두렁',strokes:11,pilhoek:5,rad:'阜',jawonElement:'토'},
+      {ch:'舛',meaning:'어그러질',strokes:6,pilhoek:6,rad:'舛',jawonElement:'목'},
+      {ch:'韆',meaning:'그네',strokes:24,pilhoek:24,rad:'革',jawonElement:'금'},
+      {ch:'仟',meaning:'일천',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'玔',meaning:'옥고리',strokes:8,pilhoek:7,rad:'玉',jawonElement:'금'},
+      {ch:'荐',meaning:'거듭할',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'倩',meaning:'예쁠',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'濺',meaning:'흩뿌릴',strokes:19,pilhoek:18,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'洊',meaning:'이를',strokes:10,pilhoek:9,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'蕆',meaning:'경계할',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蒨',meaning:'대가 우거질',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'芊',meaning:'풀 무성할',strokes:9,pilhoek:6,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'俴',meaning:'엷을',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'儃',meaning:'머뭇거릴',strokes:15,pilhoek:15,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'辿',meaning:'천천히 걸을',strokes:10,pilhoek:6,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'祆',meaning:'하늘',strokes:9,pilhoek:8,rad:'示',jawonElement:null,unverified:true},
+      {ch:'僢',meaning:'어그러질',strokes:14,pilhoek:14,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'瓩',meaning:'킬로그램',strokes:7,pilhoek:7,rad:'瓦',jawonElement:null,unverified:true},
+      {ch:'粁',meaning:'킬로메트르',strokes:9,pilhoek:9,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'臶',meaning:'거듭',strokes:12,pilhoek:12,rad:'至',jawonElement:'토',unverified:true},
+      {ch:'靝',meaning:'하늘',strokes:18,pilhoek:18,rad:'靑',jawonElement:'목',unverified:true}
     ],
     '철': [
       {ch:'哲',meaning:'밝을',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
@@ -834,7 +2588,16 @@
       {ch:'鐵',meaning:'쇠',strokes:21,pilhoek:21,rad:'金',jawonElement:'금'},
       {ch:'撤',meaning:'거둘',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
       {ch:'轍',meaning:'바퀴 자국',strokes:19,pilhoek:19,rad:'車',jawonElement:'화'},
-      {ch:'綴',meaning:'꿰맬',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'}
+      {ch:'綴',meaning:'꿰맬',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'凸',meaning:'볼록할',strokes:5,pilhoek:5,rad:'凵',jawonElement:null},
+      {ch:'掇',meaning:'주울',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'啜',meaning:'마실',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'餮',meaning:'탐할',strokes:18,pilhoek:18,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'歠',meaning:'마실',strokes:19,pilhoek:19,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'剟',meaning:'깎을',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'埑',meaning:'밝을',strokes:10,pilhoek:10,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'錣',meaning:'물미',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'飻',meaning:'탐할',strokes:14,pilhoek:13,rad:'食',jawonElement:'수',unverified:true}
     ],
     '청': [
       {ch:'淸',meaning:'맑을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
@@ -843,7 +2606,11 @@
       {ch:'請',meaning:'청할',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
       {ch:'聽',meaning:'들을',strokes:22,pilhoek:22,rad:'耳',jawonElement:'화'},
       {ch:'廳',meaning:'관청',strokes:25,pilhoek:25,rad:'广',jawonElement:'목'},
-      {ch:'菁',meaning:'초목무성한 모양',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'}
+      {ch:'菁',meaning:'초목무성한 모양',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'凊',meaning:'서늘할',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수',unverified:true},
+      {ch:'圊',meaning:'뒷간',strokes:11,pilhoek:11,rad:'囗',jawonElement:null,unverified:true},
+      {ch:'蜻',meaning:'귀뚜라미',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鶄',meaning:'교청새',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '초': [
       {ch:'草',meaning:'풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
@@ -853,12 +2620,60 @@
       {ch:'礎',meaning:'주춧돌',strokes:18,pilhoek:18,rad:'石',jawonElement:'금'},
       {ch:'抄',meaning:'베낄',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'肖',meaning:'닮을',strokes:9,pilhoek:7,rad:'肉',jawonElement:null},
-      {ch:'秒',meaning:'시간 단위',strokes:9,pilhoek:9,rad:'禾',jawonElement:'목'}
+      {ch:'秒',meaning:'시간 단위',strokes:9,pilhoek:9,rad:'禾',jawonElement:'목'},
+      {ch:'哨',meaning:'망 볼',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'楚',meaning:'초나라',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'焦',meaning:'그슬릴',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'礁',meaning:'암초',strokes:17,pilhoek:17,rad:'石',jawonElement:'금'},
+      {ch:'稍',meaning:'벼 줄기 끝',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
+      {ch:'樵',meaning:'땔나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'貂',meaning:'담비',strokes:12,pilhoek:12,rad:'豸',jawonElement:'수'},
+      {ch:'梢',meaning:'나무 끝',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'炒',meaning:'볶을',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'憔',meaning:'수척할',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'硝',meaning:'초석',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'蕉',meaning:'파초',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'醋',meaning:'초산',strokes:15,pilhoek:15,rad:'酉',jawonElement:null},
+      {ch:'醮',meaning:'초례',strokes:19,pilhoek:19,rad:'酉',jawonElement:null},
+      {ch:'椒',meaning:'산초나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'剿',meaning:'노략질할',strokes:13,pilhoek:13,rad:'刀',jawonElement:'금'},
+      {ch:'艸',meaning:'풀',strokes:6,pilhoek:6,rad:'艸',jawonElement:'목'},
+      {ch:'苕',meaning:'능소화',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'迢',meaning:'멀',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'勦',meaning:'수고롭게 할',strokes:13,pilhoek:13,rad:'力',jawonElement:null,unverified:true},
+      {ch:'綃',meaning:'생명주실',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鈔',meaning:'노략질할',strokes:12,pilhoek:12,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'軺',meaning:'수레',strokes:12,pilhoek:12,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'愀',meaning:'정색할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'髫',meaning:'다박머리',strokes:15,pilhoek:15,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'鞘',meaning:'칼집',strokes:16,pilhoek:16,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'杪',meaning:'끝',strokes:8,pilhoek:8,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'噍',meaning:'먹을',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'岧',meaning:'산이 높을',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'燋',meaning:'홰',strokes:16,pilhoek:16,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'鷦',meaning:'뱁새',strokes:23,pilhoek:23,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'顦',meaning:'야윌',strokes:21,pilhoek:21,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'趠',meaning:'멀',strokes:15,pilhoek:15,rad:'走',jawonElement:'화',unverified:true},
+      {ch:'僬',meaning:'밝게 살필',strokes:14,pilhoek:14,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嶕',meaning:'높을',strokes:15,pilhoek:15,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'鍬',meaning:'가래',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'偢',meaning:'얼이 빠져 있을',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嫶',meaning:'수척할',strokes:15,pilhoek:15,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'耖',meaning:'밭 거듭 갈',strokes:10,pilhoek:10,rad:'耒',jawonElement:null,unverified:true},
+      {ch:'鍫',meaning:'가래',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'齠',meaning:'이를 갈',strokes:20,pilhoek:20,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '최': [
       {ch:'崔',meaning:'산 우뚝할',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
       {ch:'最',meaning:'가장',strokes:12,pilhoek:12,rad:'冂',jawonElement:null},
-      {ch:'催',meaning:'핍박할',strokes:13,pilhoek:13,rad:'人',jawonElement:'화'}
+      {ch:'催',meaning:'핍박할',strokes:13,pilhoek:13,rad:'人',jawonElement:'화'},
+      {ch:'摧',meaning:'꺾을',strokes:15,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'榱',meaning:'서까래',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'璀',meaning:'옥빛 찬란할',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'漼',meaning:'깊을',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'縗',meaning:'상복',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'嘬',meaning:'물',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'磪',meaning:'험하고 높을',strokes:16,pilhoek:16,rad:'石',jawonElement:'금',unverified:true}
     ],
     '충': [
       {ch:'忠',meaning:'충성',strokes:8,pilhoek:8,rad:'心',jawonElement:'화'},
@@ -866,7 +2681,8 @@
       {ch:'蟲',meaning:'김 오를',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수'},
       {ch:'衝',meaning:'충돌할',strokes:15,pilhoek:15,rad:'行',jawonElement:null},
       {ch:'衷',meaning:'가운데',strokes:10,pilhoek:10,rad:'衣',jawonElement:'목'},
-      {ch:'沖',meaning:'깊을',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'}
+      {ch:'沖',meaning:'깊을',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'冲',meaning:'깊을',strokes:6,pilhoek:6,rad:'冫',jawonElement:'수'}
     ],
     '태': [
       {ch:'太',meaning:'클',strokes:4,pilhoek:4,rad:'大',jawonElement:null},
@@ -876,7 +2692,14 @@
       {ch:'態',meaning:'모양',strokes:14,pilhoek:14,rad:'心',jawonElement:'화'},
       {ch:'殆',meaning:'가까이할',strokes:9,pilhoek:9,rad:'歹',jawonElement:'수'},
       {ch:'怠',meaning:'느릴',strokes:9,pilhoek:9,rad:'心',jawonElement:'화'},
-      {ch:'胎',meaning:'아이 밸',strokes:11,pilhoek:9,rad:'肉',jawonElement:null}
+      {ch:'胎',meaning:'아이 밸',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'跆',meaning:'밟을',strokes:12,pilhoek:12,rad:'足',jawonElement:'토'},
+      {ch:'颱',meaning:'태풍',strokes:14,pilhoek:14,rad:'風',jawonElement:'목'},
+      {ch:'汰',meaning:'넘칠',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'邰',meaning:'태나라',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'埭',meaning:'보뚝',strokes:11,pilhoek:11,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'娧',meaning:'기뻐할',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'抬',meaning:'칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'}
     ],
     '표': [
       {ch:'表',meaning:'겉',strokes:9,pilhoek:8,rad:'衣',jawonElement:'목'},
@@ -886,7 +2709,21 @@
       {ch:'豹',meaning:'표범',strokes:10,pilhoek:10,rad:'豸',jawonElement:'수'},
       {ch:'飄',meaning:'나부낄',strokes:20,pilhoek:20,rad:'風',jawonElement:'목'},
       {ch:'剽',meaning:'긁을',strokes:13,pilhoek:13,rad:'刀',jawonElement:'금'},
-      {ch:'俵',meaning:'흩어질',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'}
+      {ch:'俵',meaning:'흩어질',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'彪',meaning:'문채',strokes:11,pilhoek:11,rad:'虍',jawonElement:null},
+      {ch:'驃',meaning:'날쌜',strokes:21,pilhoek:21,rad:'馬',jawonElement:'화'},
+      {ch:'縹',meaning:'옥빛',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'摽',meaning:'칠',strokes:15,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鑣',meaning:'성할',strokes:23,pilhoek:23,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'裱',meaning:'목수건',strokes:14,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'僄',meaning:'몸이 가벼울',strokes:13,pilhoek:13,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'嫖',meaning:'가벼울',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'勡',meaning:'겁탈할',strokes:13,pilhoek:13,rad:'力',jawonElement:null,unverified:true},
+      {ch:'嘌',meaning:'휙 불',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'熛',meaning:'붉을',strokes:15,pilhoek:15,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'鏢',meaning:'칼날',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'髟',meaning:'머리털 희뜩희뜩할',strokes:10,pilhoek:10,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'鰾',meaning:'부레',strokes:22,pilhoek:22,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '필': [
       {ch:'必',meaning:'반드시',strokes:5,pilhoek:5,rad:'心',jawonElement:'화'},
@@ -896,7 +2733,20 @@
       {ch:'弼',meaning:'도울',strokes:12,pilhoek:12,rad:'弓',jawonElement:null},
       {ch:'疋',meaning:'짝',strokes:5,pilhoek:5,rad:'疋',jawonElement:null},
       {ch:'苾',meaning:'향기날',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
-      {ch:'珌',meaning:'칼 장식 옥',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'}
+      {ch:'珌',meaning:'칼 장식 옥',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'馝',meaning:'향내날',strokes:14,pilhoek:14,rad:'香',jawonElement:'목'},
+      {ch:'蹕',meaning:'길 치울',strokes:18,pilhoek:17,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'蓽',meaning:'휘추리',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'韠',meaning:'슬갑',strokes:20,pilhoek:19,rad:'韋',jawonElement:'금',unverified:true},
+      {ch:'篳',meaning:'대 사립문',strokes:17,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'觱',meaning:'바람이 쌀쌀할',strokes:16,pilhoek:16,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'佖',meaning:'점잔피울',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'滭',meaning:'샘 끓어 솟을',strokes:15,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'駜',meaning:'살찐 말',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'鵯',meaning:'갈가마귀',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'咇',meaning:'향기날',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'罼',meaning:'토끼그물',strokes:17,pilhoek:15,rad:'网',jawonElement:null,unverified:true},
+      {ch:'鞸',meaning:'슬갑',strokes:20,pilhoek:19,rad:'革',jawonElement:'금',unverified:true}
     ],
     '하': [
       {ch:'夏',meaning:'여름',strokes:10,pilhoek:10,rad:'夊',jawonElement:null},
@@ -906,12 +2756,29 @@
       {ch:'下',meaning:'아래',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
       {ch:'何',meaning:'어찌',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
       {ch:'賀',meaning:'축하할',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
-      {ch:'瑕',meaning:'옥의 티',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'}
+      {ch:'瑕',meaning:'옥의 티',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'遐',meaning:'멀',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'霞',meaning:'놀',strokes:17,pilhoek:17,rad:'雨',jawonElement:'수'},
+      {ch:'蝦',meaning:'새우',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수'},
+      {ch:'厦',meaning:'큰 집',strokes:12,pilhoek:12,rad:'厂',jawonElement:null},
+      {ch:'廈',meaning:'큰 집',strokes:13,pilhoek:13,rad:'广',jawonElement:'목'},
+      {ch:'鰕',meaning:'새우',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수'},
+      {ch:'嚇',meaning:'놀라게 할',strokes:17,pilhoek:17,rad:'口',jawonElement:null},
+      {ch:'罅',meaning:'틈',strokes:17,pilhoek:17,rad:'缶',jawonElement:'토',unverified:true},
+      {ch:'鍜',meaning:'목투구',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'岈',meaning:'휑뎅그렁할',strokes:7,pilhoek:7,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'瘕',meaning:'이질',strokes:14,pilhoek:14,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '학': [
       {ch:'學',meaning:'배울',strokes:16,pilhoek:16,rad:'子',jawonElement:'수'},
       {ch:'鶴',meaning:'두루미',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화'},
-      {ch:'壑',meaning:'골짜기',strokes:17,pilhoek:17,rad:'土',jawonElement:'토'}
+      {ch:'壑',meaning:'골짜기',strokes:17,pilhoek:17,rad:'土',jawonElement:'토'},
+      {ch:'瘧',meaning:'학질',strokes:14,pilhoek:14,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'确',meaning:'확실할',strokes:12,pilhoek:12,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'涸',meaning:'마를',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'郝',meaning:'고을 이름',strokes:14,pilhoek:9,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'鷽',meaning:'메까치',strokes:24,pilhoek:24,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'皬',meaning:'흴',strokes:21,pilhoek:21,rad:'白',jawonElement:null,unverified:true}
     ],
     '한': [
       {ch:'韓',meaning:'나라 이름',strokes:17,pilhoek:17,rad:'韋',jawonElement:'금'},
@@ -921,7 +2788,23 @@
       {ch:'閑',meaning:'한가할',strokes:12,pilhoek:12,rad:'門',jawonElement:null},
       {ch:'恨',meaning:'한될',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
       {ch:'旱',meaning:'가물',strokes:7,pilhoek:7,rad:'日',jawonElement:null},
-      {ch:'汗',meaning:'땀',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'}
+      {ch:'汗',meaning:'땀',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
+      {ch:'翰',meaning:'날개',strokes:16,pilhoek:16,rad:'羽',jawonElement:'화'},
+      {ch:'邯',meaning:'고을 이름',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'罕',meaning:'드물',strokes:7,pilhoek:7,rad:'网',jawonElement:null},
+      {ch:'悍',meaning:'모질',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'澣',meaning:'빨',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'閒',meaning:'한가할',strokes:12,pilhoek:12,rad:'門',jawonElement:null},
+      {ch:'瀚',meaning:'넓고 큰',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'桿',meaning:'막대기',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'捍',meaning:'막을',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'閈',meaning:'마을 문',strokes:11,pilhoek:11,rad:'門',jawonElement:null,unverified:true},
+      {ch:'暵',meaning:'말릴',strokes:15,pilhoek:15,rad:'日',jawonElement:null,unverified:true},
+      {ch:'鼾',meaning:'코골',strokes:17,pilhoek:17,rad:'鼻',jawonElement:null,unverified:true},
+      {ch:'嫺',meaning:'우아할',strokes:15,pilhoek:15,rad:'女',jawonElement:'토'},
+      {ch:'嫻',meaning:'우아할',strokes:15,pilhoek:15,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'駻',meaning:'사나운 말',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'鷳',meaning:'소리개',strokes:23,pilhoek:23,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '해': [
       {ch:'海',meaning:'바다',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
@@ -931,7 +2814,23 @@
       {ch:'奚',meaning:'어찌',strokes:10,pilhoek:10,rad:'大',jawonElement:null},
       {ch:'偕',meaning:'함께할',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
       {ch:'骸',meaning:'뼈',strokes:16,pilhoek:15,rad:'骨',jawonElement:null},
-      {ch:'諧',meaning:'조화할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'}
+      {ch:'諧',meaning:'조화할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'楷',meaning:'해나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'咳',meaning:'기침',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'邂',meaning:'우연히 만날',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토'},
+      {ch:'孩',meaning:'어린아이',strokes:9,pilhoek:9,rad:'子',jawonElement:'수'},
+      {ch:'垓',meaning:'땅 가장자리',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
+      {ch:'蟹',meaning:'게',strokes:19,pilhoek:19,rad:'虫',jawonElement:'수'},
+      {ch:'醢',meaning:'젓',strokes:17,pilhoek:17,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'廨',meaning:'관청',strokes:16,pilhoek:16,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'薤',meaning:'염교',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'獬',meaning:'신통한 양',strokes:17,pilhoek:16,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'欬',meaning:'기침할',strokes:10,pilhoek:10,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'咍',meaning:'비웃을',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'嶰',meaning:'골짝 사이',strokes:16,pilhoek:16,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'痎',meaning:'학질',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鮭',meaning:'어채',strokes:17,pilhoek:17,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'頦',meaning:'턱',strokes:15,pilhoek:15,rad:'頁',jawonElement:'화',unverified:true}
     ],
     '향': [
       {ch:'香',meaning:'향내',strokes:9,pilhoek:9,rad:'香',jawonElement:'목'},
@@ -941,19 +2840,27 @@
       {ch:'響',meaning:'소리 마주칠',strokes:22,pilhoek:20,rad:'音',jawonElement:'금'},
       {ch:'饗',meaning:'잔치할',strokes:22,pilhoek:20,rad:'食',jawonElement:'수'},
       {ch:'嚮',meaning:'향할',strokes:19,pilhoek:17,rad:'口',jawonElement:null},
-      {ch:'餉',meaning:'먹일',strokes:15,pilhoek:14,rad:'食',jawonElement:'수'}
+      {ch:'餉',meaning:'먹일',strokes:15,pilhoek:14,rad:'食',jawonElement:'수'},
+      {ch:'珦',meaning:'옥이름',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'薌',meaning:'곡기',strokes:19,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '헌': [
       {ch:'憲',meaning:'법',strokes:16,pilhoek:16,rad:'心',jawonElement:'화'},
       {ch:'獻',meaning:'바칠',strokes:20,pilhoek:20,rad:'犬',jawonElement:null},
       {ch:'軒',meaning:'껄껄 웃을',strokes:10,pilhoek:10,rad:'車',jawonElement:'화'},
-      {ch:'櫶',meaning:'나무이름',strokes:20,pilhoek:20,rad:'木',jawonElement:'목'}
+      {ch:'櫶',meaning:'나무이름',strokes:20,pilhoek:20,rad:'木',jawonElement:'목'},
+      {ch:'巚',meaning:'봉우리',strokes:23,pilhoek:23,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'幰',meaning:'휘장',strokes:19,pilhoek:19,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'攇',meaning:'비길',strokes:20,pilhoek:19,rad:'手',jawonElement:'목',unverified:true}
     ],
     '혁': [
       {ch:'赫',meaning:'불 이글이글할',strokes:14,pilhoek:14,rad:'赤',jawonElement:'화'},
       {ch:'爀',meaning:'불빛',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'},
       {ch:'奕',meaning:'아름다울',strokes:9,pilhoek:9,rad:'大',jawonElement:null},
-      {ch:'革',meaning:'가죽',strokes:9,pilhoek:9,rad:'革',jawonElement:'금'}
+      {ch:'革',meaning:'가죽',strokes:9,pilhoek:9,rad:'革',jawonElement:'금'},
+      {ch:'洫',meaning:'넘칠',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'鬩',meaning:'송사할',strokes:18,pilhoek:18,rad:'鬥',jawonElement:'금',unverified:true},
+      {ch:'弈',meaning:'바둑둘',strokes:9,pilhoek:9,rad:'廾',jawonElement:null,unverified:true}
     ],
     '현': [
       {ch:'賢',meaning:'어질',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
@@ -963,7 +2870,30 @@
       {ch:'炫',meaning:'밝을',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
       {ch:'見',meaning:'나타날',strokes:7,pilhoek:7,rad:'見',jawonElement:'화'},
       {ch:'現',meaning:'나타날',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
-      {ch:'縣',meaning:'매달릴',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'}
+      {ch:'縣',meaning:'매달릴',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'懸',meaning:'매달',strokes:20,pilhoek:20,rad:'心',jawonElement:'화'},
+      {ch:'弦',meaning:'시위',strokes:8,pilhoek:8,rad:'弓',jawonElement:null},
+      {ch:'峴',meaning:'고개',strokes:10,pilhoek:10,rad:'山',jawonElement:'토'},
+      {ch:'洵',meaning:'멀',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'眩',meaning:'아찔할',strokes:10,pilhoek:10,rad:'目',jawonElement:'목'},
+      {ch:'衒',meaning:'자랑할',strokes:11,pilhoek:11,rad:'行',jawonElement:null},
+      {ch:'絢',meaning:'채색무늬',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'晛',meaning:'햇발',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'俔',meaning:'연탐할',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'玹',meaning:'옥돌',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'泫',meaning:'물 깊을',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'睍',meaning:'물끄러미 볼',strokes:12,pilhoek:12,rad:'目',jawonElement:'목'},
+      {ch:'舷',meaning:'뱃전',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목'},
+      {ch:'儇',meaning:'영리할',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'},
+      {ch:'嬛',meaning:'산뜻할',strokes:16,pilhoek:16,rad:'女',jawonElement:'토'},
+      {ch:'昡',meaning:'햇빛',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'繯',meaning:'얽힐',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'痃',meaning:'적병',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'県',meaning:'고을',strokes:9,pilhoek:9,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'翾',meaning:'파뜩파뜩 날',strokes:19,pilhoek:19,rad:'羽',jawonElement:'화',unverified:true},
+      {ch:'蜆',meaning:'가막조개',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'鋗',meaning:'노구솥',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'駽',meaning:'돗총이',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '형': [
       {ch:'亨',meaning:'형통할',strokes:7,pilhoek:7,rad:'亠',jawonElement:null},
@@ -973,7 +2903,24 @@
       {ch:'瑩',meaning:'밝을',strokes:15,pilhoek:15,rad:'玉',jawonElement:'금'},
       {ch:'兄',meaning:'맏이',strokes:5,pilhoek:5,rad:'儿',jawonElement:null},
       {ch:'形',meaning:'모양',strokes:7,pilhoek:7,rad:'彡',jawonElement:null},
-      {ch:'螢',meaning:'반딧불',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수'}
+      {ch:'螢',meaning:'반딧불',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수'},
+      {ch:'衡',meaning:'저울대',strokes:16,pilhoek:16,rad:'行',jawonElement:null},
+      {ch:'馨',meaning:'향기',strokes:20,pilhoek:20,rad:'香',jawonElement:'목'},
+      {ch:'型',meaning:'거푸집',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
+      {ch:'荊',meaning:'모형나무',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'熒',meaning:'등불',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'泂',meaning:'멀',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'珩',meaning:'노리개',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'逈',meaning:'멀',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
+      {ch:'桁',meaning:'마개',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'滎',meaning:'실개천',strokes:14,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'鎣',meaning:'줄',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
+      {ch:'灐',meaning:'물 이름',strokes:22,pilhoek:21,rad:'水',jawonElement:'수'},
+      {ch:'迥',meaning:'막을',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토'},
+      {ch:'詗',meaning:'염탐할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'夐',meaning:'멀',strokes:14,pilhoek:14,rad:'夊',jawonElement:null,unverified:true},
+      {ch:'陘',meaning:'지레목',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'娙',meaning:'여관 이름',strokes:10,pilhoek:10,rad:'女',jawonElement:'토',unverified:true}
     ],
     '혜': [
       {ch:'惠',meaning:'은혜',strokes:12,pilhoek:12,rad:'心',jawonElement:'화'},
@@ -983,7 +2930,14 @@
       {ch:'鞋',meaning:'가죽신',strokes:15,pilhoek:15,rad:'革',jawonElement:'금'},
       {ch:'蹊',meaning:'지름길',strokes:17,pilhoek:17,rad:'足',jawonElement:'토'},
       {ch:'蕙',meaning:'혜초',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
-      {ch:'暳',meaning:'잔별',strokes:15,pilhoek:15,rad:'日',jawonElement:null}
+      {ch:'暳',meaning:'잔별',strokes:15,pilhoek:15,rad:'日',jawonElement:null},
+      {ch:'盻',meaning:'흘겨볼',strokes:9,pilhoek:9,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'徯',meaning:'기다릴',strokes:13,pilhoek:13,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'槥',meaning:'널',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'嘒',meaning:'가냘플',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'寭',meaning:'밝힐',strokes:15,pilhoek:15,rad:'宀',jawonElement:null},
+      {ch:'謑',meaning:'창피줄',strokes:17,pilhoek:17,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'譿',meaning:'슬기로울',strokes:22,pilhoek:22,rad:'言',jawonElement:'금'}
     ],
     '호': [
       {ch:'好',meaning:'좋을',strokes:6,pilhoek:6,rad:'女',jawonElement:'토'},
@@ -993,7 +2947,50 @@
       {ch:'皓',meaning:'흴',strokes:12,pilhoek:12,rad:'白',jawonElement:null},
       {ch:'昊',meaning:'하늘',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
       {ch:'澔',meaning:'채색빛날',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
-      {ch:'瑚',meaning:'산호',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'}
+      {ch:'瑚',meaning:'산호',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'號',meaning:'부르짖을',strokes:13,pilhoek:13,rad:'虍',jawonElement:null},
+      {ch:'乎',meaning:'인가',strokes:5,pilhoek:5,rad:'丿',jawonElement:null},
+      {ch:'呼',meaning:'부를',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'虎',meaning:'범',strokes:8,pilhoek:8,rad:'虍',jawonElement:null},
+      {ch:'護',meaning:'보호할',strokes:21,pilhoek:20,rad:'言',jawonElement:'금'},
+      {ch:'毫',meaning:'가는 털',strokes:11,pilhoek:11,rad:'毛',jawonElement:'화'},
+      {ch:'豪',meaning:'호걸',strokes:14,pilhoek:14,rad:'豕',jawonElement:'수'},
+      {ch:'互',meaning:'서로',strokes:4,pilhoek:4,rad:'二',jawonElement:null},
+      {ch:'扈',meaning:'뒤따를',strokes:11,pilhoek:11,rad:'戶',jawonElement:'목'},
+      {ch:'糊',meaning:'풀',strokes:15,pilhoek:15,rad:'米',jawonElement:'목'},
+      {ch:'濠',meaning:'해자',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'祜',meaning:'복',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'晧',meaning:'밝을',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'壕',meaning:'해자',strokes:17,pilhoek:17,rad:'土',jawonElement:'토'},
+      {ch:'弧',meaning:'활',strokes:8,pilhoek:8,rad:'弓',jawonElement:null},
+      {ch:'琥',meaning:'호박',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'壺',meaning:'단지',strokes:11,pilhoek:12,rad:'士',jawonElement:null},
+      {ch:'蒿',meaning:'쑥',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'灝',meaning:'넓을',strokes:25,pilhoek:24,rad:'水',jawonElement:'수'},
+      {ch:'瓠',meaning:'단지',strokes:11,pilhoek:11,rad:'瓜',jawonElement:null},
+      {ch:'縞',meaning:'명주',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'顥',meaning:'클',strokes:21,pilhoek:21,rad:'頁',jawonElement:'화'},
+      {ch:'岵',meaning:'산',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'蝴',meaning:'나비',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수'},
+      {ch:'滸',meaning:'물가',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'頀',meaning:'구할',strokes:23,pilhoek:22,rad:'音',jawonElement:'금'},
+      {ch:'淏',meaning:'맑을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'葫',meaning:'마늘',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'犒',meaning:'호궤할',strokes:14,pilhoek:14,rad:'牛',jawonElement:'토'},
+      {ch:'怙',meaning:'믿을',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'箎',meaning:'긴 대',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'餬',meaning:'기식할',strokes:18,pilhoek:17,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'皞',meaning:'밝을',strokes:15,pilhoek:15,rad:'白',jawonElement:null},
+      {ch:'醐',meaning:'제호',strokes:16,pilhoek:16,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'嘷',meaning:'짖을',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'滈',meaning:'장마',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'冱',meaning:'찰',strokes:6,pilhoek:6,rad:'冫',jawonElement:'수',unverified:true},
+      {ch:'嫮',meaning:'아름다울',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'滬',meaning:'강 이름',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'皜',meaning:'흴',strokes:15,pilhoek:15,rad:'白',jawonElement:null,unverified:true},
+      {ch:'儫',meaning:'영웅',strokes:16,pilhoek:16,rad:'人',jawonElement:'화'},
+      {ch:'聕',meaning:'들릴',strokes:13,pilhoek:13,rad:'耳',jawonElement:'화',unverified:true},
+      {ch:'鬍',meaning:'수염',strokes:19,pilhoek:19,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '화': [
       {ch:'和',meaning:'화할',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
@@ -1003,7 +3000,17 @@
       {ch:'化',meaning:'될',strokes:4,pilhoek:4,rad:'匕',jawonElement:null},
       {ch:'話',meaning:'말할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
       {ch:'畵',meaning:'그림',strokes:13,pilhoek:13,rad:'田',jawonElement:null},
-      {ch:'貨',meaning:'재화',strokes:11,pilhoek:11,rad:'貝',jawonElement:'금'}
+      {ch:'貨',meaning:'재화',strokes:11,pilhoek:11,rad:'貝',jawonElement:'금'},
+      {ch:'禍',meaning:'재화',strokes:14,pilhoek:12,rad:'示',jawonElement:null},
+      {ch:'禾',meaning:'벼',strokes:5,pilhoek:5,rad:'禾',jawonElement:'목'},
+      {ch:'樺',meaning:'자작나무',strokes:16,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'嬅',meaning:'여자 이름',strokes:15,pilhoek:13,rad:'女',jawonElement:'토'},
+      {ch:'譁',meaning:'시끄러울',strokes:19,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'畫',meaning:'그림',strokes:12,pilhoek:12,rad:'田',jawonElement:null},
+      {ch:'驊',meaning:'준마',strokes:22,pilhoek:20,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'俰',meaning:'화할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'婲',meaning:'예쁠',strokes:11,pilhoek:10,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'龢',meaning:'풍류 조화될',strokes:22,pilhoek:22,rad:'龠',jawonElement:'화',unverified:true}
     ],
     '환': [
       {ch:'環',meaning:'고리',strokes:18,pilhoek:17,rad:'玉',jawonElement:'금'},
@@ -1013,7 +3020,28 @@
       {ch:'還',meaning:'돌아올',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토'},
       {ch:'換',meaning:'바꿀',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
       {ch:'丸',meaning:'둥글',strokes:3,pilhoek:3,rad:'丶',jawonElement:null},
-      {ch:'喚',meaning:'부를',strokes:12,pilhoek:12,rad:'口',jawonElement:null}
+      {ch:'喚',meaning:'부를',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'幻',meaning:'변할',strokes:4,pilhoek:4,rad:'幺',jawonElement:'화'},
+      {ch:'宦',meaning:'벼슬',strokes:9,pilhoek:9,rad:'宀',jawonElement:null},
+      {ch:'鰥',meaning:'환어',strokes:21,pilhoek:21,rad:'魚',jawonElement:'수'},
+      {ch:'驩',meaning:'기뻐할',strokes:28,pilhoek:27,rad:'馬',jawonElement:'화'},
+      {ch:'渙',meaning:'흩어질',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'紈',meaning:'흰 비단',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'},
+      {ch:'奐',meaning:'빛날',strokes:9,pilhoek:9,rad:'大',jawonElement:null},
+      {ch:'晥',meaning:'환할',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'懽',meaning:'기뻐할',strokes:22,pilhoek:20,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'圜',meaning:'두를',strokes:16,pilhoek:16,rad:'囗',jawonElement:null},
+      {ch:'寰',meaning:'기내',strokes:16,pilhoek:16,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'豢',meaning:'기를',strokes:13,pilhoek:13,rad:'豕',jawonElement:'수',unverified:true},
+      {ch:'鬟',meaning:'쪽찐 머리',strokes:23,pilhoek:23,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'擐',meaning:'입을',strokes:17,pilhoek:16,rad:'手',jawonElement:'목'},
+      {ch:'轘',meaning:'환형',strokes:20,pilhoek:20,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'瓛',meaning:'옥홀',strokes:25,pilhoek:24,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'睆',meaning:'가득 차 있는 모양',strokes:12,pilhoek:12,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'鍰',meaning:'무게 단위',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'絙',meaning:'끈목',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鐶',meaning:'고리',strokes:21,pilhoek:21,rad:'金',jawonElement:'금'},
+      {ch:'皖',meaning:'샛별',strokes:12,pilhoek:12,rad:'白',jawonElement:null}
     ],
     '회': [
       {ch:'會',meaning:'모일',strokes:13,pilhoek:13,rad:'曰',jawonElement:null},
@@ -1023,7 +3051,24 @@
       {ch:'恢',meaning:'넓을',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
       {ch:'廻',meaning:'돌',strokes:9,pilhoek:8,rad:'廴',jawonElement:null},
       {ch:'檜',meaning:'노송나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
-      {ch:'膾',meaning:'회',strokes:19,pilhoek:17,rad:'肉',jawonElement:null}
+      {ch:'膾',meaning:'회',strokes:19,pilhoek:17,rad:'肉',jawonElement:null},
+      {ch:'晦',meaning:'그믐',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'徊',meaning:'노닐',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화'},
+      {ch:'誨',meaning:'가르칠',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'賄',meaning:'뇌물',strokes:13,pilhoek:13,rad:'貝',jawonElement:'금'},
+      {ch:'繪',meaning:'그림',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목'},
+      {ch:'蛔',meaning:'거위',strokes:12,pilhoek:12,rad:'虫',jawonElement:'수'},
+      {ch:'澮',meaning:'봇도랑',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'匯',meaning:'물돌',strokes:13,pilhoek:13,rad:'匚',jawonElement:null},
+      {ch:'獪',meaning:'교활할',strokes:17,pilhoek:16,rad:'犬',jawonElement:null},
+      {ch:'茴',meaning:'회향풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'洄',meaning:'거슬러 올라 갈',strokes:10,pilhoek:9,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'詼',meaning:'조롱할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鱠',meaning:'회',strokes:24,pilhoek:24,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'佪',meaning:'어정거릴',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'頮',meaning:'세수할',strokes:16,pilhoek:16,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'盔',meaning:'바리',strokes:11,pilhoek:11,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'栃',meaning:'상수리나무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true}
     ],
     '효': [
       {ch:'孝',meaning:'효도',strokes:7,pilhoek:7,rad:'子',jawonElement:'수'},
@@ -1033,7 +3078,17 @@
       {ch:'爻',meaning:'괘이름',strokes:4,pilhoek:4,rad:'爻',jawonElement:null},
       {ch:'嚆',meaning:'부르짖을',strokes:17,pilhoek:16,rad:'口',jawonElement:null},
       {ch:'梟',meaning:'올빼미',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
-      {ch:'淆',meaning:'흙탕칠',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'}
+      {ch:'淆',meaning:'흙탕칠',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'驍',meaning:'날랠',strokes:22,pilhoek:22,rad:'馬',jawonElement:'화'},
+      {ch:'斅',meaning:'가르칠',strokes:20,pilhoek:20,rad:'攴',jawonElement:'금'},
+      {ch:'涍',meaning:'성',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'囂',meaning:'시끄럽다',strokes:21,pilhoek:21,rad:'口',jawonElement:null,unverified:true},
+      {ch:'傚',meaning:'본받을',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'},
+      {ch:'殽',meaning:'섞일',strokes:12,pilhoek:12,rad:'殳',jawonElement:'금',unverified:true},
+      {ch:'崤',meaning:'산 이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'熇',meaning:'불김',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'皛',meaning:'나타날',strokes:15,pilhoek:15,rad:'白',jawonElement:null},
+      {ch:'餚',meaning:'반찬',strokes:17,pilhoek:16,rad:'食',jawonElement:'수',unverified:true}
     ],
     '훈': [
       {ch:'訓',meaning:'가르칠',strokes:10,pilhoek:10,rad:'言',jawonElement:'금'},
@@ -1043,7 +3098,12 @@
       {ch:'暈',meaning:'무리',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
       {ch:'勛',meaning:'공적',strokes:12,pilhoek:12,rad:'力',jawonElement:null},
       {ch:'焄',meaning:'향내',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
-      {ch:'燻',meaning:'연기 낄',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'}
+      {ch:'燻',meaning:'연기 낄',strokes:18,pilhoek:18,rad:'火',jawonElement:'화'},
+      {ch:'曛',meaning:'삭양 빛',strokes:18,pilhoek:18,rad:'日',jawonElement:null,unverified:true},
+      {ch:'纁',meaning:'분홍빛',strokes:20,pilhoek:20,rad:'糸',jawonElement:'목'},
+      {ch:'葷',meaning:'매운 채소',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鑂',meaning:'금빛 투색할',strokes:22,pilhoek:22,rad:'金',jawonElement:'금'},
+      {ch:'爋',meaning:'불에 말릴',strokes:20,pilhoek:20,rad:'火',jawonElement:'화',unverified:true}
     ],
     '휘': [
       {ch:'輝',meaning:'빛날',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
@@ -1052,11 +3112,14 @@
       {ch:'揮',meaning:'휘두를',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
       {ch:'諱',meaning:'피할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
       {ch:'彙',meaning:'무리',strokes:13,pilhoek:13,rad:'彐',jawonElement:null},
-      {ch:'煇',meaning:'빛날',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'}
+      {ch:'煇',meaning:'빛날',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'撝',meaning:'찣을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'翬',meaning:'훨훨날',strokes:15,pilhoek:15,rad:'羽',jawonElement:'화',unverified:true}
     ],
     '흠': [
       {ch:'欽',meaning:'공경할',strokes:12,pilhoek:12,rad:'欠',jawonElement:null},
-      {ch:'歆',meaning:'받을',strokes:13,pilhoek:13,rad:'欠',jawonElement:null}
+      {ch:'歆',meaning:'받을',strokes:13,pilhoek:13,rad:'欠',jawonElement:null},
+      {ch:'廞',meaning:'진열할',strokes:15,pilhoek:15,rad:'广',jawonElement:'목',unverified:true}
     ],
     '희': [
       {ch:'喜',meaning:'기뻐할',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
@@ -1066,7 +3129,23 @@
       {ch:'希',meaning:'바랄',strokes:7,pilhoek:7,rad:'巾',jawonElement:'목'},
       {ch:'稀',meaning:'드물',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
       {ch:'羲',meaning:'복희',strokes:16,pilhoek:16,rad:'羊',jawonElement:'토'},
-      {ch:'禧',meaning:'복',strokes:17,pilhoek:16,rad:'示',jawonElement:null}
+      {ch:'禧',meaning:'복',strokes:17,pilhoek:16,rad:'示',jawonElement:null},
+      {ch:'姬',meaning:'성',strokes:9,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'憙',meaning:'성할',strokes:16,pilhoek:16,rad:'心',jawonElement:'화'},
+      {ch:'愾',meaning:'한숨',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'僖',meaning:'기쁠',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'曦',meaning:'햇빛',strokes:20,pilhoek:20,rad:'日',jawonElement:null},
+      {ch:'凞',meaning:'빛날',strokes:16,pilhoek:16,rad:'冫',jawonElement:'수'},
+      {ch:'晞',meaning:'마를',strokes:11,pilhoek:11,rad:'日',jawonElement:null},
+      {ch:'憘',meaning:'기쁠',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'熺',meaning:'밝을',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'囍',meaning:'쌍희',strokes:22,pilhoek:24,rad:'口',jawonElement:null},
+      {ch:'嘻',meaning:'웃을',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'餼',meaning:'꾸밀',strokes:19,pilhoek:18,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'欷',meaning:'흐느낄',strokes:11,pilhoek:11,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'暿',meaning:'웃을',strokes:16,pilhoek:16,rad:'日',jawonElement:null},
+      {ch:'咥',meaning:'허허 웃을',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'爔',meaning:'불',strokes:20,pilhoek:20,rad:'火',jawonElement:'화'}
     ],
     '김': [
       {ch:'金',meaning:'사람의 성',strokes:8,pilhoek:8,rad:'金',jawonElement:'금'}
@@ -1079,17 +3158,35 @@
       {ch:'拍',meaning:'칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
       {ch:'薄',meaning:'숲',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
       {ch:'駁',meaning:'얼룩말',strokes:14,pilhoek:14,rad:'馬',jawonElement:'화'},
-      {ch:'舶',meaning:'큰배',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목'}
+      {ch:'舶',meaning:'큰배',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목'},
+      {ch:'剝',meaning:'벗길',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'},
+      {ch:'撲',meaning:'업어질',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'搏',meaning:'칠',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'樸',meaning:'통나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'珀',meaning:'호박',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'膊',meaning:'포',strokes:16,pilhoek:14,rad:'肉',jawonElement:null},
+      {ch:'雹',meaning:'누리',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수'},
+      {ch:'璞',meaning:'옥덩어리',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'亳',meaning:'땅이름',strokes:10,pilhoek:10,rad:'亠',jawonElement:null,unverified:true},
+      {ch:'駮',meaning:'짐승이름',strokes:16,pilhoek:16,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'欂',meaning:'주두',strokes:21,pilhoek:20,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'牔',meaning:'박공',strokes:14,pilhoek:14,rad:'片',jawonElement:'목',unverified:true},
+      {ch:'髆',meaning:'어깨쭉지',strokes:20,pilhoek:19,rad:'骨',jawonElement:null,unverified:true}
     ],
     '권': [
       {ch:'權',meaning:'권세',strokes:22,pilhoek:21,rad:'木',jawonElement:'목'},
-      {ch:'卷',meaning:'책',strokes:8,pilhoek:8,rad:'卩',jawonElement:null},
+      {ch:'卷',meaning:'책',strokes:8,pilhoek:8,rad:'卩',jawonElement:null,unverified:true},
       {ch:'勸',meaning:'권할',strokes:20,pilhoek:19,rad:'力',jawonElement:null},
       {ch:'券',meaning:'엄쪽',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
       {ch:'拳',meaning:'주먹',strokes:10,pilhoek:10,rad:'手',jawonElement:'목'},
       {ch:'圈',meaning:'둥글',strokes:11,pilhoek:11,rad:'囗',jawonElement:null},
       {ch:'眷',meaning:'돌아볼',strokes:11,pilhoek:11,rad:'目',jawonElement:'목'},
-      {ch:'捲',meaning:'거둘',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'}
+      {ch:'捲',meaning:'거둘',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'淃',meaning:'물돌아 흐를',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'惓',meaning:'삼갈',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'綣',meaning:'정다울',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'蜷',meaning:'움추러질',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'棬',meaning:'휘어만든 나무그릇',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true}
     ],
     '황': [
       {ch:'黃',meaning:'누를',strokes:12,pilhoek:12,rad:'黃',jawonElement:'토'},
@@ -1099,7 +3196,30 @@
       {ch:'滉',meaning:'물 깊고 넓을',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'慌',meaning:'어렴풋할',strokes:14,pilhoek:12,rad:'心',jawonElement:'화'},
       {ch:'徨',meaning:'노닐',strokes:12,pilhoek:12,rad:'彳',jawonElement:'화'},
-      {ch:'晃',meaning:'밝을',strokes:10,pilhoek:10,rad:'日',jawonElement:null}
+      {ch:'晃',meaning:'밝을',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
+      {ch:'惶',meaning:'두려워할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'遑',meaning:'허둥거릴',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'煌',meaning:'빛날',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'凰',meaning:'봉황새',strokes:11,pilhoek:11,rad:'几',jawonElement:null},
+      {ch:'潢',meaning:'웅덩이',strokes:16,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'璜',meaning:'서옥',strokes:17,pilhoek:15,rad:'玉',jawonElement:'금'},
+      {ch:'蝗',meaning:'누리',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수'},
+      {ch:'榥',meaning:'책상',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'隍',meaning:'해자',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
+      {ch:'篁',meaning:'대숲',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
+      {ch:'愰',meaning:'밝을',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'簧',meaning:'혀',strokes:18,pilhoek:17,rad:'竹',jawonElement:'목'},
+      {ch:'恍',meaning:'황홀할',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
+      {ch:'幌',meaning:'휘장',strokes:13,pilhoek:13,rad:'巾',jawonElement:'목'},
+      {ch:'湟',meaning:'해자',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'晄',meaning:'밝을',strokes:10,pilhoek:10,rad:'日',jawonElement:null},
+      {ch:'怳',meaning:'멍할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'貺',meaning:'줄',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'肓',meaning:'명치 끝',strokes:9,pilhoek:7,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'喤',meaning:'어린아이 울음',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'鎤',meaning:'종소리',strokes:18,pilhoek:18,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'瑝',meaning:'옥 소리',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'媓',meaning:'어머니',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'}
     ],
     '송': [
       {ch:'宋',meaning:'송나라',strokes:7,pilhoek:7,rad:'宀',jawonElement:null},
@@ -1109,7 +3229,9 @@
       {ch:'誦',meaning:'풍유할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
       {ch:'頌',meaning:'기릴',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화'},
       {ch:'悚',meaning:'송구할',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
-      {ch:'淞',meaning:'강이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'}
+      {ch:'淞',meaning:'강이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'竦',meaning:'공경할',strokes:12,pilhoek:12,rad:'立',jawonElement:null},
+      {ch:'鬆',meaning:'터럭 더부룩할',strokes:18,pilhoek:18,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '전': [
       {ch:'田',meaning:'밭',strokes:5,pilhoek:5,rad:'田',jawonElement:null},
@@ -1119,7 +3241,77 @@
       {ch:'戰',meaning:'싸움',strokes:16,pilhoek:16,rad:'戈',jawonElement:null},
       {ch:'展',meaning:'펼칠',strokes:10,pilhoek:10,rad:'尸',jawonElement:null},
       {ch:'傳',meaning:'전할',strokes:13,pilhoek:13,rad:'人',jawonElement:'화'},
-      {ch:'典',meaning:'책',strokes:8,pilhoek:8,rad:'八',jawonElement:null}
+      {ch:'典',meaning:'책',strokes:8,pilhoek:8,rad:'八',jawonElement:null},
+      {ch:'錢',meaning:'돈',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'專',meaning:'오로지',strokes:11,pilhoek:11,rad:'寸',jawonElement:null},
+      {ch:'轉',meaning:'구를',strokes:18,pilhoek:18,rad:'車',jawonElement:'화'},
+      {ch:'殿',meaning:'대궐',strokes:13,pilhoek:13,rad:'殳',jawonElement:'금'},
+      {ch:'顚',meaning:'이마',strokes:19,pilhoek:19,rad:'頁',jawonElement:'화'},
+      {ch:'甸',meaning:'경기',strokes:7,pilhoek:7,rad:'田',jawonElement:null},
+      {ch:'悛',meaning:'고칠',strokes:11,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'奠',meaning:'정할',strokes:12,pilhoek:12,rad:'大',jawonElement:null},
+      {ch:'箭',meaning:'화살',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
+      {ch:'銓',meaning:'사람 가릴',strokes:14,pilhoek:14,rad:'金',jawonElement:'금'},
+      {ch:'箋',meaning:'기록할',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
+      {ch:'塡',meaning:'메일',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'餞',meaning:'전별잔치',strokes:17,pilhoek:16,rad:'食',jawonElement:'수'},
+      {ch:'篆',meaning:'문체이름',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
+      {ch:'纏',meaning:'둘릴',strokes:21,pilhoek:21,rad:'糸',jawonElement:'목'},
+      {ch:'剪',meaning:'가위',strokes:11,pilhoek:11,rad:'刀',jawonElement:'금'},
+      {ch:'煎',meaning:'달일',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'廛',meaning:'전방',strokes:15,pilhoek:15,rad:'广',jawonElement:'목'},
+      {ch:'氈',meaning:'단자리',strokes:17,pilhoek:17,rad:'毛',jawonElement:'화'},
+      {ch:'輾',meaning:'돌아 누울',strokes:17,pilhoek:17,rad:'車',jawonElement:'화'},
+      {ch:'顫',meaning:'사지 떨릴',strokes:22,pilhoek:22,rad:'頁',jawonElement:'화'},
+      {ch:'澱',meaning:'찌끼',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'癲',meaning:'지랄병',strokes:24,pilhoek:24,rad:'疒',jawonElement:'수'},
+      {ch:'栓',meaning:'나무못',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'鐫',meaning:'새길',strokes:21,pilhoek:20,rad:'金',jawonElement:'금'},
+      {ch:'詮',meaning:'평론할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'佺',meaning:'신선이름',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'佃',meaning:'밭 맬',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'鈿',meaning:'보배로 꾸민 그릇',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'琠',meaning:'옥이름',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'筌',meaning:'통발',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'塼',meaning:'벽돌',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'畑',meaning:'화전',strokes:9,pilhoek:9,rad:'田',jawonElement:null},
+      {ch:'靦',meaning:'무안할',strokes:16,pilhoek:16,rad:'面',jawonElement:'화',unverified:true},
+      {ch:'牋',meaning:'글',strokes:12,pilhoek:12,rad:'片',jawonElement:'목',unverified:true},
+      {ch:'畋',meaning:'사냥할',strokes:9,pilhoek:9,rad:'田',jawonElement:null,unverified:true},
+      {ch:'腆',meaning:'두터울',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'顓',meaning:'오로지',strokes:18,pilhoek:18,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'翦',meaning:'베어 없앨',strokes:15,pilhoek:15,rad:'羽',jawonElement:'화',unverified:true},
+      {ch:'瑱',meaning:'귀막이옥',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'痊',meaning:'병 나을',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'湔',meaning:'빨',strokes:13,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'旃',meaning:'기',strokes:10,pilhoek:10,rad:'方',jawonElement:null,unverified:true},
+      {ch:'躔',meaning:'햇길',strokes:22,pilhoek:22,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'巓',meaning:'산 꼭대기',strokes:22,pilhoek:22,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'羶',meaning:'노린내날',strokes:19,pilhoek:19,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'荃',meaning:'향풀',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'磚',meaning:'벽돌',strokes:16,pilhoek:16,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'鸇',meaning:'구진매',strokes:24,pilhoek:24,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'吮',meaning:'빨',strokes:7,pilhoek:7,rad:'口',jawonElement:null,unverified:true},
+      {ch:'甎',meaning:'벽돌',strokes:15,pilhoek:15,rad:'瓦',jawonElement:null,unverified:true},
+      {ch:'邅',meaning:'머뭇거릴',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'囀',meaning:'새 지저귈',strokes:21,pilhoek:21,rad:'口',jawonElement:null,unverified:true},
+      {ch:'飦',meaning:'범벅',strokes:12,pilhoek:11,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'澶',meaning:'물이름',strokes:17,pilhoek:16,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'揃',meaning:'가를',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'栴',meaning:'향나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'屇',meaning:'구멍',strokes:8,pilhoek:8,rad:'尸',jawonElement:null,unverified:true},
+      {ch:'餰',meaning:'된죽',strokes:18,pilhoek:17,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'鱣',meaning:'전어',strokes:24,pilhoek:24,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'錪',meaning:'솥',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'畠',meaning:'밭',strokes:10,pilhoek:10,rad:'白',jawonElement:null,unverified:true},
+      {ch:'籛',meaning:'성씨',strokes:22,pilhoek:22,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'膞',meaning:'썰',strokes:17,pilhoek:15,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'輇',meaning:'달',strokes:13,pilhoek:13,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'嫥',meaning:'아름다울',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'癜',meaning:'어루러기',strokes:18,pilhoek:18,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鄽',meaning:'가게',strokes:22,pilhoek:17,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'靛',meaning:'푸른 대',strokes:16,pilhoek:16,rad:'靑',jawonElement:'목',unverified:true},
+      {ch:'鬋',meaning:'수염 깎을',strokes:19,pilhoek:19,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '홍': [
       {ch:'洪',meaning:'큰물',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
@@ -1129,7 +3321,10 @@
       {ch:'虹',meaning:'무지개',strokes:9,pilhoek:9,rad:'虫',jawonElement:'수'},
       {ch:'哄',meaning:'떠들썩할',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
       {ch:'烘',meaning:'횃불',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
-      {ch:'汞',meaning:'수은',strokes:7,pilhoek:7,rad:'水',jawonElement:'수'}
+      {ch:'汞',meaning:'수은',strokes:7,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'澒',meaning:'수은',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'晎',meaning:'날 밝으려 할',strokes:10,pilhoek:10,rad:'日',jawonElement:null,unverified:true},
+      {ch:'篊',meaning:'홈통',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목',unverified:true}
     ],
     '고': [
       {ch:'高',meaning:'높을',strokes:10,pilhoek:10,rad:'高',jawonElement:'화'},
@@ -1139,7 +3334,61 @@
       {ch:'苦',meaning:'쓸',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
       {ch:'固',meaning:'굳을',strokes:8,pilhoek:8,rad:'囗',jawonElement:null},
       {ch:'故',meaning:'옛',strokes:9,pilhoek:9,rad:'攴',jawonElement:'금'},
-      {ch:'考',meaning:'상고할',strokes:8,pilhoek:6,rad:'老',jawonElement:'토'}
+      {ch:'考',meaning:'상고할',strokes:8,pilhoek:6,rad:'老',jawonElement:'토'},
+      {ch:'姑',meaning:'시어미',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'孤',meaning:'외로울',strokes:8,pilhoek:8,rad:'子',jawonElement:'수'},
+      {ch:'鼓',meaning:'북',strokes:13,pilhoek:13,rad:'鼓',jawonElement:'금'},
+      {ch:'稿',meaning:'볏집',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
+      {ch:'枯',meaning:'마를',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'顧',meaning:'돌아볼',strokes:21,pilhoek:21,rad:'頁',jawonElement:'화'},
+      {ch:'雇',meaning:'새이름',strokes:12,pilhoek:12,rad:'隹',jawonElement:'화'},
+      {ch:'皐',meaning:'부르는 소리',strokes:11,pilhoek:11,rad:'白',jawonElement:null},
+      {ch:'錮',meaning:'땜질할',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'拷',meaning:'가질',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'痼',meaning:'고질',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'},
+      {ch:'膏',meaning:'살찔',strokes:16,pilhoek:14,rad:'肉',jawonElement:null},
+      {ch:'叩',meaning:'두드릴',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
+      {ch:'股',meaning:'넓적다리',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
+      {ch:'袴',meaning:'바지',strokes:12,pilhoek:11,rad:'衣',jawonElement:'목'},
+      {ch:'敲',meaning:'두드릴',strokes:14,pilhoek:14,rad:'攴',jawonElement:'금'},
+      {ch:'呱',meaning:'울',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'誥',meaning:'고할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'槁',meaning:'마른나무',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'藁',meaning:'마른 나무',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'攷',meaning:'생각할',strokes:6,pilhoek:6,rad:'攴',jawonElement:'금'},
+      {ch:'沽',meaning:'팔',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'蠱',meaning:'독',strokes:23,pilhoek:23,rad:'虫',jawonElement:'수'},
+      {ch:'羔',meaning:'새끼양',strokes:10,pilhoek:10,rad:'羊',jawonElement:'토'},
+      {ch:'苽',meaning:'줄',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'睾',meaning:'못',strokes:14,pilhoek:14,rad:'目',jawonElement:'목'},
+      {ch:'菰',meaning:'향초',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'暠',meaning:'흴',strokes:14,pilhoek:14,rad:'日',jawonElement:null},
+      {ch:'尻',meaning:'꽁무니',strokes:5,pilhoek:5,rad:'尸',jawonElement:null},
+      {ch:'刳',meaning:'가를',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'靠',meaning:'기댈',strokes:15,pilhoek:15,rad:'非',jawonElement:'수',unverified:true},
+      {ch:'罟',meaning:'그물',strokes:11,pilhoek:10,rad:'网',jawonElement:null,unverified:true},
+      {ch:'觚',meaning:'술잔',strokes:12,pilhoek:12,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'杲',meaning:'밝을',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'栲',meaning:'북나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'槀',meaning:'마를',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'估',meaning:'값',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'詁',meaning:'주석',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'盬',meaning:'염지',strokes:18,pilhoek:18,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'篙',meaning:'상앗대',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鴣',meaning:'자고',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'皋',meaning:'못',strokes:10,pilhoek:10,rad:'白',jawonElement:null},
+      {ch:'酤',meaning:'계명주',strokes:12,pilhoek:12,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'櫜',meaning:'활집',strokes:19,pilhoek:19,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'糕',meaning:'떡',strokes:16,pilhoek:16,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'胯',meaning:'사타구니',strokes:12,pilhoek:10,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'郜',meaning:'나라이름',strokes:14,pilhoek:9,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'羖',meaning:'검은 암양',strokes:10,pilhoek:10,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'槹',meaning:'두레박',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鈷',meaning:'다리미',strokes:13,pilhoek:13,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'凅',meaning:'얼어붙을',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수',unverified:true},
+      {ch:'牯',meaning:'암소',strokes:9,pilhoek:9,rad:'牛',jawonElement:'토',unverified:true},
+      {ch:'箍',meaning:'테',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鷱',meaning:'새이름',strokes:23,pilhoek:23,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '손': [
       {ch:'孫',meaning:'손자',strokes:10,pilhoek:10,rad:'子',jawonElement:'수'},
@@ -1147,7 +3396,8 @@
       {ch:'遜',meaning:'순할',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토'},
       {ch:'巽',meaning:'사양할',strokes:12,pilhoek:12,rad:'己',jawonElement:null},
       {ch:'飡',meaning:'삼킬',strokes:11,pilhoek:11,rad:'食',jawonElement:'수'},
-      {ch:'蓀',meaning:'난초',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'}
+      {ch:'蓀',meaning:'난초',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'飧',meaning:'저녁밥',strokes:12,pilhoek:12,rad:'食',jawonElement:'수'}
     ],
     '양': [
       {ch:'梁',meaning:'들보',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
@@ -1157,7 +3407,38 @@
       {ch:'陽',meaning:'볕',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
       {ch:'洋',meaning:'큰 바다',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'良',meaning:'어질',strokes:7,pilhoek:7,rad:'艮',jawonElement:'토'},
-      {ch:'養',meaning:'기를',strokes:15,pilhoek:14,rad:'食',jawonElement:'수'}
+      {ch:'養',meaning:'기를',strokes:15,pilhoek:14,rad:'食',jawonElement:'수'},
+      {ch:'量',meaning:'헤아릴',strokes:12,pilhoek:12,rad:'里',jawonElement:null},
+      {ch:'讓',meaning:'사양할',strokes:24,pilhoek:24,rad:'言',jawonElement:'금'},
+      {ch:'揚',meaning:'드높일',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'凉',meaning:'서늘할',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'},
+      {ch:'樣',meaning:'모양',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'糧',meaning:'양식',strokes:18,pilhoek:18,rad:'米',jawonElement:'목'},
+      {ch:'壤',meaning:'흙',strokes:20,pilhoek:20,rad:'土',jawonElement:'토'},
+      {ch:'諒',meaning:'헤아릴',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'亮',meaning:'밝을',strokes:9,pilhoek:9,rad:'亠',jawonElement:null},
+      {ch:'襄',meaning:'오를',strokes:17,pilhoek:17,rad:'衣',jawonElement:'목'},
+      {ch:'孃',meaning:'계집아이',strokes:20,pilhoek:20,rad:'女',jawonElement:'토'},
+      {ch:'瘍',meaning:'머리헐',strokes:14,pilhoek:14,rad:'疒',jawonElement:'수'},
+      {ch:'攘',meaning:'물리칠',strokes:21,pilhoek:20,rad:'手',jawonElement:'목'},
+      {ch:'禳',meaning:'푸닥거리할',strokes:22,pilhoek:21,rad:'示',jawonElement:null},
+      {ch:'痒',meaning:'가려울',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수'},
+      {ch:'佯',meaning:'어정거릴',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'暘',meaning:'해 돋을',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
+      {ch:'穰',meaning:'풍년들',strokes:22,pilhoek:22,rad:'禾',jawonElement:'목'},
+      {ch:'瀁',meaning:'물결 일렁일',strokes:19,pilhoek:17,rad:'水',jawonElement:'수'},
+      {ch:'敭',meaning:'오를',strokes:13,pilhoek:13,rad:'攴',jawonElement:'금'},
+      {ch:'煬',meaning:'구울',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'癢',meaning:'가려울',strokes:20,pilhoek:19,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'驤',meaning:'날뛰는 말',strokes:27,pilhoek:27,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'漾',meaning:'물결 출렁거릴',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'颺',meaning:'날릴',strokes:18,pilhoek:18,rad:'風',jawonElement:'목',unverified:true},
+      {ch:'徉',meaning:'배회할',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'鑲',meaning:'거푸집 속',strokes:25,pilhoek:25,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'瀼',meaning:'강이름',strokes:21,pilhoek:20,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'烊',meaning:'구울',strokes:10,pilhoek:10,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'蘘',meaning:'양하',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'輰',meaning:'상여수레',strokes:16,pilhoek:16,rad:'車',jawonElement:'화',unverified:true}
     ],
     '배': [
       {ch:'裵',meaning:'성',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목'},
@@ -1167,7 +3448,23 @@
       {ch:'輩',meaning:'무리',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
       {ch:'背',meaning:'등',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
       {ch:'配',meaning:'아내',strokes:10,pilhoek:10,rad:'酉',jawonElement:null},
-      {ch:'倍',meaning:'곱',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'}
+      {ch:'倍',meaning:'곱',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'培',meaning:'북돋을',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'排',meaning:'밀칠',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'俳',meaning:'광대',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'賠',meaning:'물어줄',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
+      {ch:'陪',meaning:'쌓아올릴',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
+      {ch:'徘',meaning:'노닐',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화'},
+      {ch:'胚',meaning:'아이 밸',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'湃',meaning:'물결 이는 모양',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'裴',meaning:'옷 치렁치렁할',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'盃',meaning:'잔',strokes:9,pilhoek:9,rad:'皿',jawonElement:null},
+      {ch:'褙',meaning:'속적삼',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'焙',meaning:'불에 쬘',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'坏',meaning:'언덕',strokes:7,pilhoek:7,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'琲',meaning:'구슬 꿰미',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'扒',meaning:'뺄',strokes:6,pilhoek:5,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'蓓',meaning:'꽃봉오리',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '백': [
       {ch:'白',meaning:'흰',strokes:5,pilhoek:5,rad:'白',jawonElement:null},
@@ -1177,13 +3474,15 @@
       {ch:'帛',meaning:'비단',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'},
       {ch:'魄',meaning:'넋',strokes:15,pilhoek:14,rad:'鬼',jawonElement:'화'},
       {ch:'柏',meaning:'나무 이름',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
-      {ch:'佰',meaning:'백사람의어른',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'}
+      {ch:'佰',meaning:'백사람의어른',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'粨',meaning:'힉터메트르',strokes:12,pilhoek:12,rad:'米',jawonElement:'목',unverified:true}
     ],
     '허': [
       {ch:'許',meaning:'허락할',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'},
       {ch:'虛',meaning:'빌',strokes:12,pilhoek:12,rad:'虍',jawonElement:null},
       {ch:'墟',meaning:'옛 터',strokes:15,pilhoek:14,rad:'土',jawonElement:'토'},
-      {ch:'噓',meaning:'불',strokes:15,pilhoek:15,rad:'口',jawonElement:null}
+      {ch:'噓',meaning:'불',strokes:15,pilhoek:15,rad:'口',jawonElement:null},
+      {ch:'歔',meaning:'한숨 쉴',strokes:16,pilhoek:15,rad:'欠',jawonElement:null,unverified:true}
     ],
     '심': [
       {ch:'沈',meaning:'성',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
@@ -1193,13 +3492,23 @@
       {ch:'尋',meaning:'찾을',strokes:12,pilhoek:12,rad:'寸',jawonElement:null},
       {ch:'審',meaning:'살필',strokes:15,pilhoek:15,rad:'宀',jawonElement:null},
       {ch:'瀋',meaning:'즙낼',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
-      {ch:'沁',meaning:'스며들',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'}
+      {ch:'沁',meaning:'스며들',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'諶',meaning:'참',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'芯',meaning:'등심초',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'潯',meaning:'물가',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'燖',meaning:'삶을',strokes:16,pilhoek:16,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'葚',meaning:'뽕나무 열매',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鐔',meaning:'칼날 아래 코등이',strokes:20,pilhoek:20,rad:'金',jawonElement:'금',unverified:true}
     ],
     '곽': [
       {ch:'郭',meaning:'성곽',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토'},
       {ch:'廓',meaning:'둘레',strokes:14,pilhoek:13,rad:'广',jawonElement:'목'},
       {ch:'槨',meaning:'덧널',strokes:15,pilhoek:14,rad:'木',jawonElement:'목'},
-      {ch:'藿',meaning:'콩잎',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'}
+      {ch:'藿',meaning:'콩잎',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
+      {ch:'霍',meaning:'빠를',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'癨',meaning:'곽란',strokes:21,pilhoek:21,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鞹',meaning:'무두질한 가죽',strokes:20,pilhoek:19,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'椁',meaning:'관',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true}
     ],
     '차': [
       {ch:'車',meaning:'수레',strokes:7,pilhoek:7,rad:'車',jawonElement:'화'},
@@ -1209,7 +3518,18 @@
       {ch:'差',meaning:'어길',strokes:10,pilhoek:9,rad:'工',jawonElement:'화'},
       {ch:'茶',meaning:'차',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
       {ch:'叉',meaning:'깍지낄',strokes:3,pilhoek:3,rad:'又',jawonElement:null},
-      {ch:'遮',meaning:'막을',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토'}
+      {ch:'遮',meaning:'막을',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토'},
+      {ch:'蹉',meaning:'넘어질',strokes:17,pilhoek:16,rad:'足',jawonElement:'토'},
+      {ch:'箚',meaning:'차자',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
+      {ch:'嵯',meaning:'우뚝 솟을',strokes:13,pilhoek:12,rad:'山',jawonElement:'토'},
+      {ch:'磋',meaning:'윤낼',strokes:15,pilhoek:14,rad:'石',jawonElement:'금'},
+      {ch:'侘',meaning:'실의할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'槎',meaning:'뗏목',strokes:14,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'瑳',meaning:'깨끗할',strokes:15,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'佽',meaning:'도울',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'硨',meaning:'조개 이름',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'岔',meaning:'갈림길',strokes:7,pilhoek:7,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'徣',meaning:'빌릴',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화',unverified:true}
     ],
     '구': [
       {ch:'具',meaning:'갖출',strokes:8,pilhoek:8,rad:'八',jawonElement:null},
@@ -1219,7 +3539,88 @@
       {ch:'句',meaning:'글귀절',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
       {ch:'救',meaning:'구원할',strokes:11,pilhoek:11,rad:'攴',jawonElement:'금'},
       {ch:'究',meaning:'궁리할',strokes:7,pilhoek:7,rad:'穴',jawonElement:'수'},
-      {ch:'久',meaning:'오랠',strokes:3,pilhoek:3,rad:'丿',jawonElement:null}
+      {ch:'久',meaning:'오랠',strokes:3,pilhoek:3,rad:'丿',jawonElement:null},
+      {ch:'舊',meaning:'옛',strokes:18,pilhoek:17,rad:'臼',jawonElement:'토'},
+      {ch:'苟',meaning:'진실로',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'俱',meaning:'함께',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'區',meaning:'감출',strokes:11,pilhoek:11,rad:'匸',jawonElement:'토'},
+      {ch:'丘',meaning:'언덕',strokes:5,pilhoek:5,rad:'一',jawonElement:null},
+      {ch:'拘',meaning:'잡을',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'球',meaning:'옥경쇠',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'構',meaning:'집세울',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'懼',meaning:'두려워할',strokes:22,pilhoek:21,rad:'心',jawonElement:'화'},
+      {ch:'驅',meaning:'몰',strokes:21,pilhoek:21,rad:'馬',jawonElement:'화'},
+      {ch:'狗',meaning:'개',strokes:9,pilhoek:8,rad:'犬',jawonElement:null},
+      {ch:'龜',meaning:'나라 이름',strokes:16,pilhoek:17,rad:'龜',jawonElement:'수'},
+      {ch:'邱',meaning:'언덕',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'鳩',meaning:'비둘기',strokes:13,pilhoek:13,rad:'鳥',jawonElement:'화'},
+      {ch:'購',meaning:'살',strokes:17,pilhoek:17,rad:'貝',jawonElement:'금'},
+      {ch:'鷗',meaning:'갈매기',strokes:22,pilhoek:22,rad:'鳥',jawonElement:'화'},
+      {ch:'玖',meaning:'옥 다음가는 돌',strokes:8,pilhoek:7,rad:'玉',jawonElement:'금'},
+      {ch:'寇',meaning:'불한당',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
+      {ch:'仇',meaning:'짝',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'},
+      {ch:'矩',meaning:'곡척',strokes:10,pilhoek:9,rad:'矢',jawonElement:'금'},
+      {ch:'溝',meaning:'개천',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'舅',meaning:'외삼촌',strokes:13,pilhoek:13,rad:'臼',jawonElement:'토'},
+      {ch:'衢',meaning:'네거리',strokes:24,pilhoek:24,rad:'行',jawonElement:null},
+      {ch:'軀',meaning:'몸',strokes:18,pilhoek:18,rad:'身',jawonElement:null},
+      {ch:'鉤',meaning:'갈고랑쇠',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'廐',meaning:'마구간',strokes:14,pilhoek:12,rad:'广',jawonElement:'목'},
+      {ch:'柩',meaning:'관',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'灸',meaning:'지질',strokes:7,pilhoek:7,rad:'火',jawonElement:'화'},
+      {ch:'謳',meaning:'읊조릴',strokes:18,pilhoek:18,rad:'言',jawonElement:'금'},
+      {ch:'垢',meaning:'때',strokes:9,pilhoek:9,rad:'土',jawonElement:'토'},
+      {ch:'駒',meaning:'망아지',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'嘔',meaning:'게워내는',strokes:14,pilhoek:14,rad:'口',jawonElement:null},
+      {ch:'嶇',meaning:'산험준할',strokes:14,pilhoek:14,rad:'山',jawonElement:'토'},
+      {ch:'毆',meaning:'구박할',strokes:15,pilhoek:15,rad:'殳',jawonElement:'금'},
+      {ch:'枸',meaning:'구기자',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'耉',meaning:'늙은이',strokes:11,pilhoek:9,rad:'老',jawonElement:'토'},
+      {ch:'勾',meaning:'글귀절',strokes:4,pilhoek:4,rad:'勹',jawonElement:null},
+      {ch:'坵',meaning:'언덕',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'瞿',meaning:'놀라서 볼',strokes:18,pilhoek:18,rad:'目',jawonElement:'목'},
+      {ch:'逑',meaning:'짝',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'絿',meaning:'급박할',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목'},
+      {ch:'柾',meaning:'관',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'銶',meaning:'끌',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'搆',meaning:'얽어맬',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'扣',meaning:'두드릴',strokes:7,pilhoek:6,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'裘',meaning:'갓옷',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'疚',meaning:'오랜 병',strokes:8,pilhoek:8,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'遘',meaning:'만날',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'媾',meaning:'겹사돈',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'屨',meaning:'삼으로 짠 신',strokes:17,pilhoek:17,rad:'尸',jawonElement:null,unverified:true},
+      {ch:'嫗',meaning:'할미',strokes:14,pilhoek:14,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'劬',meaning:'수고로울',strokes:7,pilhoek:7,rad:'力',jawonElement:null,unverified:true},
+      {ch:'捄',meaning:'흙파올릴',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'甌',meaning:'사발',strokes:15,pilhoek:15,rad:'瓦',jawonElement:null,unverified:true},
+      {ch:'摳',meaning:'치마걷어들',strokes:15,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'彀',meaning:'활 잔뜩 당길',strokes:13,pilhoek:13,rad:'弓',jawonElement:null,unverified:true},
+      {ch:'颶',meaning:'사방풍',strokes:17,pilhoek:17,rad:'風',jawonElement:'목'},
+      {ch:'漚',meaning:'물거품',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'韭',meaning:'부추',strokes:9,pilhoek:9,rad:'韭',jawonElement:null,unverified:true},
+      {ch:'鸜',meaning:'구관조',strokes:29,pilhoek:29,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'傴',meaning:'구부릴',strokes:13,pilhoek:13,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'榘',meaning:'곡척',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'糗',meaning:'마른밥가루',strokes:16,pilhoek:16,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'韝',meaning:'깍지',strokes:19,pilhoek:19,rad:'韋',jawonElement:'금',unverified:true},
+      {ch:'姤',meaning:'만날',strokes:9,pilhoek:9,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'璆',meaning:'옥경쇠',strokes:16,pilhoek:15,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'釦',meaning:'그릇에 금테 두를',strokes:11,pilhoek:11,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鷇',meaning:'새 새끼',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'俅',meaning:'공손할',strokes:9,pilhoek:9,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'佝',meaning:'꼽추',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'岣',meaning:'산이름',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'昫',meaning:'해돋아 따뜻할',strokes:9,pilhoek:9,rad:'日',jawonElement:null,unverified:true},
+      {ch:'篝',meaning:'불덮개',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'胊',meaning:'포',strokes:11,pilhoek:9,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'厹',meaning:'세모창',strokes:4,pilhoek:4,rad:'厶',jawonElement:null,unverified:true},
+      {ch:'叴',meaning:'소리 높일',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'戵',meaning:'창',strokes:22,pilhoek:22,rad:'戈',jawonElement:null,unverified:true},
+      {ch:'痀',meaning:'곱사등이',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'窛',meaning:'노략질할',strokes:12,pilhoek:12,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'蒟',meaning:'구장',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鬮',meaning:'제비뽑을',strokes:27,pilhoek:27,rad:'鬥',jawonElement:'금',unverified:true}
     ],
     '엄': [
       {ch:'嚴',meaning:'굳셀',strokes:20,pilhoek:19,rad:'口',jawonElement:null},
@@ -1227,7 +3628,13 @@
       {ch:'奄',meaning:'문득',strokes:8,pilhoek:8,rad:'大',jawonElement:null},
       {ch:'儼',meaning:'공경할',strokes:22,pilhoek:21,rad:'人',jawonElement:'화'},
       {ch:'俺',meaning:'자기',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
-      {ch:'淹',meaning:'담글',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'}
+      {ch:'淹',meaning:'담글',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'广',meaning:'바윗집',strokes:3,pilhoek:3,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'閹',meaning:'고자',strokes:16,pilhoek:16,rad:'門',jawonElement:null,unverified:true},
+      {ch:'崦',meaning:'해 지는 산 이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'罨',meaning:'그물',strokes:14,pilhoek:13,rad:'网',jawonElement:null,unverified:true},
+      {ch:'曮',meaning:'해 다니는 길',strokes:24,pilhoek:23,rad:'日',jawonElement:null,unverified:true},
+      {ch:'醃',meaning:'절일',strokes:15,pilhoek:15,rad:'酉',jawonElement:null,unverified:true}
     ],
     '방': [
       {ch:'方',meaning:'모',strokes:4,pilhoek:4,rad:'方',jawonElement:null},
@@ -1237,7 +3644,38 @@
       {ch:'邦',meaning:'나라',strokes:11,pilhoek:6,rad:'邑',jawonElement:'토'},
       {ch:'妨',meaning:'거리낄',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'},
       {ch:'芳',meaning:'꽃다울',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
-      {ch:'傍',meaning:'곁',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'}
+      {ch:'傍',meaning:'곁',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'},
+      {ch:'倣',meaning:'본뜰',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'旁',meaning:'두루',strokes:10,pilhoek:10,rad:'方',jawonElement:null},
+      {ch:'彷',meaning:'거닐',strokes:7,pilhoek:7,rad:'彳',jawonElement:'화'},
+      {ch:'紡',meaning:'자을',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
+      {ch:'龐',meaning:'흑백의 잡색',strokes:19,pilhoek:19,rad:'广',jawonElement:'목'},
+      {ch:'坊',meaning:'동네',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
+      {ch:'榜',meaning:'매',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'昉',meaning:'마침',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
+      {ch:'謗',meaning:'나무랄',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'枋',meaning:'다목',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'幇',meaning:'도울',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목'},
+      {ch:'肪',meaning:'기름',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
+      {ch:'尨',meaning:'삽살개',strokes:7,pilhoek:7,rad:'尢',jawonElement:null},
+      {ch:'膀',meaning:'쌍배',strokes:16,pilhoek:14,rad:'肉',jawonElement:null},
+      {ch:'滂',meaning:'비 퍼부을',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'蚌',meaning:'방합',strokes:10,pilhoek:10,rad:'虫',jawonElement:'수'},
+      {ch:'磅',meaning:'돌 떨어지는 소리',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'舫',meaning:'사공',strokes:10,pilhoek:10,rad:'舟',jawonElement:'목'},
+      {ch:'蒡',meaning:'인동 덩굴',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'仿',meaning:'헤멜',strokes:6,pilhoek:6,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'牓',meaning:'패',strokes:14,pilhoek:14,rad:'片',jawonElement:'목',unverified:true},
+      {ch:'髣',meaning:'비슷할',strokes:14,pilhoek:14,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'厖',meaning:'클',strokes:9,pilhoek:9,rad:'厂',jawonElement:null,unverified:true},
+      {ch:'魴',meaning:'방어',strokes:15,pilhoek:15,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'搒',meaning:'배저을',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'幫',meaning:'도울',strokes:17,pilhoek:17,rad:'巾',jawonElement:'목'},
+      {ch:'螃',meaning:'방게',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'徬',meaning:'시중들',strokes:13,pilhoek:13,rad:'彳',jawonElement:'화',unverified:true},
+      {ch:'旊',meaning:'옹기장',strokes:10,pilhoek:10,rad:'方',jawonElement:null,unverified:true},
+      {ch:'梆',meaning:'목어',strokes:11,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鎊',meaning:'깎을',strokes:18,pilhoek:18,rad:'金',jawonElement:'금',unverified:true}
     ],
     '공': [
       {ch:'孔',meaning:'구멍',strokes:4,pilhoek:4,rad:'子',jawonElement:'수'},
@@ -1247,7 +3685,23 @@
       {ch:'空',meaning:'빌',strokes:8,pilhoek:8,rad:'穴',jawonElement:'수'},
       {ch:'共',meaning:'함께',strokes:6,pilhoek:6,rad:'八',jawonElement:null},
       {ch:'恭',meaning:'공손할',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'},
-      {ch:'供',meaning:'이바지할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'}
+      {ch:'供',meaning:'이바지할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'貢',meaning:'바칠',strokes:10,pilhoek:10,rad:'貝',jawonElement:'금'},
+      {ch:'攻',meaning:'칠',strokes:7,pilhoek:7,rad:'攴',jawonElement:'금'},
+      {ch:'控',meaning:'당길',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'拱',meaning:'두 손 맞잡을',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
+      {ch:'鞏',meaning:'가죽테',strokes:15,pilhoek:15,rad:'革',jawonElement:'금'},
+      {ch:'珙',meaning:'큰 옥',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'跫',meaning:'발자국 소리',strokes:13,pilhoek:13,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'崆',meaning:'산이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'釭',meaning:'굴대',strokes:11,pilhoek:11,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'箜',meaning:'공후',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'悾',meaning:'정성',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'栱',meaning:'두공',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'槓',meaning:'지렛대',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'贛',meaning:'줄',strokes:24,pilhoek:24,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'蛬',meaning:'귀뚜라미',strokes:12,pilhoek:12,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'龔',meaning:'공손할',strokes:22,pilhoek:22,rad:'龍',jawonElement:'토'}
     ],
     '함': [
       {ch:'咸',meaning:'모두',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
@@ -1257,7 +3711,13 @@
       {ch:'喊',meaning:'소리',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'緘',meaning:'봉할',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
       {ch:'檻',meaning:'우리',strokes:18,pilhoek:18,rad:'木',jawonElement:'목'},
-      {ch:'鹹',meaning:'짤',strokes:20,pilhoek:20,rad:'鹵',jawonElement:null}
+      {ch:'鹹',meaning:'짤',strokes:20,pilhoek:20,rad:'鹵',jawonElement:null},
+      {ch:'啣',meaning:'머금을',strokes:11,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'諴',meaning:'화할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'菡',meaning:'연봉오리',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'闞',meaning:'범 소리',strokes:20,pilhoek:19,rad:'門',jawonElement:null,unverified:true},
+      {ch:'莟',meaning:'꽃봉오리',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'轞',meaning:'함거',strokes:21,pilhoek:21,rad:'車',jawonElement:'화',unverified:true}
     ],
     '변': [
       {ch:'卞',meaning:'성',strokes:4,pilhoek:4,rad:'卜',jawonElement:null},
@@ -1267,7 +3727,12 @@
       {ch:'辯',meaning:'말잘할',strokes:21,pilhoek:21,rad:'辛',jawonElement:'금'},
       {ch:'辨',meaning:'분별할',strokes:16,pilhoek:16,rad:'辛',jawonElement:'금'},
       {ch:'弁',meaning:'고깔',strokes:5,pilhoek:5,rad:'廾',jawonElement:null},
-      {ch:'騈',meaning:'나란히 할',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화'}
+      {ch:'騈',meaning:'나란히 할',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화'},
+      {ch:'抃',meaning:'손뼉칠',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'忭',meaning:'기뻐할',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'腁',meaning:'살갗 틀',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'骿',meaning:'통갈비',strokes:18,pilhoek:15,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'鴘',meaning:'매',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '염': [
       {ch:'廉',meaning:'맑을',strokes:13,pilhoek:13,rad:'广',jawonElement:'목'},
@@ -1277,7 +3742,20 @@
       {ch:'染',meaning:'꼭두서니',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
       {ch:'厭',meaning:'넉넉할',strokes:14,pilhoek:14,rad:'厂',jawonElement:null},
       {ch:'閻',meaning:'마을',strokes:16,pilhoek:16,rad:'門',jawonElement:null},
-      {ch:'焰',meaning:'불당길',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'}
+      {ch:'焰',meaning:'불당길',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'艶',meaning:'고울',strokes:19,pilhoek:19,rad:'色',jawonElement:null},
+      {ch:'殮',meaning:'염할',strokes:17,pilhoek:17,rad:'歹',jawonElement:'수'},
+      {ch:'苒',meaning:'풀 우거질',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'髥',meaning:'구레나룻',strokes:14,pilhoek:14,rad:'髟',jawonElement:'화'},
+      {ch:'琰',meaning:'아름다운 옥',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'捻',meaning:'손가락으로 찍을',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'冉',meaning:'남생이 등 언저리',strokes:5,pilhoek:5,rad:'冂',jawonElement:null,unverified:true},
+      {ch:'饜',meaning:'싫을',strokes:23,pilhoek:23,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'魘',meaning:'잠꼬대할',strokes:23,pilhoek:23,rad:'鬼',jawonElement:'화',unverified:true},
+      {ch:'灩',meaning:'물 그득할',strokes:32,pilhoek:31,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'扊',meaning:'문 빗장',strokes:12,pilhoek:12,rad:'戶',jawonElement:'목',unverified:true},
+      {ch:'檿',meaning:'산뽕나무',strokes:18,pilhoek:18,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'懕',meaning:'편안할',strokes:18,pilhoek:18,rad:'心',jawonElement:'화',unverified:true}
     ],
     '추': [
       {ch:'秋',meaning:'가을',strokes:9,pilhoek:9,rad:'禾',jawonElement:'목'},
@@ -1287,7 +3765,46 @@
       {ch:'抽',meaning:'뺄',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
       {ch:'醜',meaning:'추할',strokes:17,pilhoek:16,rad:'酉',jawonElement:null},
       {ch:'趨',meaning:'달아날',strokes:17,pilhoek:17,rad:'走',jawonElement:'화'},
-      {ch:'鄒',meaning:'추나라',strokes:17,pilhoek:12,rad:'邑',jawonElement:'토'}
+      {ch:'鄒',meaning:'추나라',strokes:17,pilhoek:12,rad:'邑',jawonElement:'토'},
+      {ch:'楸',meaning:'가래나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'椎',meaning:'칠',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'樞',meaning:'밑둥',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'墜',meaning:'추락할',strokes:15,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'酋',meaning:'괴수',strokes:9,pilhoek:9,rad:'酉',jawonElement:null},
+      {ch:'芻',meaning:'꼴',strokes:10,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'槌',meaning:'칠',strokes:14,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'錘',meaning:'마치',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'鎚',meaning:'쇠마치',strokes:18,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'鰍',meaning:'미꾸라지',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수'},
+      {ch:'雛',meaning:'새 새끼',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화'},
+      {ch:'騶',meaning:'거덜',strokes:20,pilhoek:20,rad:'馬',jawonElement:'화'},
+      {ch:'皺',meaning:'쭈그러질',strokes:15,pilhoek:15,rad:'皮',jawonElement:null},
+      {ch:'諏',meaning:'꾀할',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'湫',meaning:'늪',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'杻',meaning:'수갑',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'萩',meaning:'맑은 대쑥',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'麤',meaning:'성길',strokes:33,pilhoek:33,rad:'鹿',jawonElement:'토',unverified:true},
+      {ch:'瘳',meaning:'병 나을',strokes:16,pilhoek:16,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'惆',meaning:'실심할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'簉',meaning:'버금',strokes:17,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'陬',meaning:'벼루',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'啾',meaning:'두런거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'搥',meaning:'북 칠',strokes:14,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'帚',meaning:'털',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'鞦',meaning:'그네',strokes:18,pilhoek:18,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'僦',meaning:'임금',strokes:14,pilhoek:14,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'甃',meaning:'우물 벽돌',strokes:13,pilhoek:13,rad:'瓦',jawonElement:null,unverified:true},
+      {ch:'捶',meaning:'종아리 칠',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'縋',meaning:'줄에 달릴',strokes:16,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'魋',meaning:'북상투',strokes:17,pilhoek:17,rad:'鬼',jawonElement:'화',unverified:true},
+      {ch:'娵',meaning:'젊을',strokes:11,pilhoek:11,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'騅',meaning:'청부루말',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'鰌',meaning:'미꾸라지',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수'},
+      {ch:'縐',meaning:'주름',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鶖',meaning:'두루미',strokes:20,pilhoek:20,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'隹',meaning:'새',strokes:8,pilhoek:8,rad:'隹',jawonElement:'화',unverified:true},
+      {ch:'揫',meaning:'거둘',strokes:13,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鵻',meaning:'아롱비둘기',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '설': [
       {ch:'薛',meaning:'맑은대쑥',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
@@ -1297,7 +3814,16 @@
       {ch:'泄',meaning:'샐',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'卨',meaning:'사람이름',strokes:11,pilhoek:10,rad:'卜',jawonElement:null},
       {ch:'屑',meaning:'가루',strokes:10,pilhoek:10,rad:'尸',jawonElement:null},
-      {ch:'洩',meaning:'샐',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'}
+      {ch:'洩',meaning:'샐',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'渫',meaning:'칠',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'褻',meaning:'평복',strokes:17,pilhoek:17,rad:'衣',jawonElement:'목'},
+      {ch:'楔',meaning:'문설주',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'齧',meaning:'물',strokes:21,pilhoek:21,rad:'齒',jawonElement:'금'},
+      {ch:'偰',meaning:'맑을',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'揲',meaning:'셀',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'媟',meaning:'깔볼',strokes:12,pilhoek:12,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'碟',meaning:'가죽다룰',strokes:14,pilhoek:14,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'暬',meaning:'설만할',strokes:15,pilhoek:15,rad:'日',jawonElement:null,unverified:true}
     ],
     '마': [
       {ch:'馬',meaning:'말',strokes:10,pilhoek:10,rad:'馬',jawonElement:'화'},
@@ -1305,13 +3831,17 @@
       {ch:'魔',meaning:'마귀',strokes:21,pilhoek:20,rad:'鬼',jawonElement:'화'},
       {ch:'痲',meaning:'저릴',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'},
       {ch:'瑪',meaning:'마노',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금'},
-      {ch:'碼',meaning:'마노',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'}
+      {ch:'碼',meaning:'마노',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'麽',meaning:'잘',strokes:14,pilhoek:14,rad:'麻',jawonElement:'목',unverified:true},
+      {ch:'劘',meaning:'깍을',strokes:21,pilhoek:21,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'媽',meaning:'어미',strokes:13,pilhoek:13,rad:'女',jawonElement:'토'}
     ],
     '길': [
       {ch:'吉',meaning:'길할',strokes:6,pilhoek:6,rad:'口',jawonElement:null},
       {ch:'拮',meaning:'일할',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
       {ch:'佶',meaning:'건장할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
-      {ch:'桔',meaning:'도라지',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'}
+      {ch:'桔',meaning:'도라지',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'姞',meaning:'성',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'}
     ],
     '위': [
       {ch:'魏',meaning:'위나라',strokes:18,pilhoek:17,rad:'鬼',jawonElement:'화'},
@@ -1321,7 +3851,37 @@
       {ch:'威',meaning:'위엄',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
       {ch:'偉',meaning:'클',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
       {ch:'謂',meaning:'고할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
-      {ch:'衛',meaning:'호위할',strokes:16,pilhoek:15,rad:'行',jawonElement:null}
+      {ch:'衛',meaning:'호위할',strokes:16,pilhoek:15,rad:'行',jawonElement:null},
+      {ch:'委',meaning:'맡길',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'慰',meaning:'위로할',strokes:15,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'圍',meaning:'둘레',strokes:12,pilhoek:12,rad:'囗',jawonElement:null},
+      {ch:'胃',meaning:'밥통',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'違',meaning:'어길',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'倭',meaning:'순한 모양',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'緯',meaning:'씨줄',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'尉',meaning:'벼슬이름',strokes:11,pilhoek:11,rad:'寸',jawonElement:null},
+      {ch:'蔚',meaning:'제비쑥',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'渭',meaning:'물 이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'韋',meaning:'다룬 가죽',strokes:9,pilhoek:9,rad:'韋',jawonElement:'금'},
+      {ch:'萎',meaning:'마를',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'瑋',meaning:'위옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'葦',meaning:'작은 배',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'蝟',meaning:'고슴도치',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수'},
+      {ch:'暐',meaning:'햇빛',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
+      {ch:'褘',meaning:'휘장',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'蔿',meaning:'풀',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'諉',meaning:'핑계할',strokes:15,pilhoek:15,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'闈',meaning:'대궐안의 문',strokes:17,pilhoek:17,rad:'門',jawonElement:null,unverified:true},
+      {ch:'衞',meaning:'막을',strokes:16,pilhoek:16,rad:'行',jawonElement:null},
+      {ch:'逶',meaning:'비틀거릴',strokes:15,pilhoek:11,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'韙',meaning:'옳을',strokes:18,pilhoek:18,rad:'韋',jawonElement:'금',unverified:true},
+      {ch:'痿',meaning:'습병',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'葳',meaning:'초목 성할',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'煒',meaning:'벌그레할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'幃',meaning:'향낭',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'熨',meaning:'다리미',strokes:15,pilhoek:15,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'韡',meaning:'꽃 환히 필',strokes:21,pilhoek:19,rad:'韋',jawonElement:'금'},
+      {ch:'餧',meaning:'먹일',strokes:17,pilhoek:16,rad:'食',jawonElement:'수',unverified:true}
     ],
     '반': [
       {ch:'潘',meaning:'뜨물',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
@@ -1331,13 +3891,36 @@
       {ch:'班',meaning:'나눌',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
       {ch:'般',meaning:'옮길',strokes:10,pilhoek:10,rad:'舟',jawonElement:'목'},
       {ch:'返',meaning:'돌이킬',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토'},
-      {ch:'伴',meaning:'짝',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'}
+      {ch:'伴',meaning:'짝',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'盤',meaning:'소반',strokes:15,pilhoek:15,rad:'皿',jawonElement:null},
+      {ch:'頒',meaning:'나눌',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화'},
+      {ch:'槃',meaning:'쟁반',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'斑',meaning:'얼룩',strokes:12,pilhoek:12,rad:'文',jawonElement:'목'},
+      {ch:'搬',meaning:'옮길',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
+      {ch:'磻',meaning:'강이름',strokes:17,pilhoek:17,rad:'石',jawonElement:'금'},
+      {ch:'攀',meaning:'더위잡을',strokes:19,pilhoek:19,rad:'手',jawonElement:'목'},
+      {ch:'畔',meaning:'지경',strokes:10,pilhoek:10,rad:'田',jawonElement:null},
+      {ch:'蟠',meaning:'서릴',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수'},
+      {ch:'絆',meaning:'줄',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'礬',meaning:'백반',strokes:20,pilhoek:20,rad:'石',jawonElement:'금'},
+      {ch:'泮',meaning:'학교',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'磐',meaning:'넓을',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'扳',meaning:'끌',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'搫',meaning:'덜',strokes:14,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'頖',meaning:'풀릴',strokes:14,pilhoek:14,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'攽',meaning:'나눌',strokes:8,pilhoek:8,rad:'攴',jawonElement:'금'},
+      {ch:'朌',meaning:'구실',strokes:8,pilhoek:8,rad:'月',jawonElement:'수',unverified:true},
+      {ch:'媻',meaning:'비틀거릴',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'肦',meaning:'나눌',strokes:10,pilhoek:8,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'螌',meaning:'가뢰',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '왕': [
       {ch:'往',meaning:'옛',strokes:8,pilhoek:8,rad:'彳',jawonElement:'화'},
       {ch:'旺',meaning:'고울',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
       {ch:'汪',meaning:'물 출렁출렁할',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
-      {ch:'枉',meaning:'원통할',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'}
+      {ch:'枉',meaning:'원통할',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'尫',meaning:'파리할',strokes:7,pilhoek:7,rad:'尢',jawonElement:null,unverified:true},
+      {ch:'瀇',meaning:'아득할',strokes:19,pilhoek:17,rad:'水',jawonElement:'수',unverified:true}
     ],
     '육': [
       {ch:'陸',meaning:'뭍',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
@@ -1346,7 +3929,8 @@
       {ch:'育',meaning:'기를',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
       {ch:'戮',meaning:'육시할',strokes:15,pilhoek:15,rad:'戈',jawonElement:null},
       {ch:'堉',meaning:'기름진 땅',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
-      {ch:'毓',meaning:'기를',strokes:14,pilhoek:14,rad:'毋',jawonElement:null}
+      {ch:'毓',meaning:'기를',strokes:14,pilhoek:14,rad:'毋',jawonElement:null},
+      {ch:'儥',meaning:'팔',strokes:17,pilhoek:17,rad:'人',jawonElement:'화',unverified:true}
     ],
     '맹': [
       {ch:'孟',meaning:'맏',strokes:8,pilhoek:8,rad:'子',jawonElement:'수'},
@@ -1362,7 +3946,31 @@
       {ch:'募',meaning:'모을',strokes:13,pilhoek:12,rad:'力',jawonElement:null},
       {ch:'模',meaning:'법',strokes:15,pilhoek:14,rad:'木',jawonElement:'목'},
       {ch:'某',meaning:'아무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
-      {ch:'謀',meaning:'꾀할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'}
+      {ch:'謀',meaning:'꾀할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'冒',meaning:'가릴',strokes:9,pilhoek:9,rad:'冂',jawonElement:null},
+      {ch:'貌',meaning:'얼굴',strokes:14,pilhoek:14,rad:'豸',jawonElement:'수'},
+      {ch:'謨',meaning:'꾀',strokes:18,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'帽',meaning:'모자',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목'},
+      {ch:'矛',meaning:'창',strokes:5,pilhoek:5,rad:'矛',jawonElement:'금'},
+      {ch:'耗',meaning:'줄',strokes:10,pilhoek:10,rad:'耒',jawonElement:null},
+      {ch:'摸',meaning:'찾을',strokes:15,pilhoek:13,rad:'手',jawonElement:'목'},
+      {ch:'牡',meaning:'수컷',strokes:7,pilhoek:7,rad:'牛',jawonElement:'토'},
+      {ch:'摹',meaning:'베낄',strokes:15,pilhoek:14,rad:'手',jawonElement:'목'},
+      {ch:'瑁',meaning:'서옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
+      {ch:'芼',meaning:'풀 우거질',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'姆',meaning:'여스승',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'糢',meaning:'모호할',strokes:17,pilhoek:16,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'耄',meaning:'늙은이',strokes:10,pilhoek:10,rad:'老',jawonElement:'토',unverified:true},
+      {ch:'侔',meaning:'가지런 할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'髦',meaning:'다팔머리',strokes:14,pilhoek:14,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'旄',meaning:'깃대 장식',strokes:10,pilhoek:10,rad:'方',jawonElement:null,unverified:true},
+      {ch:'媢',meaning:'강새암 할',strokes:12,pilhoek:12,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'嫫',meaning:'예쁠',strokes:14,pilhoek:13,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'姥',meaning:'할미',strokes:9,pilhoek:9,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'蝥',meaning:'해충',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'粍',meaning:'밀리메트로',strokes:10,pilhoek:10,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'鉾',meaning:'칼 끝',strokes:14,pilhoek:14,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'恈',meaning:'탐할',strokes:10,pilhoek:9,rad:'心',jawonElement:'화',unverified:true}
     ],
     '어': [
       {ch:'魚',meaning:'물고기',strokes:11,pilhoek:11,rad:'魚',jawonElement:'수'},
@@ -1372,7 +3980,10 @@
       {ch:'御',meaning:'거느릴',strokes:11,pilhoek:12,rad:'彳',jawonElement:'화'},
       {ch:'禦',meaning:'막을',strokes:16,pilhoek:17,rad:'示',jawonElement:null},
       {ch:'圄',meaning:'옥',strokes:10,pilhoek:10,rad:'囗',jawonElement:null},
-      {ch:'瘀',meaning:'어혈질',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'}
+      {ch:'瘀',meaning:'어혈질',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'},
+      {ch:'馭',meaning:'말 부릴',strokes:12,pilhoek:12,rad:'馬',jawonElement:'화'},
+      {ch:'圉',meaning:'마부',strokes:11,pilhoek:11,rad:'囗',jawonElement:null,unverified:true},
+      {ch:'飫',meaning:'먹기 싫을',strokes:13,pilhoek:12,rad:'食',jawonElement:'수',unverified:true}
     ],
     '편': [
       {ch:'片',meaning:'조각',strokes:4,pilhoek:4,rad:'片',jawonElement:'목'},
@@ -1382,7 +3993,15 @@
       {ch:'偏',meaning:'무리',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
       {ch:'編',meaning:'책편',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
       {ch:'扁',meaning:'특별할',strokes:9,pilhoek:9,rad:'戶',jawonElement:'목'},
-      {ch:'鞭',meaning:'태장',strokes:18,pilhoek:18,rad:'革',jawonElement:'금'}
+      {ch:'鞭',meaning:'태장',strokes:18,pilhoek:18,rad:'革',jawonElement:'금'},
+      {ch:'騙',meaning:'말에 뛰어 오를',strokes:19,pilhoek:19,rad:'馬',jawonElement:'화'},
+      {ch:'翩',meaning:'훌쩍 날',strokes:15,pilhoek:15,rad:'羽',jawonElement:'화'},
+      {ch:'褊',meaning:'옷이 몸에 낄',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'艑',meaning:'거룻배',strokes:15,pilhoek:15,rad:'舟',jawonElement:'목',unverified:true},
+      {ch:'蝙',meaning:'박쥐',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'諞',meaning:'공교한 말',strokes:16,pilhoek:16,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'惼',meaning:'편협할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'緶',meaning:'꿰맬',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true}
     ],
     '봉': [
       {ch:'奉',meaning:'받들',strokes:8,pilhoek:8,rad:'大',jawonElement:null},
@@ -1392,7 +4011,18 @@
       {ch:'峯',meaning:'봉우리',strokes:10,pilhoek:10,rad:'山',jawonElement:'토'},
       {ch:'蜂',meaning:'벌',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수'},
       {ch:'蓬',meaning:'쑥',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'},
-      {ch:'俸',meaning:'녹',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'}
+      {ch:'俸',meaning:'녹',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'縫',meaning:'꿰맬',strokes:17,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'捧',meaning:'받들',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'鋒',meaning:'칼끝',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'烽',meaning:'봉화',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
+      {ch:'峰',meaning:'봉우리',strokes:10,pilhoek:10,rad:'山',jawonElement:'토'},
+      {ch:'熢',meaning:'연기 자욱할',strokes:15,pilhoek:14,rad:'火',jawonElement:'화'},
+      {ch:'琫',meaning:'칼집 장식',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'丰',meaning:'예쁠',strokes:4,pilhoek:4,rad:'丨',jawonElement:null,unverified:true},
+      {ch:'篷',meaning:'뜸',strokes:17,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'夆',meaning:'끌',strokes:7,pilhoek:7,rad:'夂',jawonElement:null,unverified:true},
+      {ch:'菶',meaning:'풀 무성할',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '사': [
       {ch:'史',meaning:'역사',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
@@ -1402,7 +4032,68 @@
       {ch:'士',meaning:'선비',strokes:3,pilhoek:3,rad:'士',jawonElement:null},
       {ch:'思',meaning:'생각할',strokes:9,pilhoek:9,rad:'心',jawonElement:'화'},
       {ch:'使',meaning:'하여금',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
-      {ch:'私',meaning:'사사',strokes:7,pilhoek:7,rad:'禾',jawonElement:'목'}
+      {ch:'私',meaning:'사사',strokes:7,pilhoek:7,rad:'禾',jawonElement:'목'},
+      {ch:'寺',meaning:'절',strokes:6,pilhoek:6,rad:'寸',jawonElement:null},
+      {ch:'師',meaning:'스승',strokes:10,pilhoek:10,rad:'巾',jawonElement:'목'},
+      {ch:'仕',meaning:'벼슬할',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'絲',meaning:'실',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'舍',meaning:'집',strokes:8,pilhoek:8,rad:'舌',jawonElement:null},
+      {ch:'謝',meaning:'사례할',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'巳',meaning:'여섯째 지지',strokes:3,pilhoek:3,rad:'己',jawonElement:null},
+      {ch:'射',meaning:'궁술',strokes:10,pilhoek:10,rad:'寸',jawonElement:null},
+      {ch:'司',meaning:'맡을',strokes:5,pilhoek:5,rad:'口',jawonElement:null},
+      {ch:'辭',meaning:'말',strokes:19,pilhoek:19,rad:'辛',jawonElement:'금'},
+      {ch:'似',meaning:'같을',strokes:7,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'賜',meaning:'줄',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
+      {ch:'社',meaning:'토지의 신',strokes:8,pilhoek:7,rad:'示',jawonElement:null},
+      {ch:'斯',meaning:'이',strokes:12,pilhoek:12,rad:'斤',jawonElement:null},
+      {ch:'祀',meaning:'제사',strokes:8,pilhoek:7,rad:'示',jawonElement:null},
+      {ch:'査',meaning:'사실할',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'沙',meaning:'모래',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'詞',meaning:'말씀',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'寫',meaning:'베낄',strokes:15,pilhoek:15,rad:'宀',jawonElement:null},
+      {ch:'斜',meaning:'비낄',strokes:11,pilhoek:11,rad:'斗',jawonElement:'화'},
+      {ch:'蛇',meaning:'뱀',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수'},
+      {ch:'赦',meaning:'용서할',strokes:11,pilhoek:11,rad:'赤',jawonElement:'화'},
+      {ch:'祠',meaning:'사당',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'泗',meaning:'물 이름',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'獅',meaning:'사자',strokes:14,pilhoek:13,rad:'犬',jawonElement:null},
+      {ch:'飼',meaning:'먹일',strokes:14,pilhoek:13,rad:'食',jawonElement:'수'},
+      {ch:'唆',meaning:'부추길',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'嗣',meaning:'이을',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
+      {ch:'徙',meaning:'옮길',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화'},
+      {ch:'紗',meaning:'깁',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
+      {ch:'些',meaning:'적을',strokes:7,pilhoek:8,rad:'二',jawonElement:null},
+      {ch:'奢',meaning:'사치할',strokes:12,pilhoek:11,rad:'大',jawonElement:null},
+      {ch:'瀉',meaning:'쏟을',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
+      {ch:'娑',meaning:'춤출',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
+      {ch:'麝',meaning:'사향노루',strokes:21,pilhoek:21,rad:'鹿',jawonElement:'토'},
+      {ch:'俟',meaning:'기다릴',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'乍',meaning:'잠깐',strokes:5,pilhoek:5,rad:'丿',jawonElement:null},
+      {ch:'蓑',meaning:'도롱이',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'砂',meaning:'모래',strokes:9,pilhoek:9,rad:'石',jawonElement:'금'},
+      {ch:'莎',meaning:'향부자',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'駟',meaning:'사마',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'裟',meaning:'가사',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'梭',meaning:'북',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'篩',meaning:'체',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목'},
+      {ch:'柶',meaning:'수저',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'渣',meaning:'찌끼',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'僿',meaning:'잘게 부슬',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'},
+      {ch:'竢',meaning:'기다릴',strokes:12,pilhoek:12,rad:'立',jawonElement:null,unverified:true},
+      {ch:'蜡',meaning:'납향',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'糸',meaning:'가는 실',strokes:6,pilhoek:6,rad:'糸',jawonElement:'목'},
+      {ch:'笥',meaning:'상자',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'榭',meaning:'정자',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'姒',meaning:'동서',strokes:8,pilhoek:7,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'卸',meaning:'풀',strokes:8,pilhoek:9,rad:'卩',jawonElement:null,unverified:true},
+      {ch:'駛',meaning:'달릴',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'咋',meaning:'잠간',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'汜',meaning:'지류',strokes:7,pilhoek:6,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'傞',meaning:'취하여 춤추는 모양',strokes:12,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'鯊',meaning:'문절망둑',strokes:18,pilhoek:18,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'痧',meaning:'쥐통',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鰤',meaning:'새우',strokes:21,pilhoek:21,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '부': [
       {ch:'夫',meaning:'지아비',strokes:4,pilhoek:4,rad:'大',jawonElement:null},
@@ -1412,14 +4103,68 @@
       {ch:'復',meaning:'다시',strokes:12,pilhoek:12,rad:'彳',jawonElement:'화'},
       {ch:'婦',meaning:'며느리',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
       {ch:'浮',meaning:'뜰',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
-      {ch:'扶',meaning:'도울',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'}
+      {ch:'扶',meaning:'도울',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'府',meaning:'마을',strokes:8,pilhoek:8,rad:'广',jawonElement:'목'},
+      {ch:'副',meaning:'버금',strokes:11,pilhoek:11,rad:'刀',jawonElement:'금'},
+      {ch:'付',meaning:'줄',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'負',meaning:'질',strokes:9,pilhoek:9,rad:'貝',jawonElement:'금'},
+      {ch:'賦',meaning:'구실',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
+      {ch:'赴',meaning:'나아갈',strokes:9,pilhoek:9,rad:'走',jawonElement:'화'},
+      {ch:'附',meaning:'붙을',strokes:13,pilhoek:7,rad:'阜',jawonElement:'토'},
+      {ch:'簿',meaning:'장부',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목'},
+      {ch:'符',meaning:'부신',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
+      {ch:'釜',meaning:'가마',strokes:10,pilhoek:10,rad:'金',jawonElement:'금'},
+      {ch:'傅',meaning:'스승',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'},
+      {ch:'敷',meaning:'펼',strokes:15,pilhoek:15,rad:'攴',jawonElement:'금'},
+      {ch:'訃',meaning:'부고',strokes:9,pilhoek:9,rad:'言',jawonElement:'금'},
+      {ch:'阜',meaning:'언덕',strokes:8,pilhoek:8,rad:'阜',jawonElement:'토'},
+      {ch:'膚',meaning:'살갗',strokes:17,pilhoek:15,rad:'肉',jawonElement:null},
+      {ch:'俯',meaning:'구푸릴',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'賻',meaning:'부의',strokes:17,pilhoek:17,rad:'貝',jawonElement:'금'},
+      {ch:'剖',meaning:'쪼갤',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'},
+      {ch:'芙',meaning:'부용',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'駙',meaning:'곁마',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'腑',meaning:'장부',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'埠',meaning:'선창',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'咐',meaning:'분부할',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'孵',meaning:'알 깔',strokes:14,pilhoek:14,rad:'子',jawonElement:'수'},
+      {ch:'孚',meaning:'미쁠',strokes:7,pilhoek:7,rad:'子',jawonElement:'수'},
+      {ch:'溥',meaning:'펼',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'鳧',meaning:'오리',strokes:13,pilhoek:13,rad:'鳥',jawonElement:'화'},
+      {ch:'缶',meaning:'장군',strokes:6,pilhoek:6,rad:'缶',jawonElement:'토'},
+      {ch:'莩',meaning:'풀 이름',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'趺',meaning:'책상다리할',strokes:11,pilhoek:11,rad:'足',jawonElement:'토'},
+      {ch:'艀',meaning:'작은 배',strokes:13,pilhoek:13,rad:'舟',jawonElement:'목'},
+      {ch:'祔',meaning:'합사할',strokes:10,pilhoek:9,rad:'示',jawonElement:null,unverified:true},
+      {ch:'拊',meaning:'어루만질',strokes:9,pilhoek:8,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'裒',meaning:'모을',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'桴',meaning:'마룻대',strokes:11,pilhoek:11,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'蔀',meaning:'빈지문',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'榑',meaning:'부상',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'掊',meaning:'그러모을',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'苻',meaning:'귀목풀',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鮒',meaning:'붕어',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'蜉',meaning:'하루살이',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'頫',meaning:'머리 숙일',strokes:15,pilhoek:15,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'抔',meaning:'움킬',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'涪',meaning:'물거품',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'玞',meaning:'옥돌',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'跗',meaning:'발등',strokes:12,pilhoek:12,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'罘',meaning:'그물',strokes:10,pilhoek:9,rad:'网',jawonElement:null,unverified:true},
+      {ch:'蚨',meaning:'파랑강충이',strokes:10,pilhoek:10,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'筟',meaning:'대청',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'胕',meaning:'장부',strokes:11,pilhoek:9,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'罦',meaning:'그물',strokes:13,pilhoek:12,rad:'网',jawonElement:null,unverified:true},
+      {ch:'芣',meaning:'질경이',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '목': [
       {ch:'睦',meaning:'화목할',strokes:13,pilhoek:13,rad:'目',jawonElement:'목'},
       {ch:'木',meaning:'나무',strokes:4,pilhoek:4,rad:'木',jawonElement:'목'},
       {ch:'牧',meaning:'칠',strokes:8,pilhoek:8,rad:'牛',jawonElement:'토'},
       {ch:'穆',meaning:'화목할',strokes:16,pilhoek:16,rad:'禾',jawonElement:'목'},
-      {ch:'鶩',meaning:'집오리',strokes:20,pilhoek:20,rad:'鳥',jawonElement:'화'}
+      {ch:'鶩',meaning:'집오리',strokes:20,pilhoek:20,rad:'鳥',jawonElement:'화'},
+      {ch:'苜',meaning:'거여목',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'凩',meaning:'찬바람',strokes:6,pilhoek:6,rad:'几',jawonElement:null,unverified:true}
     ],
     '계': [
       {ch:'桂',meaning:'계수나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
@@ -1429,7 +4174,32 @@
       {ch:'溪',meaning:'시내',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'季',meaning:'끝',strokes:8,pilhoek:8,rad:'子',jawonElement:'수'},
       {ch:'鷄',meaning:'닭',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화'},
-      {ch:'啓',meaning:'열',strokes:11,pilhoek:11,rad:'口',jawonElement:null}
+      {ch:'啓',meaning:'열',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
+      {ch:'繼',meaning:'이을',strokes:20,pilhoek:20,rad:'糸',jawonElement:'목'},
+      {ch:'戒',meaning:'경계할',strokes:7,pilhoek:7,rad:'戈',jawonElement:null},
+      {ch:'係',meaning:'걸릴',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'系',meaning:'이을',strokes:7,pilhoek:7,rad:'糸',jawonElement:'목'},
+      {ch:'階',meaning:'섬돌',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
+      {ch:'契',meaning:'맺을',strokes:9,pilhoek:9,rad:'大',jawonElement:null},
+      {ch:'械',meaning:'형틀',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'繫',meaning:'맬',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목'},
+      {ch:'悸',meaning:'두근거를',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'谿',meaning:'시내',strokes:17,pilhoek:17,rad:'谷',jawonElement:'수'},
+      {ch:'稽',meaning:'머무를',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
+      {ch:'棨',meaning:'창',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'誡',meaning:'경계할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'屆',meaning:'이를',strokes:8,pilhoek:8,rad:'尸',jawonElement:null},
+      {ch:'磎',meaning:'시냇물',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'堺',meaning:'지경',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'雞',meaning:'닭',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화',unverified:true},
+      {ch:'烓',meaning:'화덕',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
+      {ch:'罽',meaning:'물고기 그물',strokes:18,pilhoek:17,rad:'网',jawonElement:null,unverified:true},
+      {ch:'薊',meaning:'삽주',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'堦',meaning:'섬돌',strokes:12,pilhoek:12,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'髻',meaning:'상투',strokes:16,pilhoek:16,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'禊',meaning:'계제',strokes:14,pilhoek:13,rad:'示',jawonElement:null,unverified:true},
+      {ch:'綮',meaning:'발 고운 비단',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'葪',meaning:'베일',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '음': [
       {ch:'陰',meaning:'음기',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
@@ -1437,7 +4207,12 @@
       {ch:'飮',meaning:'마실',strokes:13,pilhoek:13,rad:'食',jawonElement:'수'},
       {ch:'吟',meaning:'읊을',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
       {ch:'淫',meaning:'방탕할',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
-      {ch:'蔭',meaning:'덮을',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'}
+      {ch:'蔭',meaning:'덮을',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'喑',meaning:'소리지를',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'愔',meaning:'조용할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'霪',meaning:'장마',strokes:19,pilhoek:19,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'崟',meaning:'멧부리',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'廕',meaning:'덮을',strokes:14,pilhoek:13,rad:'广',jawonElement:'목',unverified:true}
     ],
     '빈': [
       {ch:'賓',meaning:'손',strokes:14,pilhoek:14,rad:'貝',jawonElement:'금'},
@@ -1447,7 +4222,23 @@
       {ch:'殯',meaning:'염할',strokes:18,pilhoek:18,rad:'歹',jawonElement:'수'},
       {ch:'濱',meaning:'물가',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
       {ch:'嚬',meaning:'찡그릴',strokes:19,pilhoek:19,rad:'口',jawonElement:null},
-      {ch:'瀕',meaning:'물가',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'}
+      {ch:'瀕',meaning:'물가',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'牝',meaning:'암컷',strokes:6,pilhoek:6,rad:'牛',jawonElement:'토'},
+      {ch:'斌',meaning:'빛날',strokes:12,pilhoek:12,rad:'文',jawonElement:'목'},
+      {ch:'浜',meaning:'물가',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'玭',meaning:'구슬 이름',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'},
+      {ch:'檳',meaning:'빈랑나무',strokes:18,pilhoek:18,rad:'木',jawonElement:'목'},
+      {ch:'鬢',meaning:'살쩍',strokes:24,pilhoek:24,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'擯',meaning:'물리칠',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'儐',meaning:'인도할',strokes:16,pilhoek:16,rad:'人',jawonElement:'화'},
+      {ch:'蘋',meaning:'네가래',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'邠',meaning:'나라 이름',strokes:11,pilhoek:6,rad:'邑',jawonElement:'토'},
+      {ch:'顰',meaning:'찡그릴',strokes:24,pilhoek:24,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'豳',meaning:'나라 이름',strokes:17,pilhoek:17,rad:'豕',jawonElement:'수'},
+      {ch:'霦',meaning:'옥 광채',strokes:19,pilhoek:19,rad:'雨',jawonElement:'수'},
+      {ch:'鑌',meaning:'강철',strokes:22,pilhoek:22,rad:'金',jawonElement:'금'},
+      {ch:'矉',meaning:'찡그릴',strokes:19,pilhoek:19,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'臏',meaning:'종지뼈',strokes:20,pilhoek:18,rad:'肉',jawonElement:null,unverified:true}
     ],
     '금': [
       {ch:'金',meaning:'성',strokes:8,pilhoek:8,rad:'金',jawonElement:'금'},
@@ -1457,7 +4248,15 @@
       {ch:'禽',meaning:'날짐승',strokes:13,pilhoek:12,rad:'禸',jawonElement:null},
       {ch:'襟',meaning:'옷깃',strokes:19,pilhoek:18,rad:'衣',jawonElement:'목'},
       {ch:'衾',meaning:'이불',strokes:10,pilhoek:10,rad:'衣',jawonElement:'목'},
-      {ch:'衿',meaning:'옷깃',strokes:10,pilhoek:9,rad:'衣',jawonElement:'목'}
+      {ch:'衿',meaning:'옷깃',strokes:10,pilhoek:9,rad:'衣',jawonElement:'목'},
+      {ch:'芩',meaning:'풀 이름',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'檎',meaning:'능금나무',strokes:17,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'昑',meaning:'밝을',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
+      {ch:'妗',meaning:'외숙모',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'},
+      {ch:'噤',meaning:'입 다물',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true},
+      {ch:'笒',meaning:'첨대',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'唫',meaning:'입 다물',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'黅',meaning:'누른 빛',strokes:16,pilhoek:15,rad:'黃',jawonElement:'토',unverified:true}
     ],
     '국': [
       {ch:'國',meaning:'나라',strokes:11,pilhoek:11,rad:'囗',jawonElement:null},
@@ -1465,7 +4264,10 @@
       {ch:'菊',meaning:'국화',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
       {ch:'鞠',meaning:'기를',strokes:17,pilhoek:17,rad:'革',jawonElement:'금'},
       {ch:'鞫',meaning:'문초받을',strokes:18,pilhoek:18,rad:'革',jawonElement:'금'},
-      {ch:'麴',meaning:'누룩',strokes:19,pilhoek:19,rad:'麥',jawonElement:'목'}
+      {ch:'麴',meaning:'누룩',strokes:19,pilhoek:19,rad:'麥',jawonElement:'목'},
+      {ch:'匊',meaning:'움켜 뜰',strokes:8,pilhoek:8,rad:'勹',jawonElement:null,unverified:true},
+      {ch:'跼',meaning:'구부릴',strokes:14,pilhoek:14,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'掬',meaning:'두 손으로 움킬',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true}
     ],
     '궁': [
       {ch:'弓',meaning:'활',strokes:3,pilhoek:3,rad:'弓',jawonElement:null},
@@ -1483,7 +4285,25 @@
       {ch:'勵',meaning:'힘쓸',strokes:17,pilhoek:16,rad:'力',jawonElement:null},
       {ch:'廬',meaning:'오두막집',strokes:19,pilhoek:19,rad:'广',jawonElement:'목'},
       {ch:'礪',meaning:'거친 숫돌',strokes:20,pilhoek:19,rad:'石',jawonElement:'금'},
-      {ch:'驪',meaning:'가라말',strokes:29,pilhoek:29,rad:'馬',jawonElement:'화'}
+      {ch:'驪',meaning:'가라말',strokes:29,pilhoek:29,rad:'馬',jawonElement:'화'},
+      {ch:'閭',meaning:'이문',strokes:15,pilhoek:14,rad:'門',jawonElement:null},
+      {ch:'戾',meaning:'여그러질',strokes:8,pilhoek:8,rad:'戶',jawonElement:'목'},
+      {ch:'黎',meaning:'검을',strokes:15,pilhoek:15,rad:'黍',jawonElement:'목'},
+      {ch:'侶',meaning:'짝',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
+      {ch:'濾',meaning:'씻을',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
+      {ch:'藜',meaning:'나라 이름',strokes:21,pilhoek:18,rad:'艸',jawonElement:'목'},
+      {ch:'儷',meaning:'짝',strokes:21,pilhoek:21,rad:'人',jawonElement:'화'},
+      {ch:'櫚',meaning:'종려나무',strokes:19,pilhoek:18,rad:'木',jawonElement:'목'},
+      {ch:'臚',meaning:'살갗',strokes:22,pilhoek:20,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'癘',meaning:'창질',strokes:18,pilhoek:17,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'膂',meaning:'등골 뼈',strokes:16,pilhoek:14,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'蠡',meaning:'좀먹을',strokes:21,pilhoek:21,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'糲',meaning:'현미',strokes:21,pilhoek:20,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'唳',meaning:'울',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'梠',meaning:'평고대',strokes:11,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鑢',meaning:'줄',strokes:23,pilhoek:23,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'儢',meaning:'맘에 하기 싫을',strokes:17,pilhoek:17,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'邌',meaning:'천천히 걸을',strokes:22,pilhoek:18,rad:'辵',jawonElement:'토',unverified:true}
     ],
     '로': [
       {ch:'盧',meaning:'밥그릇',strokes:16,pilhoek:16,rad:'皿',jawonElement:null},
@@ -1493,7 +4313,23 @@
       {ch:'怒',meaning:'성냉',strokes:9,pilhoek:9,rad:'心',jawonElement:'화'},
       {ch:'爐',meaning:'화초',strokes:20,pilhoek:20,rad:'火',jawonElement:'화'},
       {ch:'撈',meaning:'잡을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
-      {ch:'輅',meaning:'수레',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'}
+      {ch:'輅',meaning:'수레',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'},
+      {ch:'鹵',meaning:'소금',strokes:11,pilhoek:11,rad:'鹵',jawonElement:null},
+      {ch:'潞',meaning:'강 이름',strokes:16,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'櫓',meaning:'방패',strokes:19,pilhoek:19,rad:'木',jawonElement:'목'},
+      {ch:'瀘',meaning:'강 이름',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'鱸',meaning:'농어',strokes:27,pilhoek:27,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'壚',meaning:'흑토',strokes:19,pilhoek:19,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'顱',meaning:'머리뼈',strokes:25,pilhoek:25,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'艫',meaning:'뱃머리',strokes:22,pilhoek:22,rad:'舟',jawonElement:'목',unverified:true},
+      {ch:'鸕',meaning:'가마우지',strokes:27,pilhoek:27,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'轤',meaning:'고패',strokes:23,pilhoek:23,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'玈',meaning:'검을',strokes:11,pilhoek:11,rad:'玄',jawonElement:'수',unverified:true},
+      {ch:'窂',meaning:'우리',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'滷',meaning:'소금밭',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'癆',meaning:'종독',strokes:17,pilhoek:17,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鐪',meaning:'부레',strokes:21,pilhoek:21,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'髗',meaning:'해골',strokes:26,pilhoek:25,rad:'骨',jawonElement:null,unverified:true}
     ],
     '류': [
       {ch:'柳',meaning:'버들',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
@@ -1503,7 +4339,17 @@
       {ch:'劉',meaning:'성',strokes:15,pilhoek:15,rad:'刀',jawonElement:'금'},
       {ch:'謬',meaning:'그릇될',strokes:18,pilhoek:18,rad:'言',jawonElement:'금'},
       {ch:'溜',meaning:'증류수',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
-      {ch:'琉',meaning:'유리',strokes:11,pilhoek:11,rad:'玉',jawonElement:'금'}
+      {ch:'琉',meaning:'유리',strokes:11,pilhoek:11,rad:'玉',jawonElement:'금'},
+      {ch:'瘤',meaning:'혹',strokes:15,pilhoek:15,rad:'疒',jawonElement:'수'},
+      {ch:'瑠',meaning:'구슬이름',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'旒',meaning:'깃발',strokes:13,pilhoek:13,rad:'方',jawonElement:null},
+      {ch:'榴',meaning:'석류나무',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'硫',meaning:'유황',strokes:12,pilhoek:12,rad:'石',jawonElement:'금'},
+      {ch:'瀏',meaning:'맑을',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
+      {ch:'纍',meaning:'갇힐',strokes:21,pilhoek:21,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鶹',meaning:'올빼미',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'縲',meaning:'포승',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'遛',meaning:'머무를',strokes:17,pilhoek:13,rad:'辵',jawonElement:'토',unverified:true}
     ],
     '만': [
       {ch:'萬',meaning:'일만',strokes:15,pilhoek:12,rad:'禸',jawonElement:null},
@@ -1513,11 +4359,28 @@
       {ch:'灣',meaning:'물굽이',strokes:26,pilhoek:25,rad:'水',jawonElement:'수'},
       {ch:'娩',meaning:'해산할',strokes:10,pilhoek:10,rad:'女',jawonElement:'토'},
       {ch:'挽',meaning:'당길',strokes:11,pilhoek:10,rad:'手',jawonElement:'목'},
-      {ch:'蔓',meaning:'덩굴',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'}
+      {ch:'蔓',meaning:'덩굴',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'瞞',meaning:'거슴츠레한',strokes:16,pilhoek:16,rad:'目',jawonElement:'목'},
+      {ch:'輓',meaning:'끌',strokes:14,pilhoek:14,rad:'車',jawonElement:'화'},
+      {ch:'彎',meaning:'활당길',strokes:22,pilhoek:22,rad:'弓',jawonElement:null},
+      {ch:'饅',meaning:'만두',strokes:20,pilhoek:19,rad:'食',jawonElement:'수'},
+      {ch:'鰻',meaning:'뱀장어',strokes:22,pilhoek:22,rad:'魚',jawonElement:'수'},
+      {ch:'卍',meaning:'만자',strokes:6,pilhoek:4,rad:'十',jawonElement:null},
+      {ch:'万',meaning:'일만',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
+      {ch:'曼',meaning:'끌',strokes:11,pilhoek:11,rad:'曰',jawonElement:null},
+      {ch:'巒',meaning:'뫼',strokes:22,pilhoek:22,rad:'山',jawonElement:'토'},
+      {ch:'幔',meaning:'막',strokes:14,pilhoek:14,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'蹣',meaning:'비틀거릴',strokes:18,pilhoek:18,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'墁',meaning:'흙손',strokes:14,pilhoek:14,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'縵',meaning:'무늬 없는 비단',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鏝',meaning:'흙손',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鬘',meaning:'머리장식',strokes:21,pilhoek:21,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'鏋',meaning:'금',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'}
     ],
     '묵': [
       {ch:'墨',meaning:'먹',strokes:15,pilhoek:15,rad:'黑',jawonElement:'수'},
-      {ch:'默',meaning:'묵묵할',strokes:16,pilhoek:16,rad:'黑',jawonElement:'수'}
+      {ch:'默',meaning:'묵묵할',strokes:16,pilhoek:16,rad:'黑',jawonElement:'수'},
+      {ch:'嘿',meaning:'고요할',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true}
     ],
     '범': [
       {ch:'凡',meaning:'무릇',strokes:3,pilhoek:3,rad:'几',jawonElement:null},
@@ -1527,7 +4390,11 @@
       {ch:'汎',meaning:'뜰',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
       {ch:'泛',meaning:'뜰',strokes:9,pilhoek:7,rad:'水',jawonElement:'수'},
       {ch:'帆',meaning:'돛',strokes:6,pilhoek:6,rad:'巾',jawonElement:'목'},
-      {ch:'梵',meaning:'범어',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'}
+      {ch:'梵',meaning:'범어',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'氾',meaning:'넘칠',strokes:6,pilhoek:5,rad:'水',jawonElement:'수'},
+      {ch:'颿',meaning:'돛',strokes:19,pilhoek:19,rad:'風',jawonElement:'목',unverified:true},
+      {ch:'笵',meaning:'법',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'訉',meaning:'말 많을',strokes:10,pilhoek:10,rad:'言',jawonElement:'금',unverified:true}
     ],
     '삼': [
       {ch:'三',meaning:'석',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
@@ -1536,7 +4403,11 @@
       {ch:'森',meaning:'나무빽빽할',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
       {ch:'渗',meaning:'거를',strokes:15,pilhoek:11,rad:'水',jawonElement:'수'},
       {ch:'衫',meaning:'적삼',strokes:9,pilhoek:8,rad:'衣',jawonElement:'목'},
-      {ch:'杉',meaning:'삼나무',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'}
+      {ch:'杉',meaning:'삼나무',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
+      {ch:'毿',meaning:'털긴',strokes:15,pilhoek:15,rad:'毛',jawonElement:'화',unverified:true},
+      {ch:'糝',meaning:'나물죽',strokes:17,pilhoek:17,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'鬖',meaning:'헝클어질',strokes:21,pilhoek:21,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'釤',meaning:'낫',strokes:11,pilhoek:11,rad:'金',jawonElement:'금',unverified:true}
     ],
     '순': [
       {ch:'順',meaning:'좇을',strokes:12,pilhoek:12,rad:'頁',jawonElement:'화'},
@@ -1546,17 +4417,57 @@
       {ch:'旬',meaning:'열흘',strokes:6,pilhoek:6,rad:'日',jawonElement:null},
       {ch:'殉',meaning:'구할',strokes:10,pilhoek:10,rad:'歹',jawonElement:'수'},
       {ch:'瞬',meaning:'잠깐',strokes:17,pilhoek:17,rad:'目',jawonElement:'목'},
-      {ch:'舜',meaning:'순임금',strokes:12,pilhoek:12,rad:'舛',jawonElement:'목'}
+      {ch:'舜',meaning:'순임금',strokes:12,pilhoek:12,rad:'舛',jawonElement:'목'},
+      {ch:'淳',meaning:'맑을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'珣',meaning:'옥그릇',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'盾',meaning:'방패',strokes:9,pilhoek:9,rad:'目',jawonElement:'목'},
+      {ch:'洵',meaning:'웅덩이물',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'筍',meaning:'죽순',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'醇',meaning:'전국술',strokes:15,pilhoek:15,rad:'酉',jawonElement:null},
+      {ch:'馴',meaning:'길들일',strokes:13,pilhoek:13,rad:'馬',jawonElement:'화'},
+      {ch:'荀',meaning:'풀 이름',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'詢',meaning:'꾀할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'諄',meaning:'거듭 일러줄',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'徇',meaning:'조리 돌릴',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화'},
+      {ch:'恂',meaning:'진실할',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
+      {ch:'蓴',meaning:'순나물',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'楯',meaning:'난간',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'錞',meaning:'사발종',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'蕣',meaning:'무궁화',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'栒',meaning:'경쇠걸이',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'橓',meaning:'무궁화나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'肫',meaning:'광대뼈',strokes:10,pilhoek:8,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'鶉',meaning:'메추라기',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'紃',meaning:'신에 실선 두를',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'鬊',meaning:'머리 풀어헤칠',strokes:19,pilhoek:19,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'侚',meaning:'좇을',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'盹',meaning:'졸',strokes:9,pilhoek:9,rad:'目',jawonElement:'목',unverified:true}
     ],
     '애': [
       {ch:'愛',meaning:'사랑',strokes:13,pilhoek:13,rad:'心',jawonElement:'화'},
       {ch:'哀',meaning:'가여울',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
       {ch:'涯',meaning:'물가',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'礙',meaning:'막을',strokes:19,pilhoek:19,rad:'石',jawonElement:'금'},
       {ch:'埃',meaning:'속세',strokes:10,pilhoek:10,rad:'土',jawonElement:'토'},
       {ch:'艾',meaning:'쑥',strokes:8,pilhoek:5,rad:'艸',jawonElement:'목'},
       {ch:'喝',meaning:'목 쉴',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'崖',meaning:'낭떠러지',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
-      {ch:'靄',meaning:'아지랭이',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'}
+      {ch:'靄',meaning:'아지랭이',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'},
+      {ch:'曖',meaning:'희미할',strokes:17,pilhoek:17,rad:'日',jawonElement:null},
+      {ch:'厓',meaning:'언덕',strokes:8,pilhoek:8,rad:'厂',jawonElement:null},
+      {ch:'藹',meaning:'화기로울',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'騃',meaning:'말달릴',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'皚',meaning:'흴',strokes:15,pilhoek:15,rad:'白',jawonElement:null,unverified:true},
+      {ch:'瞹',meaning:'흐릿할',strokes:18,pilhoek:18,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'挨',meaning:'밀칠',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'僾',meaning:'어렴풋할',strokes:15,pilhoek:15,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'薆',meaning:'숨겨질',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'靉',meaning:'구름낄',strokes:25,pilhoek:25,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'捱',meaning:'막을',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'磑',meaning:'맷돌',strokes:15,pilhoek:15,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'唉',meaning:'대답하는 소리',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'啀',meaning:'물어뜯을',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'漄',meaning:'물가',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true}
     ],
     '야': [
       {ch:'夜',meaning:'밤',strokes:8,pilhoek:8,rad:'夕',jawonElement:null},
@@ -1566,7 +4477,10 @@
       {ch:'耶',meaning:'의문의 어조야',strokes:9,pilhoek:8,rad:'耳',jawonElement:'화'},
       {ch:'惹',meaning:'끌릴',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
       {ch:'倻',meaning:'땅이름',strokes:11,pilhoek:10,rad:'人',jawonElement:'화'},
-      {ch:'椰',meaning:'야자나무',strokes:13,pilhoek:12,rad:'木',jawonElement:'목'}
+      {ch:'椰',meaning:'야자나무',strokes:13,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'爺',meaning:'아비',strokes:13,pilhoek:12,rad:'父',jawonElement:'목'},
+      {ch:'冶',meaning:'단련할',strokes:7,pilhoek:7,rad:'冫',jawonElement:'수'},
+      {ch:'埜',meaning:'들판',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'}
     ],
     '옹': [
       {ch:'翁',meaning:'늙은이',strokes:10,pilhoek:10,rad:'羽',jawonElement:'화'},
@@ -1576,7 +4490,16 @@
       {ch:'甕',meaning:'항아리',strokes:18,pilhoek:17,rad:'瓦',jawonElement:null},
       {ch:'邕',meaning:'사람이름',strokes:10,pilhoek:10,rad:'邑',jawonElement:'토'},
       {ch:'瓮',meaning:'항아리',strokes:9,pilhoek:8,rad:'瓦',jawonElement:null},
-      {ch:'饔',meaning:'아침밥',strokes:22,pilhoek:22,rad:'食',jawonElement:'수'}
+      {ch:'饔',meaning:'아침밥',strokes:22,pilhoek:22,rad:'食',jawonElement:'수'},
+      {ch:'癰',meaning:'헌곳',strokes:23,pilhoek:23,rad:'疒',jawonElement:'수'},
+      {ch:'顒',meaning:'우러를',strokes:18,pilhoek:18,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'喁',meaning:'물고기 입 오물거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'蓊',meaning:'옹풀',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'雝',meaning:'학교',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화',unverified:true},
+      {ch:'滃',meaning:'구름 피어 오를',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'禺',meaning:'땅 이름',strokes:8,pilhoek:9,rad:'禸',jawonElement:null,unverified:true},
+      {ch:'廱',meaning:'벽옹',strokes:21,pilhoek:21,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'癕',meaning:'등창',strokes:18,pilhoek:18,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '임': [
       {ch:'林',meaning:'수풀',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
@@ -1586,19 +4509,30 @@
       {ch:'賃',meaning:'품팔이',strokes:13,pilhoek:13,rad:'貝',jawonElement:'금'},
       {ch:'姙',meaning:'아이밸',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
       {ch:'淋',meaning:'지적지적할',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
-      {ch:'稔',meaning:'곡식익을',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'}
+      {ch:'稔',meaning:'곡식익을',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'荏',meaning:'들깨',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
+      {ch:'恁',meaning:'생각할',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'妊',meaning:'아이밸',strokes:7,pilhoek:7,rad:'女',jawonElement:'토'},
+      {ch:'衽',meaning:'옷깃',strokes:10,pilhoek:9,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'飪',meaning:'익힐',strokes:13,pilhoek:12,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'絍',meaning:'짤',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true}
     ],
     '좌': [
       {ch:'左',meaning:'왼',strokes:5,pilhoek:5,rad:'工',jawonElement:'화'},
       {ch:'坐',meaning:'앉을',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
       {ch:'佐',meaning:'도울',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
       {ch:'座',meaning:'자리',strokes:10,pilhoek:10,rad:'广',jawonElement:'목'},
-      {ch:'挫',meaning:'꺽을',strokes:11,pilhoek:10,rad:'手',jawonElement:'목'}
+      {ch:'挫',meaning:'꺽을',strokes:11,pilhoek:10,rad:'手',jawonElement:'목'},
+      {ch:'髽',meaning:'북상투',strokes:17,pilhoek:17,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'剉',meaning:'꺽을',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'莝',meaning:'여물',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'痤',meaning:'뾰루지',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '즙': [
       {ch:'汁',meaning:'즙',strokes:6,pilhoek:5,rad:'水',jawonElement:'수'},
       {ch:'葺',meaning:'지붕일',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
-      {ch:'楫',meaning:'노',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'}
+      {ch:'楫',meaning:'노',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'蕺',meaning:'삼백초',strokes:19,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '탁': [
       {ch:'卓',meaning:'높을',strokes:8,pilhoek:8,rad:'十',jawonElement:null},
@@ -1608,7 +4542,23 @@
       {ch:'托',meaning:'밀칠',strokes:7,pilhoek:6,rad:'手',jawonElement:'목'},
       {ch:'濯',meaning:'씻을',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
       {ch:'託',meaning:'맡길',strokes:10,pilhoek:10,rad:'言',jawonElement:'금'},
-      {ch:'琢',meaning:'옥 쪼을',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'}
+      {ch:'琢',meaning:'옥 쪼을',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'擢',meaning:'뽑을',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'鐸',meaning:'요령',strokes:21,pilhoek:21,rad:'金',jawonElement:'금'},
+      {ch:'坼',meaning:'터질',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'啄',meaning:'쪼을',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
+      {ch:'倬',meaning:'환할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'柝',meaning:'쪼갤',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'晫',meaning:'환할',strokes:12,pilhoek:12,rad:'日',jawonElement:null},
+      {ch:'琸',meaning:'사람이름',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'拆',meaning:'터질',strokes:9,pilhoek:8,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'橐',meaning:'전대',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'涿',meaning:'칠',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'逴',meaning:'멀',strokes:15,pilhoek:11,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'踔',meaning:'우뚝 설',strokes:15,pilhoek:15,rad:'足',jawonElement:'토'},
+      {ch:'沰',meaning:'떨어뜨릴',strokes:9,pilhoek:8,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'矺',meaning:'나무이름',strokes:8,pilhoek:8,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'蘀',meaning:'마를',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '탄': [
       {ch:'歎',meaning:'아름답다 할',strokes:15,pilhoek:15,rad:'欠',jawonElement:null},
@@ -1618,7 +4568,12 @@
       {ch:'灘',meaning:'여울',strokes:23,pilhoek:22,rad:'水',jawonElement:'수'},
       {ch:'綻',meaning:'옷 터질',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
       {ch:'憚',meaning:'수고로울',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
-      {ch:'呑',meaning:'삼킬',strokes:7,pilhoek:7,rad:'口',jawonElement:null}
+      {ch:'呑',meaning:'삼킬',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'坦',meaning:'너그러울',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'殫',meaning:'다할',strokes:16,pilhoek:16,rad:'歹',jawonElement:'수',unverified:true},
+      {ch:'癱',meaning:'중풍증',strokes:24,pilhoek:24,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'攤',meaning:'열',strokes:23,pilhoek:22,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'驒',meaning:'돈짝무늬총이말',strokes:22,pilhoek:22,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '판': [
       {ch:'判',meaning:'판단할',strokes:7,pilhoek:7,rad:'刀',jawonElement:'금'},
@@ -1628,20 +4583,30 @@
       {ch:'阪',meaning:'산비탈',strokes:12,pilhoek:6,rad:'阜',jawonElement:'토'},
       {ch:'辦',meaning:'힘들일',strokes:16,pilhoek:16,rad:'辛',jawonElement:'금'},
       {ch:'坂',meaning:'언덕',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
-      {ch:'瓣',meaning:'외씨',strokes:19,pilhoek:19,rad:'瓜',jawonElement:null}
+      {ch:'瓣',meaning:'외씨',strokes:19,pilhoek:19,rad:'瓜',jawonElement:null},
+      {ch:'鈑',meaning:'불린 금',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'}
     ],
     '팽': [
       {ch:'彭',meaning:'성씨',strokes:12,pilhoek:12,rad:'彡',jawonElement:null},
       {ch:'膨',meaning:'배 불룩할',strokes:18,pilhoek:16,rad:'肉',jawonElement:null},
       {ch:'澎',meaning:'물소리',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
-      {ch:'烹',meaning:'삶을',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'}
+      {ch:'烹',meaning:'삶을',strokes:11,pilhoek:11,rad:'火',jawonElement:'화'},
+      {ch:'祊',meaning:'사당문 제사',strokes:9,pilhoek:8,rad:'示',jawonElement:null,unverified:true},
+      {ch:'砰',meaning:'여울 물소리',strokes:10,pilhoek:10,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'蟛',meaning:'방게',strokes:18,pilhoek:18,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '평': [
       {ch:'平',meaning:'평탄할',strokes:5,pilhoek:5,rad:'干',jawonElement:'목'},
       {ch:'評',meaning:'평론할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
       {ch:'坪',meaning:'벌판',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
       {ch:'萍',meaning:'머구리밥',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
-      {ch:'枰',meaning:'장기판',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'}
+      {ch:'枰',meaning:'장기판',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'苹',meaning:'맑은 대쑥',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'抨',meaning:'탄핵할',strokes:9,pilhoek:8,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'怦',meaning:'칼칼할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'泙',meaning:'물소리',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'蓱',meaning:'머구리밥',strokes:17,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鮃',meaning:'가자미',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '포': [
       {ch:'布',meaning:'베',strokes:5,pilhoek:5,rad:'巾',jawonElement:'목'},
@@ -1651,14 +4616,44 @@
       {ch:'胞',meaning:'태보',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
       {ch:'包',meaning:'꾸릴',strokes:5,pilhoek:5,rad:'勹',jawonElement:null},
       {ch:'飽',meaning:'배부를',strokes:14,pilhoek:13,rad:'食',jawonElement:'수'},
-      {ch:'砲',meaning:'큰 대포',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'}
+      {ch:'砲',meaning:'큰 대포',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'},
+      {ch:'鋪',meaning:'전방',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'逋',meaning:'달아날',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'怖',meaning:'놀래킬',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'鮑',meaning:'절인 생선',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수'},
+      {ch:'泡',meaning:'물거품',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'葡',meaning:'포도',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'褒',meaning:'포장할',strokes:15,pilhoek:15,rad:'衣',jawonElement:'목'},
+      {ch:'袍',meaning:'도포',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목'},
+      {ch:'蒲',meaning:'부들풀',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'圃',meaning:'채마밭',strokes:10,pilhoek:10,rad:'囗',jawonElement:null},
+      {ch:'脯',meaning:'포',strokes:11,pilhoek:11,rad:'肉',jawonElement:null},
+      {ch:'哺',meaning:'씹어 먹을',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'曝',meaning:'볕 쬘',strokes:19,pilhoek:19,rad:'日',jawonElement:null},
+      {ch:'匍',meaning:'엉금엉금 길',strokes:9,pilhoek:9,rad:'勹',jawonElement:null},
+      {ch:'咆',meaning:'고함지를',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'疱',meaning:'부풀',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
+      {ch:'苞',meaning:'그령풀',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'佈',meaning:'펼칠',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'匏',meaning:'박',strokes:11,pilhoek:11,rad:'勹',jawonElement:null},
+      {ch:'庖',meaning:'푸줏간',strokes:8,pilhoek:8,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'炮',meaning:'그슬릴',strokes:9,pilhoek:9,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'晡',meaning:'신시',strokes:11,pilhoek:11,rad:'日',jawonElement:null,unverified:true},
+      {ch:'餔',meaning:'저녁 곁두리',strokes:16,pilhoek:15,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'炰',meaning:'그슬',strokes:9,pilhoek:9,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'誧',meaning:'꾀할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鞄',meaning:'가방',strokes:14,pilhoek:14,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'鯆',meaning:'매가리',strokes:18,pilhoek:18,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'曓',meaning:'창졸',strokes:17,pilhoek:17,rad:'日',jawonElement:null,unverified:true},
+      {ch:'鉋',meaning:'대패',strokes:13,pilhoek:13,rad:'金',jawonElement:'금',unverified:true}
     ],
     '풍': [
       {ch:'風',meaning:'바람',strokes:9,pilhoek:9,rad:'風',jawonElement:'목'},
       {ch:'豊',meaning:'풍년',strokes:13,pilhoek:13,rad:'豆',jawonElement:null},
       {ch:'楓',meaning:'단풍나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
       {ch:'諷',meaning:'비유로 간할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
-      {ch:'馮',meaning:'벼슬이름',strokes:12,pilhoek:12,rad:'馬',jawonElement:'화'}
+      {ch:'馮',meaning:'벼슬이름',strokes:12,pilhoek:12,rad:'馬',jawonElement:'화'},
+      {ch:'瘋',meaning:'두풍',strokes:14,pilhoek:14,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '피': [
       {ch:'皮',meaning:'가죽',strokes:5,pilhoek:5,rad:'皮',jawonElement:null},
@@ -1666,7 +4661,10 @@
       {ch:'被',meaning:'이불',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목'},
       {ch:'避',meaning:'어길',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토'},
       {ch:'疲',meaning:'피곤할',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
-      {ch:'披',meaning:'헤칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'}
+      {ch:'披',meaning:'헤칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'詖',meaning:'말 잘할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鞁',meaning:'말 가슴걸이',strokes:14,pilhoek:14,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'髲',meaning:'머리쓰개',strokes:15,pilhoek:15,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '후': [
       {ch:'後',meaning:'뒤',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화'},
@@ -1676,7 +4674,19 @@
       {ch:'候',meaning:'물을',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
       {ch:'喉',meaning:'목구멍',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'吼',meaning:'울',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
-      {ch:'朽',meaning:'섞을',strokes:6,pilhoek:6,rad:'木',jawonElement:'목'}
+      {ch:'朽',meaning:'섞을',strokes:6,pilhoek:6,rad:'木',jawonElement:'목'},
+      {ch:'逅',meaning:'만날',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
+      {ch:'嗅',meaning:'맡을',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
+      {ch:'煦',meaning:'따뜻하게 할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'帿',meaning:'과녁',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목'},
+      {ch:'珝',meaning:'옥 이름',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'詡',meaning:'자랑할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'酗',meaning:'주정할',strokes:11,pilhoek:11,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'堠',meaning:'봉화대',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'喣',meaning:'불',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'餱',meaning:'건량',strokes:18,pilhoek:17,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'篌',meaning:'공후',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'譃',meaning:'망녕된 말',strokes:19,pilhoek:18,rad:'言',jawonElement:'금',unverified:true}
     ],
     '흥': [
       {ch:'興',meaning:'일',strokes:15,pilhoek:16,rad:'臼',jawonElement:'토'}
@@ -1689,7 +4699,12 @@
       {ch:'閣',meaning:'문설주',strokes:14,pilhoek:14,rad:'門',jawonElement:null},
       {ch:'刻',meaning:'새길',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
       {ch:'却',meaning:'물리칠',strokes:7,pilhoek:7,rad:'卩',jawonElement:null},
-      {ch:'珏',meaning:'쌍옥',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'}
+      {ch:'珏',meaning:'쌍옥',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
+      {ch:'恪',meaning:'삼갈',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
+      {ch:'慤',meaning:'삼갈',strokes:15,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'桷',meaning:'서까래',strokes:11,pilhoek:11,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'搉',meaning:'칠',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'埆',meaning:'메마를',strokes:10,pilhoek:10,rad:'土',jawonElement:'토',unverified:true}
     ],
     '간': [
       {ch:'乾',meaning:'마를',strokes:11,pilhoek:11,rad:'乙',jawonElement:null},
@@ -1699,7 +4714,31 @@
       {ch:'幹',meaning:'줄기',strokes:13,pilhoek:13,rad:'干',jawonElement:'목'},
       {ch:'刊',meaning:'책 펴낼',strokes:5,pilhoek:5,rad:'刀',jawonElement:'금'},
       {ch:'肝',meaning:'간',strokes:9,pilhoek:7,rad:'肉',jawonElement:null},
-      {ch:'簡',meaning:'대쪽',strokes:18,pilhoek:18,rad:'竹',jawonElement:'목'}
+      {ch:'簡',meaning:'대쪽',strokes:18,pilhoek:18,rad:'竹',jawonElement:'목'},
+      {ch:'懇',meaning:'정성',strokes:17,pilhoek:17,rad:'心',jawonElement:'화'},
+      {ch:'奸',meaning:'범할',strokes:6,pilhoek:6,rad:'女',jawonElement:'토'},
+      {ch:'艮',meaning:'괘이름',strokes:6,pilhoek:6,rad:'艮',jawonElement:'토'},
+      {ch:'杆',meaning:'지레',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
+      {ch:'諫',meaning:'간할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'艱',meaning:'어려울',strokes:17,pilhoek:17,rad:'艮',jawonElement:'토'},
+      {ch:'揀',meaning:'가릴',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'澗',meaning:'산골물',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'竿',meaning:'장대',strokes:9,pilhoek:9,rad:'竹',jawonElement:'목'},
+      {ch:'墾',meaning:'따비질할',strokes:16,pilhoek:16,rad:'土',jawonElement:'토'},
+      {ch:'癎',meaning:'경풍',strokes:17,pilhoek:17,rad:'疒',jawonElement:'수'},
+      {ch:'侃',meaning:'강직할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'柬',meaning:'가릴',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'磵',meaning:'산골 시내',strokes:17,pilhoek:17,rad:'石',jawonElement:'금'},
+      {ch:'桿',meaning:'줄기',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'稈',meaning:'짚',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목'},
+      {ch:'赶',meaning:'달릴',strokes:10,pilhoek:10,rad:'走',jawonElement:'화',unverified:true},
+      {ch:'衎',meaning:'즐길',strokes:9,pilhoek:9,rad:'行',jawonElement:null,unverified:true},
+      {ch:'慳',meaning:'아낄',strokes:15,pilhoek:14,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'玕',meaning:'옥돌',strokes:8,pilhoek:7,rad:'玉',jawonElement:'금'},
+      {ch:'迀',meaning:'구할',strokes:10,pilhoek:6,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'栞',meaning:'도표',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'茛',meaning:'독초이름',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'齦',meaning:'물을',strokes:21,pilhoek:21,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '갈': [
       {ch:'渴',meaning:'목마를',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
@@ -1709,7 +4748,12 @@
       {ch:'喝',meaning:'성낸 소리',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'褐',meaning:'털베',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목'},
       {ch:'曷',meaning:'어찌',strokes:9,pilhoek:9,rad:'曰',jawonElement:null},
-      {ch:'碣',meaning:'우뚝선 돌',strokes:14,pilhoek:14,rad:'石',jawonElement:'금'}
+      {ch:'碣',meaning:'우뚝선 돌',strokes:14,pilhoek:14,rad:'石',jawonElement:'금'},
+      {ch:'乫',meaning:'땅이름',strokes:6,pilhoek:6,rad:'乙',jawonElement:null},
+      {ch:'羯',meaning:'불친 양',strokes:15,pilhoek:15,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'秸',meaning:'볏짚',strokes:11,pilhoek:11,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'楬',meaning:'패를 써서 표시할',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'噶',meaning:'벼슬이름',strokes:16,pilhoek:15,rad:'口',jawonElement:null,unverified:true}
     ],
     '감': [
       {ch:'甘',meaning:'달',strokes:5,pilhoek:5,rad:'甘',jawonElement:'토'},
@@ -1719,7 +4763,24 @@
       {ch:'監',meaning:'거느릴',strokes:14,pilhoek:14,rad:'皿',jawonElement:null},
       {ch:'鑑',meaning:'거울',strokes:22,pilhoek:22,rad:'金',jawonElement:'금'},
       {ch:'憾',meaning:'섭섭할',strokes:17,pilhoek:16,rad:'心',jawonElement:'화'},
-      {ch:'邯',meaning:'조나라 서울',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'}
+      {ch:'邯',meaning:'조나라 서울',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'堪',meaning:'견딜',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'勘',meaning:'마감할',strokes:11,pilhoek:11,rad:'力',jawonElement:null},
+      {ch:'瞰',meaning:'굽어볼',strokes:17,pilhoek:16,rad:'目',jawonElement:'목'},
+      {ch:'紺',meaning:'아청',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목'},
+      {ch:'柑',meaning:'감귤',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'疳',meaning:'궤양',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
+      {ch:'坎',meaning:'구덩이',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
+      {ch:'戡',meaning:'이길',strokes:13,pilhoek:13,rad:'戈',jawonElement:null},
+      {ch:'鑒',meaning:'거울',strokes:22,pilhoek:22,rad:'金',jawonElement:'금'},
+      {ch:'嵌',meaning:'깊은 골',strokes:12,pilhoek:12,rad:'山',jawonElement:'토'},
+      {ch:'橄',meaning:'감람나무',strokes:16,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'龕',meaning:'이길',strokes:22,pilhoek:22,rad:'龍',jawonElement:'토'},
+      {ch:'撼',meaning:'흔들',strokes:17,pilhoek:16,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'欿',meaning:'서운할',strokes:12,pilhoek:12,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'弇',meaning:'뚜껑',strokes:9,pilhoek:9,rad:'廾',jawonElement:null,unverified:true},
+      {ch:'坩',meaning:'도가니',strokes:8,pilhoek:8,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'埳',meaning:'구덩이',strokes:11,pilhoek:11,rad:'土',jawonElement:'토',unverified:true}
     ],
     '갑': [
       {ch:'甲',meaning:'갑옷',strokes:5,pilhoek:5,rad:'田',jawonElement:null},
@@ -1727,7 +4788,8 @@
       {ch:'岬',meaning:'산 허구리',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
       {ch:'鉀',meaning:'갑옷',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
       {ch:'匣',meaning:'궤',strokes:7,pilhoek:7,rad:'匚',jawonElement:null},
-      {ch:'胛',meaning:'어깻죽지',strokes:11,pilhoek:9,rad:'肉',jawonElement:null}
+      {ch:'胛',meaning:'어깻죽지',strokes:11,pilhoek:9,rad:'肉',jawonElement:null},
+      {ch:'韐',meaning:'가죽바지',strokes:15,pilhoek:15,rad:'韋',jawonElement:'금',unverified:true}
     ],
     '개': [
       {ch:'改',meaning:'고칠',strokes:7,pilhoek:7,rad:'攴',jawonElement:'금'},
@@ -1737,7 +4799,25 @@
       {ch:'豈',meaning:'승전악',strokes:10,pilhoek:10,rad:'豆',jawonElement:null},
       {ch:'槪',meaning:'평두목',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
       {ch:'介',meaning:'낄',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'},
-      {ch:'蓋',meaning:'뚜껑',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'}
+      {ch:'蓋',meaning:'뚜껑',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'慨',meaning:'분할',strokes:15,pilhoek:12,rad:'心',jawonElement:'화'},
+      {ch:'价',meaning:'착할',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'塏',meaning:'시원한 땅',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
+      {ch:'箇',meaning:'낱',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
+      {ch:'漑',meaning:'물 댈',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'芥',meaning:'겨자',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'凱',meaning:'싸움 이긴 풍류',strokes:12,pilhoek:12,rad:'几',jawonElement:null},
+      {ch:'愾',meaning:'한숨 쉴',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'盖',meaning:'뚜껑',strokes:11,pilhoek:11,rad:'皿',jawonElement:null},
+      {ch:'鎧',meaning:'투구',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
+      {ch:'愷',meaning:'탐할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'疥',meaning:'옴',strokes:9,pilhoek:9,rad:'疒',jawonElement:'수'},
+      {ch:'剴',meaning:'낫',strokes:12,pilhoek:12,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'玠',meaning:'큰 서옥',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'},
+      {ch:'揩',meaning:'문지를',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'匃',meaning:'청구할',strokes:5,pilhoek:5,rad:'勹',jawonElement:null,unverified:true},
+      {ch:'闓',meaning:'열',strokes:18,pilhoek:18,rad:'門',jawonElement:null,unverified:true},
+      {ch:'磕',meaning:'돌 부딪는 소리',strokes:15,pilhoek:15,rad:'石',jawonElement:'금',unverified:true}
     ],
     '객': [
       {ch:'客',meaning:'손님',strokes:9,pilhoek:9,rad:'宀',jawonElement:null},
@@ -1747,7 +4827,10 @@
       {ch:'更',meaning:'다시',strokes:7,pilhoek:7,rad:'曰',jawonElement:null},
       {ch:'坑',meaning:'묻을',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
       {ch:'羹',meaning:'국',strokes:19,pilhoek:19,rad:'羊',jawonElement:'토'},
-      {ch:'粳',meaning:'메벼',strokes:13,pilhoek:13,rad:'米',jawonElement:'목'}
+      {ch:'粳',meaning:'메벼',strokes:13,pilhoek:13,rad:'米',jawonElement:'목'},
+      {ch:'賡',meaning:'이을',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'鏗',meaning:'금석 소리',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'硜',meaning:'아릿아릿할',strokes:12,pilhoek:12,rad:'石',jawonElement:'금',unverified:true}
     ],
     '갹': [
       {ch:'醵',meaning:'술추렴',strokes:20,pilhoek:20,rad:'酉',jawonElement:null}
@@ -1760,14 +4843,40 @@
       {ch:'擧',meaning:'받들',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'},
       {ch:'拒',meaning:'막을',strokes:9,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'距',meaning:'며느리 발톱',strokes:12,pilhoek:11,rad:'足',jawonElement:'토'},
-      {ch:'據',meaning:'의지할',strokes:17,pilhoek:16,rad:'手',jawonElement:'목'}
+      {ch:'據',meaning:'의지할',strokes:17,pilhoek:16,rad:'手',jawonElement:'목'},
+      {ch:'渠',meaning:'개천',strokes:13,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'倨',meaning:'거만할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'醵',meaning:'술추렴',strokes:20,pilhoek:20,rad:'酉',jawonElement:null},
+      {ch:'遽',meaning:'역말 수레',strokes:20,pilhoek:16,rad:'辵',jawonElement:'토'},
+      {ch:'据',meaning:'가질',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'祛',meaning:'물리칠',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'鉅',meaning:'클',strokes:13,pilhoek:12,rad:'金',jawonElement:'금'},
+      {ch:'炬',meaning:'횃불',strokes:9,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'踞',meaning:'걸터앉을',strokes:15,pilhoek:15,rad:'足',jawonElement:'토'},
+      {ch:'鋸',meaning:'톱',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'裾',meaning:'옷 뒷자락',strokes:14,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'袪',meaning:'소매',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'蘧',meaning:'패랭이꽃',strokes:23,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'莒',meaning:'나라이름',strokes:13,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蕖',meaning:'연꽃',strokes:18,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'秬',meaning:'검은 기장',strokes:10,pilhoek:9,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'籧',meaning:'대자리',strokes:23,pilhoek:22,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'駏',meaning:'튀기',strokes:15,pilhoek:14,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'腒',meaning:'건치',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'苣',meaning:'상추',strokes:11,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'胠',meaning:'열',strokes:11,pilhoek:9,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'筥',meaning:'쌀 담는 광주리',strokes:13,pilhoek:12,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'佉',meaning:'나라이름',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'呿',meaning:'입 딱 벌일',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'昛',meaning:'밝을',strokes:9,pilhoek:8,rad:'日',jawonElement:null,unverified:true}
     ],
     '걸': [
       {ch:'傑',meaning:'호걸',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'},
       {ch:'乞',meaning:'구걸할',strokes:3,pilhoek:3,rad:'乙',jawonElement:null},
       {ch:'杰',meaning:'준걸',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
       {ch:'桀',meaning:'홰',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
-      {ch:'偈',meaning:'힘 빼두를',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'}
+      {ch:'偈',meaning:'힘 빼두를',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'榤',meaning:'닭의 홰',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true}
     ],
     '검': [
       {ch:'檢',meaning:'교정할',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
@@ -1775,12 +4884,15 @@
       {ch:'劍',meaning:'칼',strokes:15,pilhoek:15,rad:'刀',jawonElement:'금'},
       {ch:'劒',meaning:'칼',strokes:16,pilhoek:16,rad:'刀',jawonElement:'금'},
       {ch:'黔',meaning:'검을',strokes:16,pilhoek:16,rad:'黑',jawonElement:'수'},
-      {ch:'鈐',meaning:'자물쇠',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'}
+      {ch:'鈐',meaning:'자물쇠',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'},
+      {ch:'撿',meaning:'잡을',strokes:17,pilhoek:16,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'芡',meaning:'가시연밥',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '겁': [
       {ch:'怯',meaning:'무서워할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
       {ch:'劫',meaning:'위협할',strokes:7,pilhoek:7,rad:'力',jawonElement:null},
-      {ch:'迲',meaning:'자내',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토'}
+      {ch:'迲',meaning:'자내',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토'},
+      {ch:'刦',meaning:'겁탈할',strokes:7,pilhoek:7,rad:'刀',jawonElement:'금',unverified:true}
     ],
     '게': [
       {ch:'揭',meaning:'높이 들',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
@@ -1794,7 +4906,13 @@
       {ch:'隔',meaning:'막을',strokes:18,pilhoek:12,rad:'阜',jawonElement:'토'},
       {ch:'檄',meaning:'격서',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
       {ch:'膈',meaning:'명치',strokes:16,pilhoek:14,rad:'肉',jawonElement:null},
-      {ch:'覡',meaning:'박수',strokes:14,pilhoek:14,rad:'見',jawonElement:'화'}
+      {ch:'覡',meaning:'박수',strokes:14,pilhoek:14,rad:'見',jawonElement:'화'},
+      {ch:'骼',meaning:'마른 뼈',strokes:16,pilhoek:15,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'闃',meaning:'고요할',strokes:17,pilhoek:17,rad:'門',jawonElement:null,unverified:true},
+      {ch:'鬲',meaning:'오지병',strokes:10,pilhoek:10,rad:'鬲',jawonElement:null,unverified:true},
+      {ch:'挌',meaning:'칠',strokes:10,pilhoek:9,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鴃',meaning:'왜가리',strokes:15,pilhoek:15,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'毄',meaning:'맞부딛는 소리',strokes:14,pilhoek:14,rad:'殳',jawonElement:'금',unverified:true}
     ],
     '견': [
       {ch:'見',meaning:'볼',strokes:7,pilhoek:7,rad:'見',jawonElement:'화'},
@@ -1804,7 +4922,18 @@
       {ch:'牽',meaning:'당길',strokes:11,pilhoek:11,rad:'牛',jawonElement:'토'},
       {ch:'肩',meaning:'어깨',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
       {ch:'絹',meaning:'비단',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목'},
-      {ch:'甄',meaning:'질그릇',strokes:14,pilhoek:13,rad:'瓦',jawonElement:null}
+      {ch:'甄',meaning:'질그릇',strokes:14,pilhoek:13,rad:'瓦',jawonElement:null},
+      {ch:'譴',meaning:'귀양갈',strokes:21,pilhoek:20,rad:'言',jawonElement:'금'},
+      {ch:'鵑',meaning:'접동새',strokes:18,pilhoek:18,rad:'鳥',jawonElement:'화'},
+      {ch:'繭',meaning:'고치',strokes:19,pilhoek:18,rad:'糸',jawonElement:'목'},
+      {ch:'蠲',meaning:'밝을',strokes:23,pilhoek:23,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'畎',meaning:'밭 도랑',strokes:9,pilhoek:9,rad:'田',jawonElement:null,unverified:true},
+      {ch:'狷',meaning:'고집스러울',strokes:11,pilhoek:10,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'繾',meaning:'곡진할',strokes:20,pilhoek:19,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'筧',meaning:'대 홈통',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'羂',meaning:'걸',strokes:19,pilhoek:18,rad:'网',jawonElement:null,unverified:true},
+      {ch:'樫',meaning:'떡갈나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鰹',meaning:'큰 가물치',strokes:22,pilhoek:22,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '결': [
       {ch:'結',meaning:'맺을',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
@@ -1813,7 +4942,10 @@
       {ch:'缺',meaning:'이지러질',strokes:10,pilhoek:10,rad:'缶',jawonElement:'토'},
       {ch:'訣',meaning:'열결할',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'},
       {ch:'拮',meaning:'길거할',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
-      {ch:'抉',meaning:'긁을',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'}
+      {ch:'抉',meaning:'긁을',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'闋',meaning:'쉴',strokes:17,pilhoek:17,rad:'門',jawonElement:null,unverified:true},
+      {ch:'觖',meaning:'서운할',strokes:11,pilhoek:11,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'玦',meaning:'옥패',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금'}
     ],
     '곡': [
       {ch:'谷',meaning:'골짜기',strokes:7,pilhoek:7,rad:'谷',jawonElement:'수'},
@@ -1821,7 +4953,11 @@
       {ch:'哭',meaning:'울',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
       {ch:'鵠',meaning:'고니',strokes:18,pilhoek:18,rad:'鳥',jawonElement:'화'},
       {ch:'梏',meaning:'쇠고랑',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
-      {ch:'斛',meaning:'휘',strokes:11,pilhoek:11,rad:'斗',jawonElement:'화'}
+      {ch:'斛',meaning:'휘',strokes:11,pilhoek:11,rad:'斗',jawonElement:'화'},
+      {ch:'轂',meaning:'바퀴',strokes:17,pilhoek:17,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'縠',meaning:'주름 비단',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'觳',meaning:'뿔잔',strokes:17,pilhoek:17,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'槲',meaning:'떡갈나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true}
     ],
     '곤': [
       {ch:'困',meaning:'곤할',strokes:7,pilhoek:7,rad:'囗',jawonElement:null},
@@ -1831,11 +4967,26 @@
       {ch:'袞',meaning:'곤룡포',strokes:11,pilhoek:11,rad:'衣',jawonElement:'목'},
       {ch:'崑',meaning:'산이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
       {ch:'梱',meaning:'문지방',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
-      {ch:'鯤',meaning:'준마 이름',strokes:19,pilhoek:19,rad:'魚',jawonElement:'수'}
+      {ch:'鯤',meaning:'준마 이름',strokes:19,pilhoek:19,rad:'魚',jawonElement:'수'},
+      {ch:'滾',meaning:'흐를',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'琨',meaning:'옥돌',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'閫',meaning:'문지방',strokes:15,pilhoek:15,rad:'門',jawonElement:null,unverified:true},
+      {ch:'悃',meaning:'정성',strokes:11,pilhoek:10,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'髡',meaning:'머리 깍을',strokes:13,pilhoek:13,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'鵾',meaning:'댓닭',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'褌',meaning:'잠방이',strokes:15,pilhoek:14,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'捆',meaning:'두드릴',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'堃',meaning:'따',strokes:11,pilhoek:11,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'裍',meaning:'걷어 올릴',strokes:13,pilhoek:12,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'錕',meaning:'붉은 쇠',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'鶤',meaning:'댓닭',strokes:20,pilhoek:20,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '골': [
       {ch:'骨',meaning:'뼈',strokes:10,pilhoek:10,rad:'骨',jawonElement:null},
-      {ch:'汨',meaning:'골몰할',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'}
+      {ch:'汨',meaning:'골몰할',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'鶻',meaning:'송골매',strokes:21,pilhoek:20,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'榾',meaning:'등걸',strokes:14,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'搰',meaning:'팔',strokes:14,pilhoek:12,rad:'手',jawonElement:'목',unverified:true}
     ],
     '곶': [
       {ch:'串',meaning:'땅이름',strokes:7,pilhoek:7,rad:'丨',jawonElement:null}
@@ -1848,7 +4999,25 @@
       {ch:'寡',meaning:'적을',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
       {ch:'誇',meaning:'자랑할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
       {ch:'瓜',meaning:'오이',strokes:5,pilhoek:5,rad:'瓜',jawonElement:null},
-      {ch:'戈',meaning:'창',strokes:4,pilhoek:4,rad:'戈',jawonElement:null}
+      {ch:'戈',meaning:'창',strokes:4,pilhoek:4,rad:'戈',jawonElement:null},
+      {ch:'菓',meaning:'과일',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'顆',meaning:'낟알',strokes:17,pilhoek:17,rad:'頁',jawonElement:'화'},
+      {ch:'跨',meaning:'타넘을',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'},
+      {ch:'鍋',meaning:'노구솥',strokes:17,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'裹',meaning:'쌀',strokes:14,pilhoek:14,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'夸',meaning:'자랑할',strokes:6,pilhoek:6,rad:'大',jawonElement:null,unverified:true},
+      {ch:'窠',meaning:'보금자리',strokes:13,pilhoek:13,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'夥',meaning:'많을',strokes:14,pilhoek:14,rad:'夕',jawonElement:null,unverified:true},
+      {ch:'媧',meaning:'사람 이름',strokes:12,pilhoek:11,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'胯',meaning:'사타구니',strokes:12,pilhoek:10,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'撾',meaning:'칠',strokes:17,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'侉',meaning:'자랑할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'踝',meaning:'복사뼈',strokes:15,pilhoek:15,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'銙',meaning:'대구',strokes:14,pilhoek:14,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'蝌',meaning:'올챙이',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'騍',meaning:'암말',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'堝',meaning:'도가니',strokes:12,pilhoek:11,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'稞',meaning:'보리',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목',unverified:true}
     ],
     '관': [
       {ch:'官',meaning:'벼슬',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
@@ -1858,14 +5027,42 @@
       {ch:'管',meaning:'피리',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
       {ch:'冠',meaning:'갓',strokes:9,pilhoek:9,rad:'冖',jawonElement:null},
       {ch:'寬',meaning:'너그러울',strokes:15,pilhoek:14,rad:'宀',jawonElement:null},
-      {ch:'貫',meaning:'꿸',strokes:11,pilhoek:11,rad:'貝',jawonElement:'금'}
+      {ch:'貫',meaning:'꿸',strokes:11,pilhoek:11,rad:'貝',jawonElement:'금'},
+      {ch:'慣',meaning:'버릇',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'款',meaning:'정성',strokes:12,pilhoek:12,rad:'欠',jawonElement:null},
+      {ch:'灌',meaning:'물 댈',strokes:22,pilhoek:20,rad:'水',jawonElement:'수'},
+      {ch:'串',meaning:'곶',strokes:7,pilhoek:7,rad:'丨',jawonElement:null},
+      {ch:'莞',meaning:'골풀',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'琯',meaning:'옥피리',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'棺',meaning:'널',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'瓘',meaning:'옥 이름',strokes:23,pilhoek:21,rad:'玉',jawonElement:'금'},
+      {ch:'罐',meaning:'두레박',strokes:24,pilhoek:23,rad:'缶',jawonElement:'토'},
+      {ch:'菅',meaning:'골풀',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'顴',meaning:'광대뼈',strokes:27,pilhoek:26,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'盥',meaning:'대야',strokes:16,pilhoek:16,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'祼',meaning:'강신제',strokes:13,pilhoek:12,rad:'示',jawonElement:null,unverified:true},
+      {ch:'丱',meaning:'쌍상투',strokes:5,pilhoek:5,rad:'丨',jawonElement:null,unverified:true},
+      {ch:'鸛',meaning:'황새',strokes:29,pilhoek:28,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'筦',meaning:'피리',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'窾',meaning:'빌',strokes:17,pilhoek:17,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'爟',meaning:'봉화',strokes:22,pilhoek:21,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'雚',meaning:'황새',strokes:18,pilhoek:17,rad:'隹',jawonElement:'화',unverified:true},
+      {ch:'髖',meaning:'허리뼈',strokes:25,pilhoek:23,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'鑵',meaning:'두레박',strokes:26,pilhoek:25,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'涫',meaning:'끓을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'輨',meaning:'줏대',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'}
     ],
     '괄': [
       {ch:'括',meaning:'헤아릴',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
       {ch:'檜',meaning:'전나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
       {ch:'刮',meaning:'깍을',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
       {ch:'适',meaning:'빠를',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
-      {ch:'恝',meaning:'깜짝',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'}
+      {ch:'恝',meaning:'깜짝',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'},
+      {ch:'聒',meaning:'떠들석할',strokes:12,pilhoek:12,rad:'耳',jawonElement:'화',unverified:true},
+      {ch:'栝',meaning:'노송나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'筈',meaning:'하눌타리',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'佸',meaning:'힘 쓸',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'鴰',meaning:'재두루미',strokes:17,pilhoek:17,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '광': [
       {ch:'光',meaning:'빛',strokes:6,pilhoek:6,rad:'儿',jawonElement:null},
@@ -1875,12 +5072,29 @@
       {ch:'匡',meaning:'바룰',strokes:6,pilhoek:6,rad:'匚',jawonElement:null},
       {ch:'曠',meaning:'밝을',strokes:19,pilhoek:18,rad:'日',jawonElement:null},
       {ch:'壙',meaning:'광',strokes:18,pilhoek:17,rad:'土',jawonElement:'토'},
-      {ch:'胱',meaning:'방광',strokes:12,pilhoek:10,rad:'肉',jawonElement:null}
+      {ch:'胱',meaning:'방광',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'筐',meaning:'광주리',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'洸',meaning:'물 용솟음할',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'侊',meaning:'성한 모양',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'珖',meaning:'옥피리',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'炚',meaning:'밝을',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'絖',meaning:'솜',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'纊',meaning:'솜',strokes:21,pilhoek:20,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'恇',meaning:'겁낼',strokes:10,pilhoek:9,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'磺',meaning:'쇳돌',strokes:17,pilhoek:16,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'桄',meaning:'광랑나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'茪',meaning:'초결명',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'框',meaning:'문테',strokes:10,pilhoek:10,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'爌',meaning:'불 빛 환할',strokes:19,pilhoek:18,rad:'火',jawonElement:'화',unverified:true}
     ],
     '괘': [
       {ch:'掛',meaning:'걸',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
       {ch:'卦',meaning:'걸',strokes:8,pilhoek:8,rad:'卜',jawonElement:null},
-      {ch:'罫',meaning:'줄',strokes:14,pilhoek:13,rad:'网',jawonElement:null}
+      {ch:'罫',meaning:'줄',strokes:14,pilhoek:13,rad:'网',jawonElement:null},
+      {ch:'挂',meaning:'그림족자',strokes:10,pilhoek:9,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'詿',meaning:'그르칠',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'罣',meaning:'걸',strokes:12,pilhoek:11,rad:'网',jawonElement:null,unverified:true},
+      {ch:'咼',meaning:'입 비뚤어질',strokes:9,pilhoek:8,rad:'口',jawonElement:null,unverified:true}
     ],
     '괴': [
       {ch:'怪',meaning:'기이할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
@@ -1889,12 +5103,22 @@
       {ch:'槐',meaning:'홰나무',strokes:14,pilhoek:13,rad:'木',jawonElement:'목'},
       {ch:'傀',meaning:'클',strokes:12,pilhoek:11,rad:'人',jawonElement:'화'},
       {ch:'乖',meaning:'어그러질',strokes:8,pilhoek:8,rad:'丿',jawonElement:null},
-      {ch:'魁',meaning:'으뜸',strokes:14,pilhoek:13,rad:'鬼',jawonElement:'화'}
+      {ch:'魁',meaning:'으뜸',strokes:14,pilhoek:13,rad:'鬼',jawonElement:'화'},
+      {ch:'媿',meaning:'창피줄',strokes:13,pilhoek:12,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'瑰',meaning:'슬이름',strokes:15,pilhoek:13,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'蒯',meaning:'황모',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'廥',meaning:'여물광',strokes:16,pilhoek:16,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'襘',meaning:'띠매듭',strokes:19,pilhoek:18,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'璝',meaning:'옥돌',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금',unverified:true}
     ],
     '굉': [
       {ch:'宏',meaning:'클',strokes:7,pilhoek:7,rad:'宀',jawonElement:null},
       {ch:'肱',meaning:'팔뚝',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
-      {ch:'紘',meaning:'갓끈',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'}
+      {ch:'紘',meaning:'갓끈',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
+      {ch:'閎',meaning:'마을문',strokes:12,pilhoek:12,rad:'門',jawonElement:null,unverified:true},
+      {ch:'觥',meaning:'뿔잔',strokes:13,pilhoek:13,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'訇',meaning:'큰 소리',strokes:9,pilhoek:9,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'浤',meaning:'용솟음할',strokes:11,pilhoek:10,rad:'水',jawonElement:'수',unverified:true}
     ],
     '교': [
       {ch:'校',meaning:'학교',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
@@ -1904,7 +5128,31 @@
       {ch:'巧',meaning:'공교할',strokes:5,pilhoek:5,rad:'工',jawonElement:'화'},
       {ch:'較',meaning:'견줄',strokes:13,pilhoek:13,rad:'車',jawonElement:'화'},
       {ch:'郊',meaning:'성 밖',strokes:13,pilhoek:8,rad:'邑',jawonElement:'토'},
-      {ch:'矯',meaning:'바로잡을',strokes:17,pilhoek:17,rad:'矢',jawonElement:'금'}
+      {ch:'矯',meaning:'바로잡을',strokes:17,pilhoek:17,rad:'矢',jawonElement:'금'},
+      {ch:'膠',meaning:'아교',strokes:17,pilhoek:15,rad:'肉',jawonElement:null},
+      {ch:'絞',meaning:'목맬',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
+      {ch:'僑',meaning:'높을',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
+      {ch:'嬌',meaning:'아리따울',strokes:15,pilhoek:15,rad:'女',jawonElement:'토'},
+      {ch:'喬',meaning:'높을',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'轎',meaning:'가마',strokes:19,pilhoek:19,rad:'車',jawonElement:'화'},
+      {ch:'狡',meaning:'교활할',strokes:10,pilhoek:9,rad:'犬',jawonElement:null},
+      {ch:'皎',meaning:'달빛',strokes:11,pilhoek:11,rad:'白',jawonElement:null},
+      {ch:'蛟',meaning:'교룡',strokes:12,pilhoek:12,rad:'虫',jawonElement:'수'},
+      {ch:'咬',meaning:'새소리',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'嶠',meaning:'뾰족하게 높을',strokes:15,pilhoek:15,rad:'山',jawonElement:'토'},
+      {ch:'翹',meaning:'우뚝우뚝솟은 모양',strokes:18,pilhoek:18,rad:'羽',jawonElement:'화'},
+      {ch:'蕎',meaning:'메밀',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'餃',meaning:'경단',strokes:15,pilhoek:14,rad:'食',jawonElement:'수'},
+      {ch:'榷',meaning:'외나무 다리',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'嘐',meaning:'닭 울',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'嚙',meaning:'깨물',strokes:18,pilhoek:18,rad:'口',jawonElement:null,unverified:true},
+      {ch:'磽',meaning:'메마른 땅',strokes:17,pilhoek:17,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'姣',meaning:'예쁠',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'佼',meaning:'예쁠',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'噭',meaning:'부르짖을',strokes:16,pilhoek:16,rad:'口',jawonElement:null},
+      {ch:'晈',meaning:'달 밝을',strokes:10,pilhoek:10,rad:'日',jawonElement:null,unverified:true},
+      {ch:'嘄',meaning:'부르짖을',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'暞',meaning:'밝을',strokes:14,pilhoek:14,rad:'日',jawonElement:null,unverified:true}
     ],
     '군': [
       {ch:'軍',meaning:'군사',strokes:9,pilhoek:9,rad:'車',jawonElement:'화'},
@@ -1912,12 +5160,17 @@
       {ch:'郡',meaning:'고을',strokes:14,pilhoek:9,rad:'邑',jawonElement:'토'},
       {ch:'群',meaning:'무리',strokes:13,pilhoek:13,rad:'羊',jawonElement:'토'},
       {ch:'窘',meaning:'군색할',strokes:12,pilhoek:12,rad:'穴',jawonElement:'수'},
-      {ch:'裙',meaning:'치마',strokes:12,pilhoek:12,rad:'衣',jawonElement:'목'}
+      {ch:'裙',meaning:'치마',strokes:12,pilhoek:12,rad:'衣',jawonElement:'목'},
+      {ch:'捃',meaning:'주울',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'皸',meaning:'얼어터질',strokes:14,pilhoek:14,rad:'皮',jawonElement:null,unverified:true},
+      {ch:'桾',meaning:'고욤나무',strokes:11,pilhoek:11,rad:'木',jawonElement:'목',unverified:true}
     ],
     '굴': [
       {ch:'窟',meaning:'구멍',strokes:13,pilhoek:13,rad:'穴',jawonElement:'수'},
       {ch:'掘',meaning:'팔',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
-      {ch:'堀',meaning:'굴뚝',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'}
+      {ch:'堀',meaning:'굴뚝',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'崛',meaning:'산 높을',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'倔',meaning:'딱딱할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true}
     ],
     '궐': [
       {ch:'闕',meaning:'대궐',strokes:18,pilhoek:18,rad:'門',jawonElement:null},
@@ -1931,7 +5184,16 @@
       {ch:'潰',meaning:'흩어질',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
       {ch:'机',meaning:'느티나무',strokes:6,pilhoek:6,rad:'木',jawonElement:'목'},
       {ch:'櫃',meaning:'상자',strokes:18,pilhoek:18,rad:'木',jawonElement:'목'},
-      {ch:'饋',meaning:'먹일',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'}
+      {ch:'饋',meaning:'먹일',strokes:21,pilhoek:20,rad:'食',jawonElement:'수'},
+      {ch:'几',meaning:'안석',strokes:2,pilhoek:2,rad:'几',jawonElement:null,unverified:true},
+      {ch:'跪',meaning:'끓어앉을',strokes:13,pilhoek:13,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'匱',meaning:'갑',strokes:14,pilhoek:14,rad:'匚',jawonElement:null,unverified:true},
+      {ch:'樻',meaning:'가마테나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'憒',meaning:'심란할',strokes:16,pilhoek:15,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'繢',meaning:'톱끝',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'佹',meaning:'포갤',strokes:8,pilhoek:8,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'氿',meaning:'물가',strokes:6,pilhoek:5,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'麂',meaning:'큰고라니',strokes:13,pilhoek:13,rad:'鹿',jawonElement:'토',unverified:true}
     ],
     '귀': [
       {ch:'貴',meaning:'높을',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
@@ -1947,7 +5209,8 @@
       {ch:'鈞',meaning:'서른 근',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'},
       {ch:'筠',meaning:'속빈 대',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목'},
       {ch:'勻',meaning:'고를',strokes:4,pilhoek:4,rad:'勹',jawonElement:null},
-      {ch:'畇',meaning:'밭개간할',strokes:9,pilhoek:9,rad:'田',jawonElement:null}
+      {ch:'畇',meaning:'밭개간할',strokes:9,pilhoek:9,rad:'田',jawonElement:null},
+      {ch:'麏',meaning:'고라니',strokes:18,pilhoek:18,rad:'鹿',jawonElement:'토',unverified:true}
     ],
     '귤': [
       {ch:'橘',meaning:'귤나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'}
@@ -1959,7 +5222,9 @@
       {ch:'隙',meaning:'틈',strokes:18,pilhoek:12,rad:'阜',jawonElement:'토'},
       {ch:'棘',meaning:'가시나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
       {ch:'戟',meaning:'갈래진 창',strokes:12,pilhoek:12,rad:'戈',jawonElement:null},
-      {ch:'剋',meaning:'깍일',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'}
+      {ch:'剋',meaning:'깍일',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'},
+      {ch:'亟',meaning:'빠를',strokes:8,pilhoek:8,rad:'二',jawonElement:null,unverified:true},
+      {ch:'屐',meaning:'나막신',strokes:10,pilhoek:10,rad:'尸',jawonElement:null,unverified:true}
     ],
     '글': [
       {ch:'契',meaning:'부족 이름',strokes:9,pilhoek:9,rad:'大',jawonElement:null}
@@ -1968,13 +5233,19 @@
       {ch:'給',meaning:'넉넉할',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목'},
       {ch:'級',meaning:'등급',strokes:10,pilhoek:9,rad:'糸',jawonElement:'목'},
       {ch:'汲',meaning:'길을',strokes:8,pilhoek:6,rad:'水',jawonElement:'수'},
-      {ch:'伋',meaning:'생각할',strokes:6,pilhoek:5,rad:'人',jawonElement:'화'}
+      {ch:'伋',meaning:'생각할',strokes:6,pilhoek:5,rad:'人',jawonElement:'화'},
+      {ch:'岌',meaning:'높을',strokes:7,pilhoek:6,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'皀',meaning:'고소할',strokes:7,pilhoek:7,rad:'白',jawonElement:null,unverified:true},
+      {ch:'笈',meaning:'책상자',strokes:10,pilhoek:9,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'礏',meaning:'산 높은 모양',strokes:18,pilhoek:18,rad:'石',jawonElement:'금',unverified:true}
     ],
     '긍': [
       {ch:'肯',meaning:'옳이 여길',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
       {ch:'兢',meaning:'삼갈',strokes:14,pilhoek:14,rad:'儿',jawonElement:null},
       {ch:'矜',meaning:'자랑할',strokes:9,pilhoek:9,rad:'矛',jawonElement:'금'},
-      {ch:'亘',meaning:'뻗칠',strokes:6,pilhoek:6,rad:'二',jawonElement:null}
+      {ch:'亘',meaning:'뻗칠',strokes:6,pilhoek:6,rad:'二',jawonElement:null},
+      {ch:'亙',meaning:'뻗칠',strokes:6,pilhoek:6,rad:'二',jawonElement:null},
+      {ch:'殑',meaning:'까무라칠',strokes:11,pilhoek:11,rad:'歹',jawonElement:'수',unverified:true}
     ],
     '긴': [
       {ch:'緊',meaning:'굳게 얽힐',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'}
@@ -1994,11 +5265,15 @@
     '난': [
       {ch:'蘭',meaning:'난초',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목'},
       {ch:'難',meaning:'어려울',strokes:19,pilhoek:19,rad:'隹',jawonElement:'화'},
-      {ch:'暖',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
+      {ch:'暖',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'日',jawonElement:null,unverified:true},
       {ch:'欄',meaning:'난간',strokes:21,pilhoek:21,rad:'木',jawonElement:'목'},
       {ch:'爛',meaning:'문드러질',strokes:21,pilhoek:21,rad:'火',jawonElement:'화'},
       {ch:'鸞',meaning:'난새',strokes:30,pilhoek:30,rad:'鳥',jawonElement:'화'},
-      {ch:'煖',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'}
+      {ch:'煖',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'赧',meaning:'얼굴 붉힐',strokes:12,pilhoek:11,rad:'赤',jawonElement:'화',unverified:true},
+      {ch:'煗',meaning:'터울',strokes:13,pilhoek:13,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'偄',meaning:'언약할',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'餪',meaning:'풀보기 잔치',strokes:18,pilhoek:17,rad:'食',jawonElement:'수',unverified:true}
     ],
     '날': [
       {ch:'捺',meaning:'누를',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
@@ -2017,7 +5292,8 @@
       {ch:'廊',meaning:'복도',strokes:13,pilhoek:11,rad:'广',jawonElement:'목'},
       {ch:'狼',meaning:'이리',strokes:11,pilhoek:10,rad:'犬',jawonElement:null},
       {ch:'囊',meaning:'주머니',strokes:22,pilhoek:22,rad:'口',jawonElement:null},
-      {ch:'朗',meaning:'밝을',strokes:11,pilhoek:10,rad:'月',jawonElement:'수'}
+      {ch:'朗',meaning:'밝을',strokes:11,pilhoek:10,rad:'月',jawonElement:'수'},
+      {ch:'曩',meaning:'접때',strokes:21,pilhoek:21,rad:'日',jawonElement:null,unverified:true}
     ],
     '내': [
       {ch:'內',meaning:'안',strokes:4,pilhoek:4,rad:'入',jawonElement:null},
@@ -2025,7 +5301,12 @@
       {ch:'乃',meaning:'이에',strokes:2,pilhoek:2,rad:'丿',jawonElement:null},
       {ch:'耐',meaning:'견딜',strokes:9,pilhoek:9,rad:'而',jawonElement:'수'},
       {ch:'奈',meaning:'어찌',strokes:8,pilhoek:8,rad:'大',jawonElement:null},
-      {ch:'柰',meaning:'능금나무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'}
+      {ch:'柰',meaning:'능금나무',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'迺',meaning:'이에',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'鼐',meaning:'가마솥',strokes:14,pilhoek:14,rad:'鼎',jawonElement:null,unverified:true},
+      {ch:'匂',meaning:'향내',strokes:4,pilhoek:4,rad:'勹',jawonElement:null,unverified:true},
+      {ch:'嬭',meaning:'젖',strokes:17,pilhoek:17,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'奶',meaning:'젖',strokes:5,pilhoek:5,rad:'女',jawonElement:'토',unverified:true}
     ],
     '냉': [
       {ch:'冷',meaning:'차가울',strokes:7,pilhoek:7,rad:'冫',jawonElement:'수'}
@@ -2033,10 +5314,14 @@
     '녀': [
       {ch:'女',meaning:'계집',strokes:3,pilhoek:3,rad:'女',jawonElement:'토'}
     ],
+    '녁': [
+      {ch:'惄',meaning:'마음 졸일',strokes:12,pilhoek:12,rad:'心',jawonElement:'화',unverified:true}
+    ],
     '년': [
       {ch:'年',meaning:'해',strokes:6,pilhoek:6,rad:'干',jawonElement:'목'},
       {ch:'撚',meaning:'비틀',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
-      {ch:'秊',meaning:'해',strokes:8,pilhoek:8,rad:'禾',jawonElement:'목'}
+      {ch:'秊',meaning:'해',strokes:8,pilhoek:8,rad:'禾',jawonElement:'목'},
+      {ch:'碾',meaning:'맷돌',strokes:15,pilhoek:15,rad:'石',jawonElement:'금',unverified:true}
     ],
     '념': [
       {ch:'念',meaning:'생각',strokes:8,pilhoek:8,rad:'心',jawonElement:'화'},
@@ -2046,7 +5331,10 @@
     ],
     '녕': [
       {ch:'寧',meaning:'편안할',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
-      {ch:'寗',meaning:'편안할',strokes:13,pilhoek:13,rad:'宀',jawonElement:null}
+      {ch:'寗',meaning:'편안할',strokes:13,pilhoek:13,rad:'宀',jawonElement:null},
+      {ch:'佞',meaning:'재주',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'嚀',meaning:'정녕할',strokes:17,pilhoek:17,rad:'口',jawonElement:null,unverified:true},
+      {ch:'儜',meaning:'고달플',strokes:16,pilhoek:16,rad:'人',jawonElement:'화',unverified:true}
     ],
     '녹': [
       {ch:'綠',meaning:'초록빛',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
@@ -2064,7 +5352,11 @@
       {ch:'籠',meaning:'대그릇',strokes:22,pilhoek:22,rad:'竹',jawonElement:'목'},
       {ch:'濃',meaning:'짙을',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
       {ch:'膿',meaning:'고름',strokes:19,pilhoek:17,rad:'肉',jawonElement:null},
-      {ch:'壟',meaning:'밭두둑',strokes:19,pilhoek:19,rad:'土',jawonElement:'토'}
+      {ch:'壟',meaning:'밭두둑',strokes:19,pilhoek:19,rad:'土',jawonElement:'토'},
+      {ch:'穠',meaning:'후한 제사',strokes:18,pilhoek:18,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'儂',meaning:'나',strokes:15,pilhoek:15,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'醲',meaning:'텁텁한 술',strokes:20,pilhoek:20,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'噥',meaning:'달게 먹을',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true}
     ],
     '뇌': [
       {ch:'雷',meaning:'우뢰',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수'},
@@ -2072,11 +5364,16 @@
       {ch:'惱',meaning:'괴로워할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
       {ch:'賂',meaning:'뇌물',strokes:13,pilhoek:13,rad:'貝',jawonElement:'금'},
       {ch:'牢',meaning:'가축우리',strokes:7,pilhoek:7,rad:'牛',jawonElement:'토'},
-      {ch:'磊',meaning:'돌무더기',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'}
+      {ch:'磊',meaning:'돌무더기',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'餒',meaning:'굶길',strokes:16,pilhoek:15,rad:'食',jawonElement:'수',unverified:true}
     ],
     '뇨': [
       {ch:'溺',meaning:'우줌눌',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'},
-      {ch:'鬧',meaning:'시끄러울',strokes:15,pilhoek:15,rad:'鬥',jawonElement:'금'}
+      {ch:'鬧',meaning:'시끄러울',strokes:15,pilhoek:15,rad:'鬥',jawonElement:'금'},
+      {ch:'嫋',meaning:'날릴',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'裊',meaning:'끄을',strokes:13,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'鐃',meaning:'작은 징',strokes:20,pilhoek:20,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'嬲',meaning:'샘낼',strokes:17,pilhoek:17,rad:'女',jawonElement:'토',unverified:true}
     ],
     '누': [
       {ch:'樓',meaning:'다락',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
@@ -2085,17 +5382,25 @@
       {ch:'屢',meaning:'창',strokes:14,pilhoek:14,rad:'尸',jawonElement:null},
       {ch:'陋',meaning:'줍을',strokes:14,pilhoek:8,rad:'阜',jawonElement:'토'},
       {ch:'壘',meaning:'진',strokes:18,pilhoek:18,rad:'土',jawonElement:'토'},
-      {ch:'縷',meaning:'자세할',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'}
+      {ch:'縷',meaning:'자세할',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
+      {ch:'耨',meaning:'김맬',strokes:16,pilhoek:16,rad:'耒',jawonElement:null}
     ],
     '눈': [
       {ch:'嫩',meaning:'언약할',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'}
     ],
     '눌': [
-      {ch:'訥',meaning:'말 더듬거릴',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'}
+      {ch:'訥',meaning:'말 더듬거릴',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'},
+      {ch:'吶',meaning:'말 더듬을',strokes:7,pilhoek:7,rad:'口',jawonElement:null,unverified:true},
+      {ch:'肭',meaning:'물개',strokes:10,pilhoek:8,rad:'肉',jawonElement:null,unverified:true}
     ],
     '뉴': [
       {ch:'紐',meaning:'잡색비단',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
-      {ch:'杻',meaning:'옷 부드러울',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'}
+      {ch:'杻',meaning:'옷 부드러울',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'忸',meaning:'익을',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'靵',meaning:'단추',strokes:13,pilhoek:13,rad:'革',jawonElement:'금',unverified:true}
+    ],
+    '뉵': [
+      {ch:'衄',meaning:'코피',strokes:10,pilhoek:10,rad:'血',jawonElement:'수',unverified:true}
     ],
     '늑': [
       {ch:'肋',meaning:'갈비대',strokes:8,pilhoek:6,rad:'肉',jawonElement:null}
@@ -2111,7 +5416,15 @@
       {ch:'稜',meaning:'모질',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'}
     ],
     '니': [
-      {ch:'尼',meaning:'여승',strokes:5,pilhoek:5,rad:'尸',jawonElement:null}
+      {ch:'尼',meaning:'여승',strokes:5,pilhoek:5,rad:'尸',jawonElement:null},
+      {ch:'怩',meaning:'부끄러워할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'膩',meaning:'살찔',strokes:18,pilhoek:16,rad:'肉',jawonElement:null},
+      {ch:'呢',meaning:'소근거릴',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true},
+      {ch:'柅',meaning:'얼레자루',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'}
+    ],
+    '닐': [
+      {ch:'昵',meaning:'가깝게 할',strokes:9,pilhoek:9,rad:'日',jawonElement:null,unverified:true},
+      {ch:'暱',meaning:'칠근할',strokes:15,pilhoek:14,rad:'日',jawonElement:null,unverified:true}
     ],
     '단': [
       {ch:'段',meaning:'층계',strokes:9,pilhoek:9,rad:'殳',jawonElement:'금'},
@@ -2121,12 +5434,34 @@
       {ch:'但',meaning:'다만',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
       {ch:'丹',meaning:'붉을',strokes:4,pilhoek:4,rad:'丶',jawonElement:null},
       {ch:'斷',meaning:'끊을',strokes:18,pilhoek:18,rad:'斤',jawonElement:null},
-      {ch:'團',meaning:'둥글',strokes:14,pilhoek:14,rad:'囗',jawonElement:null}
+      {ch:'團',meaning:'둥글',strokes:14,pilhoek:14,rad:'囗',jawonElement:null},
+      {ch:'壇',meaning:'제터',strokes:16,pilhoek:16,rad:'土',jawonElement:'토'},
+      {ch:'檀',meaning:'향나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'旦',meaning:'밝을',strokes:5,pilhoek:5,rad:'日',jawonElement:null},
+      {ch:'湍',meaning:'여울',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'鍛',meaning:'쇠불릴',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'緞',meaning:'비단',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'簞',meaning:'소쿠리',strokes:18,pilhoek:18,rad:'竹',jawonElement:'목'},
+      {ch:'蛋',meaning:'새알',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수'},
+      {ch:'亶',meaning:'믿을',strokes:13,pilhoek:13,rad:'亠',jawonElement:null},
+      {ch:'袒',meaning:'웃옷 벗을',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목'},
+      {ch:'彖',meaning:'결단할',strokes:9,pilhoek:9,rad:'彐',jawonElement:null},
+      {ch:'鄲',meaning:'조나라 서울',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토'},
+      {ch:'坍',meaning:'언덕',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
+      {ch:'胆',meaning:'침비깨',strokes:11,pilhoek:9,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'椴',meaning:'자작나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'癉',meaning:'황달',strokes:17,pilhoek:17,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'耑',meaning:'시초',strokes:9,pilhoek:9,rad:'而',jawonElement:'수',unverified:true},
+      {ch:'腶',meaning:'약포',strokes:15,pilhoek:13,rad:'肉',jawonElement:null,unverified:true}
     ],
     '달': [
       {ch:'達',meaning:'통달할',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
       {ch:'撻',meaning:'매질할',strokes:17,pilhoek:15,rad:'手',jawonElement:'목'},
-      {ch:'疸',meaning:'황달',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'}
+      {ch:'疸',meaning:'황달',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
+      {ch:'闥',meaning:'대문',strokes:21,pilhoek:20,rad:'門',jawonElement:null,unverified:true},
+      {ch:'韃',meaning:'칠',strokes:22,pilhoek:21,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'靼',meaning:'다룬가죽',strokes:14,pilhoek:14,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'妲',meaning:'계집의 이름',strokes:8,pilhoek:8,rad:'女',jawonElement:'토',unverified:true}
     ],
     '담': [
       {ch:'談',meaning:'말씀',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
@@ -2136,7 +5471,27 @@
       {ch:'膽',meaning:'쓸개',strokes:19,pilhoek:17,rad:'肉',jawonElement:null},
       {ch:'譚',meaning:'클',strokes:19,pilhoek:19,rad:'言',jawonElement:'금'},
       {ch:'痰',meaning:'가래',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'},
-      {ch:'澹',meaning:'맑을',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'}
+      {ch:'澹',meaning:'맑을',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'曇',meaning:'구름낀',strokes:16,pilhoek:16,rad:'日',jawonElement:null},
+      {ch:'憺',meaning:'고요할',strokes:17,pilhoek:16,rad:'心',jawonElement:'화'},
+      {ch:'湛',meaning:'즐거울',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'聃',meaning:'노자이름',strokes:11,pilhoek:11,rad:'耳',jawonElement:'화'},
+      {ch:'覃',meaning:'고요할',strokes:12,pilhoek:12,rad:'襾',jawonElement:null},
+      {ch:'啖',meaning:'씹을',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
+      {ch:'蕁',meaning:'말',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'坍',meaning:'물이 언덕 찰',strokes:7,pilhoek:7,rad:'土',jawonElement:'토'},
+      {ch:'錟',meaning:'긴 창',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'墰',meaning:'목긴 술병',strokes:15,pilhoek:15,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'禫',meaning:'담제',strokes:17,pilhoek:16,rad:'示',jawonElement:null,unverified:true},
+      {ch:'啗',meaning:'씹을',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true},
+      {ch:'毯',meaning:'담자리',strokes:12,pilhoek:12,rad:'毛',jawonElement:'화',unverified:true},
+      {ch:'郯',meaning:'나라이름',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'噉',meaning:'씹을',strokes:15,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'儋',meaning:'기운차고 날쌜해집',strokes:15,pilhoek:15,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'薝',meaning:'치자나무',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'黮',meaning:'검을',strokes:21,pilhoek:21,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'壜',meaning:'술병',strokes:19,pilhoek:19,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'黵',meaning:'문신할',strokes:25,pilhoek:25,rad:'黑',jawonElement:'수',unverified:true}
     ],
     '답': [
       {ch:'答',meaning:'대답',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
@@ -2153,7 +5508,24 @@
       {ch:'糖',meaning:'엿',strokes:16,pilhoek:16,rad:'米',jawonElement:'목'},
       {ch:'塘',meaning:'연못',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
       {ch:'撞',meaning:'두드릴',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
-      {ch:'棠',meaning:'아가위',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'}
+      {ch:'棠',meaning:'아가위',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'螳',meaning:'버마 재비',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수'},
+      {ch:'幢',meaning:'기',strokes:15,pilhoek:15,rad:'巾',jawonElement:'목'},
+      {ch:'倘',meaning:'혹시',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'儻',meaning:'빼어날',strokes:22,pilhoek:22,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'讜',meaning:'곧은 말',strokes:27,pilhoek:27,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'搪',meaning:'당동할',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'璫',meaning:'귀고리',strokes:18,pilhoek:17,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'瑭',meaning:'옥이름',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'瞠',meaning:'바로볼',strokes:16,pilhoek:16,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'鐺',meaning:'죄인 자물쇠',strokes:21,pilhoek:21,rad:'金',jawonElement:'금'},
+      {ch:'襠',meaning:'잠방이',strokes:19,pilhoek:18,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'鏜',meaning:'북방축소',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'溏',meaning:'진수렁',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'餳',meaning:'엿',strokes:18,pilhoek:17,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'檔',meaning:'책상',strokes:17,pilhoek:17,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'礑',meaning:'밑바닥',strokes:18,pilhoek:18,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'餹',meaning:'엿',strokes:19,pilhoek:18,rad:'食',jawonElement:'수',unverified:true}
     ],
     '댁': [
       {ch:'宅',meaning:'집',strokes:6,pilhoek:6,rad:'宀',jawonElement:null}
@@ -2166,7 +5538,9 @@
       {ch:'瀆',meaning:'도랑',strokes:19,pilhoek:18,rad:'水',jawonElement:'수'},
       {ch:'禿',meaning:'벗어진',strokes:7,pilhoek:7,rad:'禾',jawonElement:'목'},
       {ch:'牘',meaning:'편지',strokes:19,pilhoek:19,rad:'片',jawonElement:'목'},
-      {ch:'犢',meaning:'송아지',strokes:19,pilhoek:19,rad:'牛',jawonElement:'토'}
+      {ch:'犢',meaning:'송아지',strokes:19,pilhoek:19,rad:'牛',jawonElement:'토'},
+      {ch:'纛',meaning:'깃일산',strokes:25,pilhoek:25,rad:'糸',jawonElement:'목'},
+      {ch:'櫝',meaning:'함',strokes:19,pilhoek:19,rad:'木',jawonElement:'목',unverified:true}
     ],
     '돈': [
       {ch:'敦',meaning:'도타울',strokes:12,pilhoek:12,rad:'攴',jawonElement:'금'},
@@ -2176,11 +5550,16 @@
       {ch:'燉',meaning:'불 성할',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
       {ch:'旽',meaning:'늘 돋을',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
       {ch:'暾',meaning:'아침해',strokes:16,pilhoek:16,rad:'日',jawonElement:null},
-      {ch:'墩',meaning:'돈대',strokes:15,pilhoek:15,rad:'土',jawonElement:'토'}
+      {ch:'墩',meaning:'돈대',strokes:15,pilhoek:15,rad:'土',jawonElement:'토'},
+      {ch:'焞',meaning:'귀갑 지지는 불',strokes:12,pilhoek:12,rad:'火',jawonElement:'화'},
+      {ch:'潡',meaning:'큰 물',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'弴',meaning:'그림 그린 활',strokes:11,pilhoek:11,rad:'弓',jawonElement:null,unverified:true},
+      {ch:'躉',meaning:'거룻배',strokes:20,pilhoek:19,rad:'足',jawonElement:'토',unverified:true}
     ],
     '돌': [
       {ch:'突',meaning:'부딪칠',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수'},
-      {ch:'乭',meaning:'이름',strokes:6,pilhoek:6,rad:'乙',jawonElement:null}
+      {ch:'乭',meaning:'이름',strokes:6,pilhoek:6,rad:'乙',jawonElement:null},
+      {ch:'堗',meaning:'굴똑',strokes:12,pilhoek:12,rad:'土',jawonElement:'토',unverified:true}
     ],
     '두': [
       {ch:'頭',meaning:'머리',strokes:16,pilhoek:16,rad:'頁',jawonElement:'화'},
@@ -2190,14 +5569,29 @@
       {ch:'杜',meaning:'막을',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
       {ch:'兜',meaning:'투구',strokes:11,pilhoek:11,rad:'儿',jawonElement:null},
       {ch:'痘',meaning:'마마',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수'},
-      {ch:'竇',meaning:'구멍',strokes:20,pilhoek:20,rad:'穴',jawonElement:'수'}
+      {ch:'竇',meaning:'구멍',strokes:20,pilhoek:20,rad:'穴',jawonElement:'수'},
+      {ch:'逗',meaning:'머무를',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'荳',meaning:'콩',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'枓',meaning:'두공',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'斁',meaning:'섞을',strokes:17,pilhoek:17,rad:'攴',jawonElement:'금',unverified:true},
+      {ch:'蠹',meaning:'좀',strokes:24,pilhoek:24,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'肚',meaning:'밥통',strokes:9,pilhoek:7,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'陡',meaning:'절벽',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'蚪',meaning:'올챙이',strokes:10,pilhoek:10,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'抖',meaning:'퍼주거릴',strokes:8,pilhoek:7,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'脰',meaning:'목',strokes:13,pilhoek:11,rad:'肉',jawonElement:null,unverified:true}
     ],
     '둔': [
       {ch:'鈍',meaning:'무딜',strokes:12,pilhoek:12,rad:'金',jawonElement:'금'},
       {ch:'屯',meaning:'진칠',strokes:4,pilhoek:4,rad:'屮',jawonElement:'목'},
       {ch:'遁',meaning:'달아날',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
       {ch:'芚',meaning:'채소 이름',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
-      {ch:'遯',meaning:'달아날',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토'}
+      {ch:'遯',meaning:'달아날',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토'},
+      {ch:'窀',meaning:'광중',strokes:9,pilhoek:9,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'迍',meaning:'머뭇거릴',strokes:11,pilhoek:7,rad:'辵',jawonElement:'토',unverified:true}
+    ],
+    '둘': [
+      {ch:'乧',meaning:'음역자',strokes:5,pilhoek:5,rad:'乙',jawonElement:null}
     ],
     '득': [
       {ch:'得',meaning:'얻을',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화'}
@@ -2210,7 +5604,16 @@
       {ch:'藤',meaning:'등나무',strokes:21,pilhoek:18,rad:'艸',jawonElement:'목'},
       {ch:'鄧',meaning:'나라 이름',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토'},
       {ch:'嶝',meaning:'고개',strokes:15,pilhoek:15,rad:'山',jawonElement:'토'},
-      {ch:'謄',meaning:'베낄',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'}
+      {ch:'謄',meaning:'베낄',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'橙',meaning:'등자나무',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
+      {ch:'滕',meaning:'물 솟을',strokes:14,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'鐙',meaning:'등자',strokes:20,pilhoek:20,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'磴',meaning:'돌 비탈길',strokes:17,pilhoek:17,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'縢',meaning:'봉할',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'螣',meaning:'등사',strokes:16,pilhoek:16,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'墱',meaning:'자드락길',strokes:15,pilhoek:15,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'凳',meaning:'걸상',strokes:14,pilhoek:14,rad:'几',jawonElement:null,unverified:true},
+      {ch:'籐',meaning:'대 기구',strokes:21,pilhoek:21,rad:'竹',jawonElement:'목',unverified:true}
     ],
     '락': [
       {ch:'樂',meaning:'즐거울',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
@@ -2220,7 +5623,8 @@
       {ch:'駱',meaning:'낙타',strokes:16,pilhoek:16,rad:'馬',jawonElement:'화'},
       {ch:'烙',meaning:'지질',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
       {ch:'酪',meaning:'진한 유즙',strokes:13,pilhoek:13,rad:'酉',jawonElement:null},
-      {ch:'珞',meaning:'구슬 목걸이',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'}
+      {ch:'珞',meaning:'구슬 목걸이',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금'},
+      {ch:'犖',meaning:'얼룩소',strokes:14,pilhoek:14,rad:'牛',jawonElement:'토',unverified:true}
     ],
     '란': [
       {ch:'蘭',meaning:'난초',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목'},
@@ -2229,12 +5633,19 @@
       {ch:'爛',meaning:'문드러질',strokes:21,pilhoek:21,rad:'火',jawonElement:'화'},
       {ch:'鸞',meaning:'난새',strokes:30,pilhoek:30,rad:'鳥',jawonElement:'화'},
       {ch:'瀾',meaning:'물결',strokes:21,pilhoek:20,rad:'水',jawonElement:'수'},
-      {ch:'欒',meaning:'나무 이름',strokes:23,pilhoek:23,rad:'木',jawonElement:'목'}
+      {ch:'欒',meaning:'나무 이름',strokes:23,pilhoek:23,rad:'木',jawonElement:'목'},
+      {ch:'闌',meaning:'가막을',strokes:17,pilhoek:17,rad:'門',jawonElement:null,unverified:true},
+      {ch:'鑾',meaning:'방울',strokes:27,pilhoek:27,rad:'金',jawonElement:'금'},
+      {ch:'攔',meaning:'막을',strokes:21,pilhoek:20,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'襴',meaning:'난삼',strokes:23,pilhoek:22,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'幱',meaning:'내리다지',strokes:20,pilhoek:20,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'灓',meaning:'적실',strokes:23,pilhoek:23,rad:'水',jawonElement:'수',unverified:true}
     ],
     '랄': [
       {ch:'剌',meaning:'어그러질',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'},
       {ch:'辣',meaning:'매울',strokes:14,pilhoek:14,rad:'辛',jawonElement:'금'},
-      {ch:'喇',meaning:'말굽히할',strokes:12,pilhoek:12,rad:'口',jawonElement:null}
+      {ch:'喇',meaning:'말굽히할',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
+      {ch:'埒',meaning:'바자울',strokes:10,pilhoek:10,rad:'土',jawonElement:'토',unverified:true}
     ],
     '람': [
       {ch:'覽',meaning:'볼',strokes:21,pilhoek:21,rad:'見',jawonElement:'화'},
@@ -2243,12 +5654,15 @@
       {ch:'攬',meaning:'잡을',strokes:25,pilhoek:24,rad:'手',jawonElement:'목'},
       {ch:'纜',meaning:'닻줄',strokes:27,pilhoek:27,rad:'糸',jawonElement:'목'},
       {ch:'欖',meaning:'감람나무',strokes:25,pilhoek:25,rad:'木',jawonElement:'목'},
-      {ch:'擥',meaning:'잡아다릴',strokes:18,pilhoek:18,rad:'手',jawonElement:'목'}
+      {ch:'擥',meaning:'잡아다릴',strokes:18,pilhoek:18,rad:'手',jawonElement:'목'},
+      {ch:'婪',meaning:'탐할',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
+      {ch:'惏',meaning:'떨릴',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true}
     ],
     '랍': [
       {ch:'拉',meaning:'꺽을',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
       {ch:'臘',meaning:'납향',strokes:21,pilhoek:19,rad:'肉',jawonElement:null},
-      {ch:'蠟',meaning:'밀',strokes:21,pilhoek:21,rad:'虫',jawonElement:'수'}
+      {ch:'蠟',meaning:'밀',strokes:21,pilhoek:21,rad:'虫',jawonElement:'수'},
+      {ch:'鑞',meaning:'땜납',strokes:23,pilhoek:23,rad:'金',jawonElement:'금',unverified:true}
     ],
     '랑': [
       {ch:'郞',meaning:'사나이',strokes:14,pilhoek:9,rad:'邑',jawonElement:'토'},
@@ -2258,13 +5672,19 @@
       {ch:'朗',meaning:'밝을',strokes:11,pilhoek:10,rad:'月',jawonElement:'수'},
       {ch:'琅',meaning:'옥 이름',strokes:12,pilhoek:11,rad:'玉',jawonElement:'금'},
       {ch:'螂',meaning:'버마재비',strokes:16,pilhoek:14,rad:'虫',jawonElement:'수'},
-      {ch:'瑯',meaning:'고을 이름',strokes:15,pilhoek:12,rad:'玉',jawonElement:'금'}
+      {ch:'瑯',meaning:'고을 이름',strokes:15,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'閬',meaning:'솟을 대문',strokes:15,pilhoek:15,rad:'門',jawonElement:null,unverified:true},
+      {ch:'稂',meaning:'강아지 풀',strokes:12,pilhoek:12,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'榔',meaning:'나무 이름',strokes:14,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'莨',meaning:'수크령',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '래': [
       {ch:'來',meaning:'올',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
       {ch:'萊',meaning:'명아주',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
       {ch:'崍',meaning:'산 이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
-      {ch:'徠',meaning:'올',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화'}
+      {ch:'徠',meaning:'올',strokes:11,pilhoek:11,rad:'彳',jawonElement:'화'},
+      {ch:'淶',meaning:'강 이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'騋',meaning:'큰 말',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '랭': [
       {ch:'冷',meaning:'찰',strokes:7,pilhoek:7,rad:'冫',jawonElement:'수'}
@@ -2281,7 +5701,16 @@
       {ch:'凉',meaning:'서늘할',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'},
       {ch:'糧',meaning:'양식',strokes:18,pilhoek:18,rad:'米',jawonElement:'목'},
       {ch:'諒',meaning:'믿을',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
-      {ch:'亮',meaning:'밝을',strokes:9,pilhoek:9,rad:'亠',jawonElement:null}
+      {ch:'亮',meaning:'밝을',strokes:9,pilhoek:9,rad:'亠',jawonElement:null},
+      {ch:'樑',meaning:'서늘할',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'輛',meaning:'수레',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'粱',meaning:'기장',strokes:13,pilhoek:13,rad:'米',jawonElement:'목'},
+      {ch:'倆',meaning:'재주',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'粮',meaning:'양식',strokes:13,pilhoek:13,rad:'米',jawonElement:'목'},
+      {ch:'涼',meaning:'서늘할',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'踉',meaning:'뛸',strokes:14,pilhoek:14,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'椋',meaning:'들보',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'喨',meaning:'소리 맑을',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true}
     ],
     '력': [
       {ch:'力',meaning:'힘',strokes:2,pilhoek:2,rad:'力',jawonElement:null},
@@ -2290,7 +5719,11 @@
       {ch:'瀝',meaning:'거를',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
       {ch:'礫',meaning:'조약돌',strokes:20,pilhoek:20,rad:'石',jawonElement:'금'},
       {ch:'轢',meaning:'삐걱거릴',strokes:22,pilhoek:22,rad:'車',jawonElement:'화'},
-      {ch:'靂',meaning:'벼락',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'}
+      {ch:'靂',meaning:'벼락',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'},
+      {ch:'櫟',meaning:'상수리나무',strokes:19,pilhoek:19,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'櫪',meaning:'말구유',strokes:20,pilhoek:20,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'酈',meaning:'땅 이름',strokes:26,pilhoek:21,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'癧',meaning:'연주창',strokes:21,pilhoek:21,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '련': [
       {ch:'連',meaning:'잇닿을',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
@@ -2300,23 +5733,42 @@
       {ch:'戀',meaning:'사모할',strokes:23,pilhoek:23,rad:'心',jawonElement:'화'},
       {ch:'聯',meaning:'잇달',strokes:17,pilhoek:17,rad:'耳',jawonElement:'화'},
       {ch:'蓮',meaning:'연밥',strokes:17,pilhoek:13,rad:'艸',jawonElement:'목'},
-      {ch:'漣',meaning:'물놀이',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'}
+      {ch:'漣',meaning:'물놀이',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'},
+      {ch:'輦',meaning:'손수레',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'煉',meaning:'불릴',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'怜',meaning:'연리할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'璉',meaning:'호련',strokes:16,pilhoek:14,rad:'玉',jawonElement:'금'},
+      {ch:'攣',meaning:'걸릴',strokes:23,pilhoek:23,rad:'手',jawonElement:'목'},
+      {ch:'臠',meaning:'저민고기',strokes:25,pilhoek:25,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'孌',meaning:'아름다울',strokes:22,pilhoek:22,rad:'女',jawonElement:'토'},
+      {ch:'鰱',meaning:'연어',strokes:22,pilhoek:21,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'楝',meaning:'멀구슬나무',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鏈',meaning:'쇠사슬',strokes:19,pilhoek:18,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'湅',meaning:'누일',strokes:13,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'鰊',meaning:'고기 이름',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '렬': [
       {ch:'列',meaning:'줄',strokes:6,pilhoek:6,rad:'刀',jawonElement:'금'},
       {ch:'烈',meaning:'세찰',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
       {ch:'劣',meaning:'못할',strokes:6,pilhoek:6,rad:'力',jawonElement:null},
       {ch:'冽',meaning:'찰',strokes:8,pilhoek:8,rad:'冫',jawonElement:'수'},
-      {ch:'洌',meaning:'맑을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'}
+      {ch:'洌',meaning:'맑을',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'捩',meaning:'비틀',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'颲',meaning:'사나운 바람',strokes:15,pilhoek:15,rad:'風',jawonElement:'목',unverified:true}
     ],
     '렴': [
       {ch:'廉',meaning:'청렴할',strokes:13,pilhoek:13,rad:'广',jawonElement:'목'},
       {ch:'濂',meaning:'내 이름',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
       {ch:'斂',meaning:'거둘',strokes:17,pilhoek:17,rad:'攴',jawonElement:'금'},
-      {ch:'殮',meaning:'염할',strokes:17,pilhoek:17,rad:'歹',jawonElement:'수'}
+      {ch:'殮',meaning:'염할',strokes:17,pilhoek:17,rad:'歹',jawonElement:'수'},
+      {ch:'瀲',meaning:'넘칠',strokes:21,pilhoek:20,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'奩',meaning:'화장 상자',strokes:14,pilhoek:14,rad:'大',jawonElement:null,unverified:true},
+      {ch:'磏',meaning:'거친 숫돌',strokes:15,pilhoek:15,rad:'石',jawonElement:'금',unverified:true}
     ],
     '렵': [
-      {ch:'獵',meaning:'사냥',strokes:19,pilhoek:18,rad:'犬',jawonElement:null}
+      {ch:'獵',meaning:'사냥',strokes:19,pilhoek:18,rad:'犬',jawonElement:null},
+      {ch:'鬣',meaning:'갈기',strokes:25,pilhoek:25,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'躐',meaning:'밟을',strokes:22,pilhoek:22,rad:'足',jawonElement:'토',unverified:true}
     ],
     '령': [
       {ch:'玲',meaning:'옥이름',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
@@ -2326,14 +5778,38 @@
       {ch:'靈',meaning:'신령',strokes:24,pilhoek:24,rad:'雨',jawonElement:'수'},
       {ch:'嶺',meaning:'산고개',strokes:17,pilhoek:17,rad:'山',jawonElement:'토'},
       {ch:'零',meaning:'조용히 오는 비',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수'},
-      {ch:'鈴',meaning:'방울',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'}
+      {ch:'鈴',meaning:'방울',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
+      {ch:'囹',meaning:'옥',strokes:8,pilhoek:8,rad:'囗',jawonElement:null},
+      {ch:'齡',meaning:'나이',strokes:20,pilhoek:20,rad:'齒',jawonElement:'금'},
+      {ch:'逞',meaning:'굳셀',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'聆',meaning:'들을',strokes:11,pilhoek:11,rad:'耳',jawonElement:'화'},
+      {ch:'怜',meaning:'영리할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'伶',meaning:'영리할',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'翎',meaning:'깃',strokes:11,pilhoek:11,rad:'羽',jawonElement:'화'},
+      {ch:'羚',meaning:'영양',strokes:11,pilhoek:11,rad:'羊',jawonElement:'토'},
+      {ch:'岺',meaning:'깊은산',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'笭',meaning:'도꼬마리',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
+      {ch:'另',meaning:'나눌',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'岭',meaning:'산 이름',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'泠',meaning:'깨우칠',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'苓',meaning:'도꼬마리',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鴒',meaning:'할미새',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'蛉',meaning:'장자리',strokes:11,pilhoek:11,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'欞',meaning:'격자창',strokes:28,pilhoek:28,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'昤',meaning:'날 빛 영롱할',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'姈',meaning:'계집 슬기로울',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'秢',meaning:'벼 처음 익을',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목',unverified:true},
+      {ch:'軨',meaning:'사냥 수레',strokes:12,pilhoek:12,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'鹷',meaning:'나이',strokes:16,pilhoek:16,rad:'鹵',jawonElement:null,unverified:true}
     ],
     '례': [
       {ch:'禮',meaning:'예도',strokes:18,pilhoek:17,rad:'示',jawonElement:null},
       {ch:'例',meaning:'법식',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
       {ch:'隷',meaning:'붙을',strokes:17,pilhoek:16,rad:'隶',jawonElement:'수'},
       {ch:'醴',meaning:'단술',strokes:20,pilhoek:20,rad:'酉',jawonElement:null},
-      {ch:'澧',meaning:'강 이름',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'}
+      {ch:'澧',meaning:'강 이름',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'隸',meaning:'붙을',strokes:17,pilhoek:17,rad:'隶',jawonElement:'수',unverified:true},
+      {ch:'鱧',meaning:'가물치',strokes:24,pilhoek:24,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '록': [
       {ch:'綠',meaning:'초록빛',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
@@ -2342,7 +5818,14 @@
       {ch:'鹿',meaning:'사슴',strokes:11,pilhoek:11,rad:'鹿',jawonElement:'토'},
       {ch:'麓',meaning:'신기슭',strokes:19,pilhoek:19,rad:'鹿',jawonElement:'토'},
       {ch:'碌',meaning:'돌 모양',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
-      {ch:'菉',meaning:'조개풀',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'}
+      {ch:'菉',meaning:'조개풀',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'淥',meaning:'밭을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'漉',meaning:'거를',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'彔',meaning:'나무 깍을',strokes:8,pilhoek:8,rad:'彐',jawonElement:null},
+      {ch:'騄',meaning:'말이름',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'簏',meaning:'대 상자',strokes:17,pilhoek:17,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'轆',meaning:'도르래',strokes:18,pilhoek:18,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'圥',meaning:'버섯',strokes:5,pilhoek:5,rad:'土',jawonElement:'토',unverified:true}
     ],
     '론': [
       {ch:'論',meaning:'말할',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'}
@@ -2352,7 +5835,12 @@
       {ch:'壟',meaning:'언덕',strokes:19,pilhoek:19,rad:'土',jawonElement:'토'},
       {ch:'瓏',meaning:'환할',strokes:21,pilhoek:20,rad:'玉',jawonElement:'금'},
       {ch:'朧',meaning:'흐릿할',strokes:20,pilhoek:20,rad:'月',jawonElement:'수'},
-      {ch:'瀧',meaning:'적실',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'}
+      {ch:'瀧',meaning:'적실',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'隴',meaning:'고개 이름',strokes:24,pilhoek:18,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'曨',meaning:'어스레할',strokes:20,pilhoek:20,rad:'日',jawonElement:null,unverified:true},
+      {ch:'蘢',meaning:'개여뀌',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'儱',meaning:'건목칠',strokes:18,pilhoek:18,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'攏',meaning:'누를',strokes:20,pilhoek:19,rad:'手',jawonElement:'목',unverified:true}
     ],
     '뢰': [
       {ch:'雷',meaning:'우뢰',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수'},
@@ -2362,7 +5850,15 @@
       {ch:'牢',meaning:'우리',strokes:7,pilhoek:7,rad:'牛',jawonElement:'토'},
       {ch:'磊',meaning:'돌무더기',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
       {ch:'賚',meaning:'줄',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
-      {ch:'瀨',meaning:'여울',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'}
+      {ch:'瀨',meaning:'여울',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'},
+      {ch:'罍',meaning:'술독',strokes:21,pilhoek:21,rad:'缶',jawonElement:'토',unverified:true},
+      {ch:'耒',meaning:'쟁기',strokes:6,pilhoek:6,rad:'耒',jawonElement:null},
+      {ch:'酹',meaning:'부을',strokes:14,pilhoek:14,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'誄',meaning:'뇌사',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'礧',meaning:'바위너설',strokes:20,pilhoek:20,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'纇',meaning:'실 마디',strokes:21,pilhoek:21,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'蕾',meaning:'꽃봉오리',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'礌',meaning:'돌 굴러내릴',strokes:18,pilhoek:18,rad:'石',jawonElement:'금',unverified:true}
     ],
     '료': [
       {ch:'料',meaning:'되질할',strokes:10,pilhoek:10,rad:'斗',jawonElement:'화'},
@@ -2372,7 +5868,24 @@
       {ch:'療',meaning:'병고칠',strokes:17,pilhoek:17,rad:'疒',jawonElement:'수'},
       {ch:'聊',meaning:'귀 울',strokes:11,pilhoek:11,rad:'耳',jawonElement:'화'},
       {ch:'寮',meaning:'벼슬아쳐',strokes:15,pilhoek:15,rad:'宀',jawonElement:null},
-      {ch:'燎',meaning:'화톳불',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'}
+      {ch:'燎',meaning:'화톳불',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'瞭',meaning:'밝을',strokes:17,pilhoek:17,rad:'目',jawonElement:'목'},
+      {ch:'廖',meaning:'공허할',strokes:14,pilhoek:14,rad:'广',jawonElement:'목'},
+      {ch:'寥',meaning:'쓸쓸할',strokes:14,pilhoek:14,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'鬧',meaning:'시끄러울',strokes:15,pilhoek:15,rad:'鬥',jawonElement:'금'},
+      {ch:'蓼',meaning:'여뀌',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'潦',meaning:'큰 비',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'醪',meaning:'막걸리',strokes:18,pilhoek:18,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'繚',meaning:'감길',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'膋',meaning:'발기름',strokes:16,pilhoek:14,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'撩',meaning:'다스릴',strokes:16,pilhoek:15,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'暸',meaning:'밝을',strokes:16,pilhoek:16,rad:'日',jawonElement:null,unverified:true},
+      {ch:'獠',meaning:'밤사냥',strokes:16,pilhoek:15,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'鐐',meaning:'은',strokes:20,pilhoek:20,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'嘹',meaning:'울',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true},
+      {ch:'嫽',meaning:'외조모',strokes:15,pilhoek:15,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'飂',meaning:'높이 부는 바람',strokes:20,pilhoek:20,rad:'風',jawonElement:'목',unverified:true},
+      {ch:'飉',meaning:'바람',strokes:21,pilhoek:21,rad:'風',jawonElement:'목',unverified:true}
     ],
     '룡': [
       {ch:'龍',meaning:'용',strokes:16,pilhoek:16,rad:'龍',jawonElement:'토'}
@@ -2385,11 +5898,22 @@
       {ch:'壘',meaning:'진',strokes:18,pilhoek:18,rad:'土',jawonElement:'토'},
       {ch:'縷',meaning:'실',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
       {ch:'婁',meaning:'별 이름',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
-      {ch:'鏤',meaning:'새길',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'}
+      {ch:'鏤',meaning:'새길',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'褸',meaning:'남루할',strokes:17,pilhoek:16,rad:'衣',jawonElement:'목'},
+      {ch:'蔞',meaning:'쑥',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'瘻',meaning:'헌곳',strokes:16,pilhoek:16,rad:'疒',jawonElement:'수'},
+      {ch:'螻',meaning:'땅강아지',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'僂',meaning:'구부릴',strokes:13,pilhoek:13,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'髏',meaning:'해굴',strokes:21,pilhoek:20,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'嶁',meaning:'봉우리',strokes:14,pilhoek:14,rad:'山',jawonElement:'토'},
+      {ch:'慺',meaning:'정성스러울',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'嘍',meaning:'시끄러울',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'耬',meaning:'씨 뿌리는 기구',strokes:17,pilhoek:17,rad:'耒',jawonElement:null}
     ],
     '륙': [
       {ch:'陸',meaning:'뭍',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
-      {ch:'六',meaning:'여섯',strokes:6,pilhoek:4,rad:null,jawonElement:null}
+      {ch:'六',meaning:'여섯',strokes:6,pilhoek:4,rad:null,jawonElement:null},
+      {ch:'勠',meaning:'협력할',strokes:13,pilhoek:13,rad:'力',jawonElement:null,unverified:true}
     ],
     '륜': [
       {ch:'倫',meaning:'인륜',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
@@ -2397,22 +5921,29 @@
       {ch:'崙',meaning:'산 이름',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
       {ch:'綸',meaning:'낚싯줄',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
       {ch:'淪',meaning:'물놀이',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
-      {ch:'侖',meaning:'둥글',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'}
+      {ch:'侖',meaning:'둥글',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'掄',meaning:'가릴',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'}
     ],
     '률': [
       {ch:'律',meaning:'법',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화'},
       {ch:'栗',meaning:'밤나무',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
       {ch:'率',meaning:'헤아릴',strokes:11,pilhoek:11,rad:'玄',jawonElement:'수'},
-      {ch:'慄',meaning:'두려워할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'}
+      {ch:'慄',meaning:'두려워할',strokes:14,pilhoek:13,rad:'心',jawonElement:'화'},
+      {ch:'溧',meaning:'강 이름',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true}
     ],
     '륭': [
-      {ch:'隆',meaning:'클',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'}
+      {ch:'隆',meaning:'클',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
+      {ch:'癃',meaning:'느른할',strokes:17,pilhoek:16,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'窿',meaning:'활꼴',strokes:17,pilhoek:16,rad:'穴',jawonElement:'수',unverified:true}
     ],
     '륵': [
-      {ch:'肋',meaning:'갈비',strokes:8,pilhoek:6,rad:'肉',jawonElement:null}
+      {ch:'肋',meaning:'갈비',strokes:8,pilhoek:6,rad:'肉',jawonElement:null},
+      {ch:'泐',meaning:'돌 갈라질',strokes:9,pilhoek:7,rad:'水',jawonElement:'수',unverified:true}
     ],
     '름': [
-      {ch:'凜',meaning:'찰',strokes:15,pilhoek:15,rad:'冫',jawonElement:'수'}
+      {ch:'凜',meaning:'찰',strokes:15,pilhoek:15,rad:'冫',jawonElement:'수'},
+      {ch:'凛',meaning:'찰',strokes:15,pilhoek:15,rad:'冫',jawonElement:'수'},
+      {ch:'澟',meaning:'서늘할',strokes:17,pilhoek:16,rad:'水',jawonElement:'수',unverified:true}
     ],
     '릉': [
       {ch:'陵',meaning:'큰 언덕',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토'},
@@ -2423,26 +5954,38 @@
     ],
     '린': [
       {ch:'潾',meaning:'맑을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'鄰',meaning:'이웃',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토'},
       {ch:'隣',meaning:'이웃',strokes:20,pilhoek:14,rad:'阜',jawonElement:'토'},
       {ch:'麟',meaning:'기린',strokes:23,pilhoek:23,rad:'鹿',jawonElement:'토'},
       {ch:'鱗',meaning:'비늘',strokes:23,pilhoek:23,rad:'魚',jawonElement:'수'},
       {ch:'吝',meaning:'아낄',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
       {ch:'躪',meaning:'짓밟을',strokes:27,pilhoek:26,rad:'足',jawonElement:'토'},
       {ch:'燐',meaning:'반딧불',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
-      {ch:'璘',meaning:'옥빛',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'}
+      {ch:'璘',meaning:'옥빛',strokes:17,pilhoek:16,rad:'玉',jawonElement:'금'},
+      {ch:'藺',meaning:'골풀',strokes:22,pilhoek:19,rad:'艸',jawonElement:'목'},
+      {ch:'獜',meaning:'튼튼할',strokes:16,pilhoek:15,rad:'犬',jawonElement:null},
+      {ch:'粼',meaning:'물 맑을',strokes:14,pilhoek:14,rad:'米',jawonElement:'목'},
+      {ch:'驎',meaning:'워라말',strokes:22,pilhoek:22,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'轔',meaning:'수레 소리',strokes:19,pilhoek:19,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'繗',meaning:'이을',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목'},
+      {ch:'悋',meaning:'아낄',strokes:11,pilhoek:10,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'躙',meaning:'짓밟을',strokes:23,pilhoek:23,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'鏻',meaning:'굳셀',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'}
     ],
     '림': [
       {ch:'林',meaning:'수풀',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
       {ch:'琳',meaning:'아름다운 옥',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
       {ch:'臨',meaning:'임할',strokes:17,pilhoek:17,rad:'臣',jawonElement:null},
       {ch:'淋',meaning:'물뿌릴',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
-      {ch:'霖',meaning:'장마',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수'}
+      {ch:'霖',meaning:'장마',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수'},
+      {ch:'痳',meaning:'임질',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '립': [
       {ch:'立',meaning:'설',strokes:5,pilhoek:5,rad:'立',jawonElement:null},
       {ch:'笠',meaning:'우리',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
       {ch:'粒',meaning:'쌀알',strokes:11,pilhoek:11,rad:'米',jawonElement:'목'},
-      {ch:'砬',meaning:'돌 소리',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'}
+      {ch:'砬',meaning:'돌 소리',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'},
+      {ch:'岦',meaning:'산 우뚝할',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true}
     ],
     '막': [
       {ch:'莫',meaning:'말',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
@@ -2450,7 +5993,8 @@
       {ch:'漠',meaning:'사막',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'},
       {ch:'膜',meaning:'막',strokes:17,pilhoek:14,rad:'肉',jawonElement:null},
       {ch:'寞',meaning:'쓸쓸할',strokes:14,pilhoek:13,rad:'宀',jawonElement:null},
-      {ch:'邈',meaning:'멀',strokes:21,pilhoek:17,rad:'辵',jawonElement:'토'}
+      {ch:'邈',meaning:'멀',strokes:21,pilhoek:17,rad:'辵',jawonElement:'토'},
+      {ch:'鏌',meaning:'칼 이름',strokes:19,pilhoek:18,rad:'金',jawonElement:'금',unverified:true}
     ],
     '말': [
       {ch:'末',meaning:'끝',strokes:5,pilhoek:5,rad:'木',jawonElement:'목'},
@@ -2459,7 +6003,8 @@
       {ch:'襪',meaning:'버선',strokes:21,pilhoek:19,rad:'衣',jawonElement:'목'},
       {ch:'沫',meaning:'거품',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'唜',meaning:'끝',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
-      {ch:'茉',meaning:'말리',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'}
+      {ch:'茉',meaning:'말리',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'秣',meaning:'꼴',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목',unverified:true}
     ],
     '망': [
       {ch:'望',meaning:'바랄',strokes:11,pilhoek:11,rad:'月',jawonElement:'수'},
@@ -2469,7 +6014,14 @@
       {ch:'罔',meaning:'그물',strokes:9,pilhoek:8,rad:'网',jawonElement:null},
       {ch:'茫',meaning:'아득할',strokes:12,pilhoek:9,rad:'艸',jawonElement:'목'},
       {ch:'網',meaning:'그물',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
-      {ch:'芒',meaning:'까끄라기',strokes:9,pilhoek:6,rad:'艸',jawonElement:'목'}
+      {ch:'芒',meaning:'까끄라기',strokes:9,pilhoek:6,rad:'艸',jawonElement:'목'},
+      {ch:'莽',meaning:'우거질',strokes:14,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'邙',meaning:'산 이름',strokes:10,pilhoek:5,rad:'邑',jawonElement:'토'},
+      {ch:'輞',meaning:'바퀴테',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'惘',meaning:'멍할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'莾',meaning:'마디 짧은 대',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蟒',meaning:'이무기',strokes:17,pilhoek:16,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'漭',meaning:'넓을',strokes:15,pilhoek:13,rad:'水',jawonElement:'수',unverified:true}
     ],
     '매': [
       {ch:'賣',meaning:'팔',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
@@ -2479,19 +6031,31 @@
       {ch:'梅',meaning:'매화나무',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
       {ch:'媒',meaning:'중매',strokes:12,pilhoek:12,rad:'女',jawonElement:'토'},
       {ch:'埋',meaning:'묻을',strokes:10,pilhoek:10,rad:'土',jawonElement:'토'},
-      {ch:'枚',meaning:'줄기',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'}
+      {ch:'枚',meaning:'줄기',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'昧',meaning:'새벽',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
+      {ch:'寐',meaning:'잠잘',strokes:12,pilhoek:12,rad:'宀',jawonElement:null},
+      {ch:'罵',meaning:'욕할',strokes:16,pilhoek:15,rad:'网',jawonElement:null},
+      {ch:'邁',meaning:'멀리갈',strokes:20,pilhoek:15,rad:'辵',jawonElement:'토'},
+      {ch:'莓',meaning:'나무딸기',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'玫',meaning:'매괴',strokes:9,pilhoek:8,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'苺',meaning:'딸기',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'酶',meaning:'술밑',strokes:14,pilhoek:14,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'霉',meaning:'매우',strokes:15,pilhoek:15,rad:'雨',jawonElement:'수',unverified:true}
     ],
     '맥': [
       {ch:'麥',meaning:'보리',strokes:11,pilhoek:11,rad:'麥',jawonElement:'목'},
       {ch:'脈',meaning:'맥',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
       {ch:'貊',meaning:'북방 종족',strokes:13,pilhoek:13,rad:'豸',jawonElement:'수'},
       {ch:'陌',meaning:'두렁',strokes:14,pilhoek:8,rad:'阜',jawonElement:'토'},
-      {ch:'驀',meaning:'말탈',strokes:21,pilhoek:20,rad:'馬',jawonElement:'화'}
+      {ch:'驀',meaning:'말탈',strokes:21,pilhoek:20,rad:'馬',jawonElement:'화'},
+      {ch:'貘',meaning:'짐승 이름',strokes:18,pilhoek:17,rad:'豸',jawonElement:'수',unverified:true}
     ],
     '멱': [
       {ch:'覓',meaning:'찾을',strokes:11,pilhoek:11,rad:'見',jawonElement:'화'},
       {ch:'汨',meaning:'물이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
-      {ch:'冪',meaning:'덮을',strokes:16,pilhoek:15,rad:'冖',jawonElement:null}
+      {ch:'冪',meaning:'덮을',strokes:16,pilhoek:15,rad:'冖',jawonElement:null},
+      {ch:'糸',meaning:'실',strokes:6,pilhoek:6,rad:'糸',jawonElement:'목'},
+      {ch:'幎',meaning:'덮을',strokes:13,pilhoek:13,rad:'巾',jawonElement:'목',unverified:true}
     ],
     '면': [
       {ch:'面',meaning:'낯',strokes:9,pilhoek:9,rad:'面',jawonElement:'화'},
@@ -2501,7 +6065,12 @@
       {ch:'綿',meaning:'이어질',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
       {ch:'冕',meaning:'면류관',strokes:11,pilhoek:11,rad:'冂',jawonElement:null},
       {ch:'沔',meaning:'물 흐를',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
-      {ch:'緬',meaning:'가는 실',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'}
+      {ch:'緬',meaning:'가는 실',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
+      {ch:'麵',meaning:'밀가루',strokes:20,pilhoek:20,rad:'麥',jawonElement:'목'},
+      {ch:'棉',meaning:'목화',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'俛',meaning:'힘쓸',strokes:9,pilhoek:9,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'緜',meaning:'햇솜',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'麪',meaning:'밀가루',strokes:15,pilhoek:15,rad:'麥',jawonElement:'목'}
     ],
     '멸': [
       {ch:'滅',meaning:'멸할',strokes:14,pilhoek:13,rad:'水',jawonElement:'수'}
@@ -2515,7 +6084,12 @@
     '몽': [
       {ch:'夢',meaning:'꿈',strokes:14,pilhoek:13,rad:'夕',jawonElement:null},
       {ch:'蒙',meaning:'입을',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
-      {ch:'朦',meaning:'풍부할',strokes:20,pilhoek:17,rad:'月',jawonElement:'수'}
+      {ch:'朦',meaning:'풍부할',strokes:20,pilhoek:17,rad:'月',jawonElement:'수'},
+      {ch:'濛',meaning:'가랑비 올',strokes:18,pilhoek:16,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'幪',meaning:'덮을',strokes:17,pilhoek:16,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'雺',meaning:'안개',strokes:13,pilhoek:13,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'艨',meaning:'싸움배',strokes:20,pilhoek:19,rad:'舟',jawonElement:'목',unverified:true},
+      {ch:'鸏',meaning:'비둘기',strokes:25,pilhoek:24,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '묘': [
       {ch:'卯',meaning:'토끼',strokes:5,pilhoek:5,rad:'卩',jawonElement:null},
@@ -2525,7 +6099,13 @@
       {ch:'苗',meaning:'모',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
       {ch:'猫',meaning:'고양이',strokes:12,pilhoek:11,rad:'犬',jawonElement:null},
       {ch:'昴',meaning:'별자리 이름',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
-      {ch:'描',meaning:'그릴',strokes:13,pilhoek:11,rad:'手',jawonElement:'목'}
+      {ch:'描',meaning:'그릴',strokes:13,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'渺',meaning:'아득할',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'杳',meaning:'아득할',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'竗',meaning:'땅 이름',strokes:9,pilhoek:9,rad:'立',jawonElement:null},
+      {ch:'錨',meaning:'닻',strokes:16,pilhoek:16,rad:'金',jawonElement:'금'},
+      {ch:'藐',meaning:'작을',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'淼',meaning:'물 아득할',strokes:12,pilhoek:12,rad:'水',jawonElement:'수',unverified:true}
     ],
     '무': [
       {ch:'武',meaning:'굳셀',strokes:8,pilhoek:8,rad:'止',jawonElement:'토'},
@@ -2535,7 +6115,23 @@
       {ch:'舞',meaning:'춤출',strokes:14,pilhoek:14,rad:'舛',jawonElement:'목'},
       {ch:'貿',meaning:'바꿀',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
       {ch:'霧',meaning:'안개',strokes:19,pilhoek:18,rad:'雨',jawonElement:'수'},
-      {ch:'誣',meaning:'무고할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'}
+      {ch:'誣',meaning:'무고할',strokes:14,pilhoek:14,rad:'言',jawonElement:'금'},
+      {ch:'巫',meaning:'무당',strokes:7,pilhoek:7,rad:'工',jawonElement:'화'},
+      {ch:'毋',meaning:'말',strokes:4,pilhoek:4,rad:'毋',jawonElement:null},
+      {ch:'撫',meaning:'어루만질',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'畝',meaning:'밭이랑',strokes:10,pilhoek:10,rad:'田',jawonElement:null},
+      {ch:'蕪',meaning:'거칠어질',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
+      {ch:'憮',meaning:'어루만질',strokes:16,pilhoek:15,rad:'心',jawonElement:'화'},
+      {ch:'拇',meaning:'엄지손가락',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'懋',meaning:'힘쓸',strokes:17,pilhoek:17,rad:'心',jawonElement:'화'},
+      {ch:'繆',meaning:'삼',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
+      {ch:'鵡',meaning:'앵무새',strokes:18,pilhoek:19,rad:'鳥',jawonElement:'화'},
+      {ch:'珷',meaning:'옥돌',strokes:12,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'楙',meaning:'무성할',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'廡',meaning:'집',strokes:15,pilhoek:15,rad:'广',jawonElement:'목',unverified:true},
+      {ch:'騖',meaning:'달릴',strokes:19,pilhoek:19,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'膴',meaning:'포',strokes:18,pilhoek:16,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'嘸',meaning:'분명하지 않을',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true}
     ],
     '물': [
       {ch:'物',meaning:'만물',strokes:8,pilhoek:8,rad:'牛',jawonElement:'토'},
@@ -2545,7 +6141,9 @@
     '밀': [
       {ch:'密',meaning:'빽빽할',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
       {ch:'蜜',meaning:'꿀',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수'},
-      {ch:'謐',meaning:'고요할',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'}
+      {ch:'謐',meaning:'고요할',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'樒',meaning:'침향',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'滵',meaning:'물 흐르는 모양',strokes:15,pilhoek:14,rad:'水',jawonElement:'수',unverified:true}
     ],
     '발': [
       {ch:'發',meaning:'쏠',strokes:12,pilhoek:12,rad:'癶',jawonElement:null},
@@ -2555,7 +6153,12 @@
       {ch:'鉢',meaning:'바리때',strokes:13,pilhoek:13,rad:'金',jawonElement:'금'},
       {ch:'潑',meaning:'뿌릴',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
       {ch:'渤',meaning:'바다이름',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
-      {ch:'撥',meaning:'다스릴',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'}
+      {ch:'撥',meaning:'다스릴',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'勃',meaning:'갑작스러울',strokes:9,pilhoek:9,rad:'力',jawonElement:null},
+      {ch:'醱',meaning:'술 괼',strokes:19,pilhoek:19,rad:'酉',jawonElement:null},
+      {ch:'浡',meaning:'일어날',strokes:11,pilhoek:10,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'鈸',meaning:'방울',strokes:13,pilhoek:13,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'鵓',meaning:'집비둘기',strokes:18,pilhoek:18,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '번': [
       {ch:'番',meaning:'갈마들',strokes:12,pilhoek:12,rad:'田',jawonElement:null},
@@ -2565,7 +6168,13 @@
       {ch:'磻',meaning:'강이름',strokes:17,pilhoek:17,rad:'石',jawonElement:'금'},
       {ch:'蕃',meaning:'우거질',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
       {ch:'藩',meaning:'덮을',strokes:21,pilhoek:18,rad:'艸',jawonElement:'목'},
-      {ch:'燔',meaning:'구울',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'}
+      {ch:'燔',meaning:'구울',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'幡',meaning:'기',strokes:15,pilhoek:15,rad:'巾',jawonElement:'목'},
+      {ch:'樊',meaning:'울',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'蘩',meaning:'산흰쑥',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'繙',meaning:'되풀이 풀이할',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'膰',meaning:'제사 고기',strokes:18,pilhoek:16,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'袢',meaning:'속옷',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목',unverified:true}
     ],
     '벌': [
       {ch:'伐',meaning:'칠',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
@@ -2584,13 +6193,25 @@
       {ch:'璧',meaning:'동근 옥',strokes:18,pilhoek:18,rad:'玉',jawonElement:'금'},
       {ch:'癖',meaning:'적취',strokes:18,pilhoek:18,rad:'疒',jawonElement:'수'},
       {ch:'劈',meaning:'쪼갤',strokes:15,pilhoek:15,rad:'刀',jawonElement:'금'},
-      {ch:'擘',meaning:'엄지손가락',strokes:17,pilhoek:17,rad:'手',jawonElement:'목'}
+      {ch:'擘',meaning:'엄지손가락',strokes:17,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'霹',meaning:'벼락',strokes:21,pilhoek:21,rad:'雨',jawonElement:'수'},
+      {ch:'蘗',meaning:'황경나무',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목'},
+      {ch:'檗',meaning:'황벽나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'辟',meaning:'임금',strokes:13,pilhoek:13,rad:'辛',jawonElement:'금'},
+      {ch:'擗',meaning:'가슴칠',strokes:17,pilhoek:16,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'甓',meaning:'벽돌',strokes:17,pilhoek:17,rad:'瓦',jawonElement:null,unverified:true},
+      {ch:'襞',meaning:'주름',strokes:19,pilhoek:19,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'疈',meaning:'가를',strokes:20,pilhoek:20,rad:'田',jawonElement:null,unverified:true},
+      {ch:'鷿',meaning:'농병아리',strokes:24,pilhoek:24,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'鼊',meaning:'거북',strokes:26,pilhoek:26,rad:'黽',jawonElement:'토',unverified:true}
     ],
     '별': [
       {ch:'別',meaning:'나눌',strokes:7,pilhoek:7,rad:'刀',jawonElement:'금'},
       {ch:'瞥',meaning:'언뜻 볼',strokes:17,pilhoek:16,rad:'目',jawonElement:'목'},
       {ch:'鱉',meaning:'자라',strokes:23,pilhoek:22,rad:'魚',jawonElement:'수'},
-      {ch:'鼈',meaning:'자라',strokes:25,pilhoek:24,rad:'黽',jawonElement:'토'}
+      {ch:'鼈',meaning:'자라',strokes:25,pilhoek:24,rad:'黽',jawonElement:'토'},
+      {ch:'鷩',meaning:'금계',strokes:23,pilhoek:22,rad:'鳥',jawonElement:'화'},
+      {ch:'彆',meaning:'활 뒤틀릴',strokes:15,pilhoek:14,rad:'弓',jawonElement:null,unverified:true}
     ],
     '본': [
       {ch:'本',meaning:'밑',strokes:5,pilhoek:5,rad:'木',jawonElement:'목'}
@@ -2609,13 +6230,44 @@
       {ch:'紛',meaning:'어지러워질',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
       {ch:'奔',meaning:'달릴',strokes:8,pilhoek:8,rad:'大',jawonElement:null},
       {ch:'頒',meaning:'큰 머리',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화'},
-      {ch:'芬',meaning:'향기로울',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'}
+      {ch:'芬',meaning:'향기로울',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'盆',meaning:'동이',strokes:9,pilhoek:9,rad:'皿',jawonElement:null},
+      {ch:'忿',meaning:'분할',strokes:8,pilhoek:8,rad:'心',jawonElement:'화'},
+      {ch:'噴',meaning:'뿜을',strokes:15,pilhoek:15,rad:'口',jawonElement:null},
+      {ch:'雰',meaning:'안개',strokes:12,pilhoek:12,rad:'雨',jawonElement:'수'},
+      {ch:'扮',meaning:'꾸밀',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'吩',meaning:'뿜을',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'賁',meaning:'클',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
+      {ch:'汾',meaning:'클',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'昐',meaning:'햇빛',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
+      {ch:'氛',meaning:'기운',strokes:8,pilhoek:8,rad:'气',jawonElement:'수',unverified:true},
+      {ch:'棼',meaning:'마룻대',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'犇',meaning:'달아날',strokes:12,pilhoek:12,rad:'牛',jawonElement:'토',unverified:true},
+      {ch:'濆',meaning:'뿜을',strokes:17,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'蕡',meaning:'들깨',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'枌',meaning:'나무 이름',strokes:8,pilhoek:8,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'畚',meaning:'삼태기',strokes:10,pilhoek:10,rad:'田',jawonElement:null,unverified:true},
+      {ch:'湓',meaning:'용솟음할',strokes:13,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'轒',meaning:'병거',strokes:19,pilhoek:19,rad:'車',jawonElement:'화',unverified:true},
+      {ch:'帉',meaning:'행주',strokes:7,pilhoek:7,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'砏',meaning:'큰 소리',strokes:9,pilhoek:9,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'笨',meaning:'거칠',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'肦',meaning:'머리 클',strokes:10,pilhoek:8,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'膹',meaning:'고기 삶은 국',strokes:19,pilhoek:16,rad:'肉',jawonElement:null,unverified:true}
     ],
     '불': [
       {ch:'佛',meaning:'부처',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
       {ch:'拂',meaning:'떨',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
       {ch:'弗',meaning:'말',strokes:5,pilhoek:5,rad:'弓',jawonElement:null},
-      {ch:'彿',meaning:'비슷할',strokes:8,pilhoek:8,rad:'彳',jawonElement:'화'}
+      {ch:'彿',meaning:'비슷할',strokes:8,pilhoek:8,rad:'彳',jawonElement:'화'},
+      {ch:'黻',meaning:'수',strokes:17,pilhoek:17,rad:'黹',jawonElement:null,unverified:true},
+      {ch:'紱',meaning:'인끈',strokes:11,pilhoek:11,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'髴',meaning:'비슷할',strokes:15,pilhoek:15,rad:'髟',jawonElement:'화',unverified:true},
+      {ch:'祓',meaning:'푸닥거리할',strokes:10,pilhoek:9,rad:'示',jawonElement:null,unverified:true},
+      {ch:'茀',meaning:'풀 우거질',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'岪',meaning:'산길',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'艴',meaning:'발끈할',strokes:11,pilhoek:11,rad:'色',jawonElement:null,unverified:true},
+      {ch:'韍',meaning:'폐슬',strokes:14,pilhoek:14,rad:'韋',jawonElement:'금',unverified:true}
     ],
     '붕': [
       {ch:'朋',meaning:'벗',strokes:8,pilhoek:8,rad:'月',jawonElement:'수'},
@@ -2631,18 +6283,91 @@
       {ch:'費',meaning:'쓸',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
       {ch:'妃',meaning:'왕비',strokes:6,pilhoek:6,rad:'女',jawonElement:'토'},
       {ch:'卑',meaning:'낮을',strokes:8,pilhoek:8,rad:'十',jawonElement:null},
-      {ch:'碑',meaning:'돌기둥',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'}
+      {ch:'碑',meaning:'돌기둥',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
+      {ch:'肥',meaning:'살찔',strokes:10,pilhoek:8,rad:'肉',jawonElement:null},
+      {ch:'批',meaning:'칠',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
+      {ch:'婢',meaning:'여자종',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
+      {ch:'匪',meaning:'대상자',strokes:10,pilhoek:10,rad:'匚',jawonElement:null},
+      {ch:'丕',meaning:'클',strokes:5,pilhoek:5,rad:'一',jawonElement:null},
+      {ch:'毖',meaning:'삼갈',strokes:9,pilhoek:9,rad:'比',jawonElement:null},
+      {ch:'泌',meaning:'샘물 흐르는 모양',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'毘',meaning:'밝을',strokes:9,pilhoek:9,rad:'比',jawonElement:null},
+      {ch:'鄙',meaning:'다라울',strokes:18,pilhoek:13,rad:'邑',jawonElement:'토'},
+      {ch:'扉',meaning:'문짝',strokes:12,pilhoek:12,rad:'戶',jawonElement:'목'},
+      {ch:'譬',meaning:'비유할',strokes:20,pilhoek:20,rad:'言',jawonElement:'금'},
+      {ch:'庇',meaning:'덮을',strokes:7,pilhoek:7,rad:'广',jawonElement:'목'},
+      {ch:'臂',meaning:'팔',strokes:19,pilhoek:17,rad:'肉',jawonElement:null},
+      {ch:'裨',meaning:'도울',strokes:14,pilhoek:13,rad:'衣',jawonElement:'목'},
+      {ch:'沸',meaning:'끓을',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
+      {ch:'憊',meaning:'고달플',strokes:16,pilhoek:16,rad:'心',jawonElement:'화'},
+      {ch:'緋',meaning:'붉은 빛',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'脾',meaning:'지라',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
+      {ch:'誹',meaning:'그르다할',strokes:15,pilhoek:15,rad:'言',jawonElement:'금'},
+      {ch:'痺',meaning:'암메추라기',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수'},
+      {ch:'蜚',meaning:'바퀴',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수'},
+      {ch:'琵',meaning:'비파',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'匕',meaning:'비수',strokes:2,pilhoek:2,rad:'匕',jawonElement:null},
+      {ch:'砒',meaning:'비상',strokes:9,pilhoek:9,rad:'石',jawonElement:'금'},
+      {ch:'翡',meaning:'물총새',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화'},
+      {ch:'毗',meaning:'도울',strokes:9,pilhoek:9,rad:'比',jawonElement:null},
+      {ch:'菲',meaning:'엷을',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'斐',meaning:'오락가락할',strokes:12,pilhoek:12,rad:'文',jawonElement:'목'},
+      {ch:'榧',meaning:'비자나무',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'枇',meaning:'비파나무',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'妣',meaning:'죽은 어미',strokes:7,pilhoek:7,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'俾',meaning:'더할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'祕',meaning:'비밀',strokes:10,pilhoek:9,rad:'示',jawonElement:null},
+      {ch:'閟',meaning:'문 닫을',strokes:13,pilhoek:13,rad:'門',jawonElement:null,unverified:true},
+      {ch:'沘',meaning:'강 이름',strokes:8,pilhoek:7,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'騑',meaning:'곁마',strokes:18,pilhoek:18,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'羆',meaning:'큰 곰',strokes:20,pilhoek:19,rad:'网',jawonElement:null,unverified:true},
+      {ch:'髀',meaning:'넓적다리',strokes:18,pilhoek:17,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'棐',meaning:'도지개',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'睥',meaning:'흘겨볼',strokes:13,pilhoek:13,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'痞',meaning:'뱃속 결릴',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鼙',meaning:'마상북',strokes:21,pilhoek:21,rad:'鼓',jawonElement:'금',unverified:true},
+      {ch:'邳',meaning:'클',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'紕',meaning:'가선',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'貔',meaning:'비휴',strokes:17,pilhoek:17,rad:'豸',jawonElement:'수',unverified:true},
+      {ch:'贔',meaning:'힘쓸',strokes:21,pilhoek:21,rad:'貝',jawonElement:'금',unverified:true},
+      {ch:'悱',meaning:'표현 못할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'椑',meaning:'술통',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'腓',meaning:'장딴지',strokes:14,pilhoek:12,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'陴',meaning:'성가퀴',strokes:16,pilhoek:10,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'仳',meaning:'떠날',strokes:6,pilhoek:6,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'芘',meaning:'풀 이름',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'淝',meaning:'강 이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'篦',meaning:'빗치개',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'芾',meaning:'작은 모양',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'濞',meaning:'물 소리',strokes:18,pilhoek:17,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'蚍',meaning:'왕개미',strokes:10,pilhoek:10,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'狒',meaning:'비비',strokes:9,pilhoek:8,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'埤',meaning:'더할',strokes:11,pilhoek:11,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'萆',meaning:'비해',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鞴',meaning:'풀무',strokes:19,pilhoek:19,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'痹',meaning:'저릴',strokes:13,pilhoek:13,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'屁',meaning:'방귀',strokes:7,pilhoek:7,rad:'尸',jawonElement:null,unverified:true},
+      {ch:'淠',meaning:'강 이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'狉',meaning:'삵의 새끼',strokes:9,pilhoek:8,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'蓖',meaning:'아주까리',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'郫',meaning:'고을 이름',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'騛',meaning:'빠른 말',strokes:19,pilhoek:19,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '빙': [
       {ch:'聘',meaning:'찾아가다',strokes:13,pilhoek:13,rad:'耳',jawonElement:'화'},
       {ch:'憑',meaning:'기대다',strokes:16,pilhoek:16,rad:'心',jawonElement:'화'},
-      {ch:'騁',meaning:'달리다',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화'}
+      {ch:'騁',meaning:'달리다',strokes:17,pilhoek:17,rad:'馬',jawonElement:'화'},
+      {ch:'凭',meaning:'기대다',strokes:8,pilhoek:8,rad:'几',jawonElement:null,unverified:true},
+      {ch:'娉',meaning:'장가들다',strokes:10,pilhoek:10,rad:'女',jawonElement:'토',unverified:true}
     ],
     '삭': [
       {ch:'數',meaning:'자주',strokes:15,pilhoek:15,rad:'攴',jawonElement:'금'},
       {ch:'削',meaning:'깎을',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'},
       {ch:'索',meaning:'동아줄',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
-      {ch:'朔',meaning:'초하루',strokes:10,pilhoek:10,rad:'月',jawonElement:'수'}
+      {ch:'朔',meaning:'초하루',strokes:10,pilhoek:10,rad:'月',jawonElement:'수'},
+      {ch:'鑠',meaning:'녹일',strokes:23,pilhoek:23,rad:'金',jawonElement:'금'},
+      {ch:'槊',meaning:'창',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'爍',meaning:'빛날',strokes:19,pilhoek:19,rad:'火',jawonElement:'화'}
     ],
     '산': [
       {ch:'山',meaning:'뫼',strokes:3,pilhoek:3,rad:'山',jawonElement:'토'},
@@ -2652,7 +6377,16 @@
       {ch:'傘',meaning:'우산',strokes:12,pilhoek:12,rad:'人',jawonElement:'화'},
       {ch:'刪',meaning:'깎을',strokes:7,pilhoek:7,rad:'刀',jawonElement:'금'},
       {ch:'珊',meaning:'산호',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금'},
-      {ch:'疝',meaning:'산증',strokes:8,pilhoek:8,rad:'疒',jawonElement:'수'}
+      {ch:'疝',meaning:'산증',strokes:8,pilhoek:8,rad:'疒',jawonElement:'수'},
+      {ch:'蒜',meaning:'달래',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'汕',meaning:'오구',strokes:7,pilhoek:6,rad:'水',jawonElement:'수'},
+      {ch:'繖',meaning:'일산',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'狻',meaning:'사자',strokes:11,pilhoek:10,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'鏟',meaning:'대패',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'剷',meaning:'깎을',strokes:13,pilhoek:13,rad:'刀',jawonElement:'금',unverified:true},
+      {ch:'橵',meaning:'산자',strokes:16,pilhoek:16,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'孿',meaning:'쌍둥이',strokes:22,pilhoek:22,rad:'子',jawonElement:'수',unverified:true},
+      {ch:'閊',meaning:'비색할',strokes:11,pilhoek:11,rad:'門',jawonElement:null,unverified:true}
     ],
     '살': [
       {ch:'蔡',meaning:'내칠',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
@@ -2664,12 +6398,20 @@
       {ch:'揷',meaning:'꽂을',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
       {ch:'澁',meaning:'떫을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
       {ch:'颯',meaning:'바람소리',strokes:14,pilhoek:14,rad:'風',jawonElement:'목'},
-      {ch:'鈒',meaning:'창',strokes:12,pilhoek:11,rad:'金',jawonElement:'금'}
+      {ch:'鈒',meaning:'창',strokes:12,pilhoek:11,rad:'金',jawonElement:'금'},
+      {ch:'歃',meaning:'마실',strokes:13,pilhoek:13,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'翣',meaning:'운삽',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화',unverified:true},
+      {ch:'鍤',meaning:'가래',strokes:17,pilhoek:17,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'卅',meaning:'서른',strokes:4,pilhoek:4,rad:'十',jawonElement:null,unverified:true},
+      {ch:'霎',meaning:'가랑비',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'霅',meaning:'비올',strokes:15,pilhoek:15,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'唼',meaning:'쪼아먹을',strokes:11,pilhoek:11,rad:'口',jawonElement:null,unverified:true}
     ],
     '새': [
       {ch:'塞',meaning:'변방',strokes:13,pilhoek:13,rad:'土',jawonElement:'토'},
       {ch:'璽',meaning:'도장',strokes:19,pilhoek:19,rad:'玉',jawonElement:'금'},
-      {ch:'賽',meaning:'굿할',strokes:17,pilhoek:17,rad:'貝',jawonElement:'금'}
+      {ch:'賽',meaning:'굿할',strokes:17,pilhoek:17,rad:'貝',jawonElement:'금'},
+      {ch:'鰓',meaning:'뿔심',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '색': [
       {ch:'色',meaning:'빛',strokes:6,pilhoek:6,rad:'色',jawonElement:null},
@@ -2677,12 +6419,14 @@
       {ch:'索',meaning:'찾을',strokes:10,pilhoek:10,rad:'糸',jawonElement:'목'},
       {ch:'嗇',meaning:'아낄',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
       {ch:'薔',meaning:'아낄',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
-      {ch:'穡',meaning:'거둘',strokes:18,pilhoek:18,rad:'禾',jawonElement:'목'}
+      {ch:'穡',meaning:'거둘',strokes:18,pilhoek:18,rad:'禾',jawonElement:'목'},
+      {ch:'濇',meaning:'껄끄러울',strokes:17,pilhoek:16,rad:'水',jawonElement:'수',unverified:true}
     ],
     '생': [
       {ch:'省',meaning:'덜',strokes:9,pilhoek:9,rad:'目',jawonElement:'목'},
       {ch:'甥',meaning:'생질',strokes:12,pilhoek:12,rad:'生',jawonElement:null},
-      {ch:'笙',meaning:'생황',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'}
+      {ch:'笙',meaning:'생황',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
+      {ch:'鉎',meaning:'녹',strokes:13,pilhoek:13,rad:'金',jawonElement:'금',unverified:true}
     ],
     '섬': [
       {ch:'暹',meaning:'해돋을',strokes:16,pilhoek:15,rad:'日',jawonElement:null},
@@ -2691,7 +6435,13 @@
       {ch:'殲',meaning:'멸할',strokes:21,pilhoek:21,rad:'歹',jawonElement:'수'},
       {ch:'閃',meaning:'번쩍할',strokes:10,pilhoek:10,rad:'門',jawonElement:null},
       {ch:'贍',meaning:'넉넉할',strokes:20,pilhoek:20,rad:'貝',jawonElement:'금'},
-      {ch:'剡',meaning:'날카로울',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'}
+      {ch:'剡',meaning:'날카로울',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'},
+      {ch:'摻',meaning:'섬섬할',strokes:15,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'銛',meaning:'가래',strokes:14,pilhoek:14,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'譫',meaning:'헛소리',strokes:20,pilhoek:20,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'睒',meaning:'번개빛',strokes:13,pilhoek:13,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'韱',meaning:'산부추',strokes:17,pilhoek:17,rad:'韭',jawonElement:null,unverified:true},
+      {ch:'孅',meaning:'가늘',strokes:20,pilhoek:20,rad:'女',jawonElement:'토',unverified:true}
     ],
     '속': [
       {ch:'速',meaning:'빠를',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
@@ -2701,17 +6451,22 @@
       {ch:'屬',meaning:'무리',strokes:20,pilhoek:21,rad:'尸',jawonElement:null},
       {ch:'粟',meaning:'좁쌀',strokes:12,pilhoek:12,rad:'米',jawonElement:'목'},
       {ch:'贖',meaning:'속바칠',strokes:22,pilhoek:22,rad:'貝',jawonElement:'금'},
-      {ch:'涑',meaning:'빨',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'}
+      {ch:'涑',meaning:'빨',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'謖',meaning:'일어날',strokes:17,pilhoek:17,rad:'言',jawonElement:'금'},
+      {ch:'遬',meaning:'공손할',strokes:18,pilhoek:14,rad:'辵',jawonElement:'토',unverified:true}
     ],
     '솔': [
-      {ch:'率',meaning:'거느릴',strokes:11,pilhoek:11,rad:'玄',jawonElement:'수'}
+      {ch:'率',meaning:'거느릴',strokes:11,pilhoek:11,rad:'玄',jawonElement:'수'},
+      {ch:'蟀',meaning:'귀뚜라미',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'窣',meaning:'느릿느릿 걸을',strokes:13,pilhoek:13,rad:'穴',jawonElement:'수',unverified:true}
     ],
     '쇄': [
       {ch:'殺',meaning:'내릴',strokes:11,pilhoek:10,rad:'殳',jawonElement:'금'},
       {ch:'刷',meaning:'긁을',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
       {ch:'鎖',meaning:'자물쇠',strokes:18,pilhoek:18,rad:'金',jawonElement:'금'},
       {ch:'灑',meaning:'뿌릴',strokes:23,pilhoek:22,rad:'水',jawonElement:'수'},
-      {ch:'碎',meaning:'잘',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'}
+      {ch:'碎',meaning:'잘',strokes:13,pilhoek:13,rad:'石',jawonElement:'금'},
+      {ch:'瑣',meaning:'옥가루',strokes:15,pilhoek:14,rad:'玉',jawonElement:'금',unverified:true}
     ],
     '쇠': [
       {ch:'衰',meaning:'쇠할',strokes:10,pilhoek:10,rad:'衣',jawonElement:'목'},
@@ -2725,7 +6480,18 @@
       {ch:'熟',meaning:'익힐',strokes:15,pilhoek:15,rad:'火',jawonElement:'화'},
       {ch:'肅',meaning:'공손할',strokes:13,pilhoek:13,rad:'聿',jawonElement:null},
       {ch:'夙',meaning:'이를',strokes:6,pilhoek:6,rad:'夕',jawonElement:null},
-      {ch:'菽',meaning:'콩',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'}
+      {ch:'菽',meaning:'콩',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'塾',meaning:'사랑방',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'璹',meaning:'옥그릇',strokes:19,pilhoek:18,rad:'玉',jawonElement:'금'},
+      {ch:'潚',meaning:'빠를',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'},
+      {ch:'琡',meaning:'옥이름',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'倏',meaning:'잠간',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'俶',meaning:'비롯할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'橚',meaning:'길고 꼿꼿할',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'儵',meaning:'잿빛',strokes:19,pilhoek:18,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'鷫',meaning:'숙상새',strokes:23,pilhoek:24,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'驌',meaning:'좋은말',strokes:22,pilhoek:23,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'婌',meaning:'궁녀 벼슬이름',strokes:11,pilhoek:11,rad:'女',jawonElement:'토',unverified:true}
     ],
     '술': [
       {ch:'戌',meaning:'개',strokes:6,pilhoek:6,rad:'戈',jawonElement:null},
@@ -2736,7 +6502,14 @@
     '숭': [
       {ch:'崇',meaning:'높을',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
       {ch:'嵩',meaning:'높을',strokes:13,pilhoek:13,rad:'山',jawonElement:'토'},
-      {ch:'崧',meaning:'산 불끈 솟을',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'}
+      {ch:'崧',meaning:'산 불끈 솟을',strokes:11,pilhoek:11,rad:'山',jawonElement:'토'},
+      {ch:'菘',meaning:'배추',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true}
+    ],
+    '쉬': [
+      {ch:'倅',meaning:'버금',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'晬',meaning:'돐',strokes:12,pilhoek:12,rad:'日',jawonElement:null,unverified:true},
+      {ch:'淬',meaning:'칼 담글',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'焠',meaning:'물들일',strokes:12,pilhoek:12,rad:'火',jawonElement:'화',unverified:true}
     ],
     '슬': [
       {ch:'瑟',meaning:'비파',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'},
@@ -2748,18 +6521,22 @@
       {ch:'拾',meaning:'주울',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
       {ch:'襲',meaning:'옷 덧입을',strokes:22,pilhoek:22,rad:'衣',jawonElement:'목'},
       {ch:'濕',meaning:'소 귀 벌룩거릴',strokes:18,pilhoek:17,rad:'水',jawonElement:'수'},
-      {ch:'褶',meaning:'슬갑',strokes:17,pilhoek:16,rad:'衣',jawonElement:'목'}
+      {ch:'褶',meaning:'슬갑',strokes:17,pilhoek:16,rad:'衣',jawonElement:'목'},
+      {ch:'隰',meaning:'진펄',strokes:22,pilhoek:16,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'熠',meaning:'환할',strokes:15,pilhoek:15,rad:'火',jawonElement:'화',unverified:true}
     ],
     '실': [
       {ch:'室',meaning:'집',strokes:9,pilhoek:9,rad:'宀',jawonElement:null},
       {ch:'失',meaning:'그르칠',strokes:5,pilhoek:5,rad:'大',jawonElement:null},
       {ch:'實',meaning:'열매',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
-      {ch:'悉',meaning:'모두',strokes:11,pilhoek:11,rad:'心',jawonElement:'화'}
+      {ch:'悉',meaning:'모두',strokes:11,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'蟋',meaning:'귀뚜라미',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '십': [
       {ch:'十',meaning:'열',strokes:10,pilhoek:2,rad:null,jawonElement:null},
       {ch:'拾',meaning:'주울',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
-      {ch:'什',meaning:'열 사람',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'}
+      {ch:'什',meaning:'열 사람',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'},
+      {ch:'辻',meaning:'네거리',strokes:9,pilhoek:5,rad:'辵',jawonElement:'토',unverified:true}
     ],
     '쌍': [
       {ch:'雙',meaning:'짝',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화'}
@@ -2775,13 +6552,36 @@
       {ch:'愕',meaning:'억지부릴',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
       {ch:'堊',meaning:'흰 흙',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
       {ch:'顎',meaning:'턱',strokes:18,pilhoek:18,rad:'頁',jawonElement:'화'},
-      {ch:'嶽',meaning:'높은 산',strokes:17,pilhoek:17,rad:'山',jawonElement:'토'}
+      {ch:'嶽',meaning:'높은 산',strokes:17,pilhoek:17,rad:'山',jawonElement:'토'},
+      {ch:'幄',meaning:'장막',strokes:12,pilhoek:12,rad:'巾',jawonElement:'목'},
+      {ch:'渥',meaning:'두터울',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
+      {ch:'鰐',meaning:'악어',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수'},
+      {ch:'鄂',meaning:'나라이름',strokes:16,pilhoek:11,rad:'邑',jawonElement:'토'},
+      {ch:'鍔',meaning:'칼날끝',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
+      {ch:'齷',meaning:'악착할',strokes:24,pilhoek:24,rad:'齒',jawonElement:'금'},
+      {ch:'萼',meaning:'꽃받침',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'諤',meaning:'직언할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'鶚',meaning:'물수리',strokes:20,pilhoek:20,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'喔',meaning:'닭 우는 소리',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'卾',meaning:'윗턱',strokes:11,pilhoek:11,rad:'卩',jawonElement:null,unverified:true},
+      {ch:'腭',meaning:'잇몸',strokes:15,pilhoek:13,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'偓',meaning:'거리낄',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'覨',meaning:'오래 볼',strokes:16,pilhoek:16,rad:'見',jawonElement:'화',unverified:true},
+      {ch:'齶',meaning:'잇몸',strokes:24,pilhoek:24,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '알': [
       {ch:'謁',meaning:'아뢸',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
       {ch:'閼',meaning:'막을',strokes:16,pilhoek:16,rad:'門',jawonElement:null},
       {ch:'軋',meaning:'수레 삐걱거릴',strokes:8,pilhoek:8,rad:'車',jawonElement:'화'},
-      {ch:'斡',meaning:'돌릴',strokes:14,pilhoek:14,rad:'斗',jawonElement:'화'}
+      {ch:'斡',meaning:'돌릴',strokes:14,pilhoek:14,rad:'斗',jawonElement:'화'},
+      {ch:'遏',meaning:'막을',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'訐',meaning:'들추어 낼',strokes:10,pilhoek:10,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'戞',meaning:'창',strokes:12,pilhoek:12,rad:'戈',jawonElement:null,unverified:true},
+      {ch:'頞',meaning:'콧마루',strokes:15,pilhoek:15,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'揠',meaning:'뽑을',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'鴶',meaning:'뻐꾸기',strokes:17,pilhoek:17,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'嘎',meaning:'새소리',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'穵',meaning:'구멍',strokes:6,pilhoek:6,rad:'穴',jawonElement:'수',unverified:true}
     ],
     '암': [
       {ch:'暗',meaning:'몰래',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
@@ -2791,7 +6591,15 @@
       {ch:'闇',meaning:'망루',strokes:17,pilhoek:17,rad:'門',jawonElement:null},
       {ch:'岩',meaning:'바위',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
       {ch:'菴',meaning:'암자',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
-      {ch:'唵',meaning:'머금을',strokes:11,pilhoek:11,rad:'口',jawonElement:null}
+      {ch:'唵',meaning:'머금을',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
+      {ch:'諳',meaning:'욀',strokes:16,pilhoek:16,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'嵓',meaning:'바위',strokes:12,pilhoek:12,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'馣',meaning:'향기로울',strokes:17,pilhoek:17,rad:'香',jawonElement:'목',unverified:true},
+      {ch:'媕',meaning:'머뭇거릴',strokes:12,pilhoek:12,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'啽',meaning:'잠꼬대',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'腤',meaning:'고기 삶을',strokes:15,pilhoek:13,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'葊',meaning:'풀이름',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蓭',meaning:'암자',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '압': [
       {ch:'壓',meaning:'누를',strokes:17,pilhoek:17,rad:'土',jawonElement:'토'},
@@ -2804,7 +6612,10 @@
       {ch:'央',meaning:'가운데',strokes:5,pilhoek:5,rad:'大',jawonElement:null},
       {ch:'昻',meaning:'오를',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
       {ch:'鴦',meaning:'암원앙새',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화'},
-      {ch:'秧',meaning:'모',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목'}
+      {ch:'秧',meaning:'모',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목'},
+      {ch:'盎',meaning:'동이',strokes:10,pilhoek:10,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'鞅',meaning:'가슴걸이',strokes:14,pilhoek:14,rad:'革',jawonElement:'금',unverified:true},
+      {ch:'卬',meaning:'자기',strokes:4,pilhoek:4,rad:'卩',jawonElement:null,unverified:true}
     ],
     '액': [
       {ch:'額',meaning:'이마',strokes:18,pilhoek:18,rad:'頁',jawonElement:'화'},
@@ -2812,12 +6623,17 @@
       {ch:'腋',meaning:'겨드랑이',strokes:14,pilhoek:12,rad:'肉',jawonElement:null},
       {ch:'扼',meaning:'움켜쥘',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'縊',meaning:'목 맬',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
-      {ch:'掖',meaning:'겨드랑이에 낄',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'}
+      {ch:'掖',meaning:'겨드랑이에 낄',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
+      {ch:'搤',meaning:'움켜쥘',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'呝',meaning:'울',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true}
     ],
     '앵': [
       {ch:'櫻',meaning:'앵두나무',strokes:21,pilhoek:21,rad:'木',jawonElement:'목'},
       {ch:'鸚',meaning:'앵무새',strokes:28,pilhoek:28,rad:'鳥',jawonElement:'화'},
-      {ch:'罌',meaning:'술병',strokes:20,pilhoek:20,rad:'缶',jawonElement:'토'}
+      {ch:'罌',meaning:'술병',strokes:20,pilhoek:20,rad:'缶',jawonElement:'토'},
+      {ch:'嚶',meaning:'새 소리',strokes:20,pilhoek:20,rad:'口',jawonElement:null,unverified:true},
+      {ch:'罃',meaning:'술병',strokes:16,pilhoek:16,rad:'缶',jawonElement:'토',unverified:true},
+      {ch:'嫈',meaning:'예쁠',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true}
     ],
     '약': [
       {ch:'弱',meaning:'약할',strokes:10,pilhoek:10,rad:'弓',jawonElement:null},
@@ -2827,22 +6643,37 @@
       {ch:'略',meaning:'간략할',strokes:11,pilhoek:11,rad:'田',jawonElement:null},
       {ch:'躍',meaning:'뛸',strokes:21,pilhoek:21,rad:'足',jawonElement:'토'},
       {ch:'掠',meaning:'노략질할',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
-      {ch:'葯',meaning:'꽃밥',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'}
+      {ch:'葯',meaning:'꽃밥',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
+      {ch:'蒻',meaning:'구약나물',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
+      {ch:'鑰',meaning:'자물쇠',strokes:25,pilhoek:25,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'籥',meaning:'피리',strokes:23,pilhoek:23,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'禴',meaning:'종묘의 여름제사',strokes:22,pilhoek:21,rad:'示',jawonElement:null,unverified:true},
+      {ch:'爚',meaning:'스러질',strokes:21,pilhoek:21,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'篛',meaning:'죽순',strokes:16,pilhoek:16,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鰯',meaning:'멸치',strokes:21,pilhoek:21,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'龠',meaning:'피리',strokes:17,pilhoek:17,rad:'龠',jawonElement:'화',unverified:true},
+      {ch:'鶸',meaning:'댓닭',strokes:21,pilhoek:21,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '억': [
       {ch:'億',meaning:'억',strokes:15,pilhoek:15,rad:'人',jawonElement:'화'},
       {ch:'憶',meaning:'생각',strokes:17,pilhoek:16,rad:'心',jawonElement:'화'},
       {ch:'抑',meaning:'누를',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'臆',meaning:'가슴',strokes:19,pilhoek:17,rad:'肉',jawonElement:null},
-      {ch:'檍',meaning:'참죽나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'}
+      {ch:'檍',meaning:'참죽나무',strokes:17,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'繶',meaning:'땋은 노',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목',unverified:true}
     ],
     '얼': [
       {ch:'蘖',meaning:'그루터기',strokes:23,pilhoek:20,rad:'艸',jawonElement:'목'},
-      {ch:'孼',meaning:'요물',strokes:19,pilhoek:19,rad:'子',jawonElement:'수'}
+      {ch:'孼',meaning:'요물',strokes:19,pilhoek:19,rad:'子',jawonElement:'수'},
+      {ch:'臬',meaning:'법',strokes:10,pilhoek:10,rad:'自',jawonElement:null,unverified:true}
     ],
     '업': [
       {ch:'業',meaning:'일',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
-      {ch:'嶪',meaning:'산이 높고 웅장할',strokes:16,pilhoek:16,rad:'山',jawonElement:'토'}
+      {ch:'嶪',meaning:'산이 높고 웅장할',strokes:16,pilhoek:16,rad:'山',jawonElement:'토'},
+      {ch:'鄴',meaning:'땅이름',strokes:20,pilhoek:15,rad:'邑',jawonElement:'토',unverified:true}
+    ],
+    '에': [
+      {ch:'曀',meaning:'음산할',strokes:16,pilhoek:16,rad:'日',jawonElement:null,unverified:true}
     ],
     '엔': [
       {ch:'円',meaning:'일본화폐단위',strokes:4,pilhoek:4,rad:'冂',jawonElement:null}
@@ -2855,23 +6686,43 @@
       {ch:'役',meaning:'부릴',strokes:7,pilhoek:7,rad:'彳',jawonElement:'화'},
       {ch:'驛',meaning:'잇닿을',strokes:23,pilhoek:23,rad:'馬',jawonElement:'화'},
       {ch:'譯',meaning:'통변할',strokes:20,pilhoek:20,rad:'言',jawonElement:'금'},
-      {ch:'曆',meaning:'셀',strokes:16,pilhoek:16,rad:'日',jawonElement:null}
+      {ch:'曆',meaning:'셀',strokes:16,pilhoek:16,rad:'日',jawonElement:null},
+      {ch:'域',meaning:'경계',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'繹',meaning:'베풀',strokes:19,pilhoek:19,rad:'糸',jawonElement:'목'},
+      {ch:'轢',meaning:'수레바퀴에 치일',strokes:22,pilhoek:22,rad:'車',jawonElement:'화'},
+      {ch:'嶧',meaning:'연달아 있는 산',strokes:16,pilhoek:16,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'懌',meaning:'기꺼울',strokes:17,pilhoek:16,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'閾',meaning:'문지방',strokes:16,pilhoek:16,rad:'門',jawonElement:null,unverified:true},
+      {ch:'淢',meaning:'빨리 흐를',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true}
     ],
     '엽': [
       {ch:'燁',meaning:'불 이글글할',strokes:16,pilhoek:14,rad:'火',jawonElement:'화'},
       {ch:'葉',meaning:'잎',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
       {ch:'獵',meaning:'사냥할',strokes:19,pilhoek:18,rad:'犬',jawonElement:null},
-      {ch:'曄',meaning:'빛날',strokes:16,pilhoek:14,rad:'日',jawonElement:null}
+      {ch:'曄',meaning:'빛날',strokes:16,pilhoek:14,rad:'日',jawonElement:null},
+      {ch:'爗',meaning:'불 이글글할',strokes:20,pilhoek:18,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'熀',meaning:'불빛 이글이글할',strokes:14,pilhoek:14,rad:'火',jawonElement:'화'}
     ],
     '올': [
-      {ch:'兀',meaning:'우뚝할',strokes:3,pilhoek:3,rad:'儿',jawonElement:null}
+      {ch:'兀',meaning:'우뚝할',strokes:3,pilhoek:3,rad:'儿',jawonElement:null},
+      {ch:'膃',meaning:'해구',strokes:16,pilhoek:14,rad:'肉',jawonElement:null,unverified:true},
+      {ch:'嗢',meaning:'목 멜',strokes:13,pilhoek:12,rad:'口',jawonElement:null,unverified:true}
     ],
     '와': [
       {ch:'臥',meaning:'누울',strokes:8,pilhoek:8,rad:'臣',jawonElement:null},
       {ch:'瓦',meaning:'질그릇',strokes:5,pilhoek:4,rad:'瓦',jawonElement:null},
       {ch:'渦',meaning:'소용돌이',strokes:13,pilhoek:11,rad:'水',jawonElement:'수'},
       {ch:'窩',meaning:'움집',strokes:14,pilhoek:13,rad:'穴',jawonElement:'수'},
-      {ch:'窪',meaning:'도랑',strokes:14,pilhoek:14,rad:'穴',jawonElement:'수'}
+      {ch:'窪',meaning:'도랑',strokes:14,pilhoek:14,rad:'穴',jawonElement:'수'},
+      {ch:'洼',meaning:'물 이름',strokes:10,pilhoek:9,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'哇',meaning:'음란한 소리',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'譌',meaning:'와전될',strokes:19,pilhoek:19,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'萵',meaning:'상추',strokes:15,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'囮',meaning:'새 후릴',strokes:7,pilhoek:7,rad:'囗',jawonElement:null,unverified:true},
+      {ch:'枙',meaning:'옹이',strokes:8,pilhoek:8,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'窊',meaning:'웅덩이',strokes:10,pilhoek:10,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'婐',meaning:'정숙할',strokes:11,pilhoek:11,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'猧',meaning:'와개',strokes:13,pilhoek:11,rad:'犬',jawonElement:null,unverified:true}
     ],
     '왈': [
       {ch:'曰',meaning:'가로되',strokes:4,pilhoek:4,rad:'曰',jawonElement:null}
@@ -2880,14 +6731,22 @@
       {ch:'倭',meaning:'나라이름',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
       {ch:'矮',meaning:'난장이',strokes:13,pilhoek:13,rad:'矢',jawonElement:'금'},
       {ch:'娃',meaning:'어여쁜 계집',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
-      {ch:'歪',meaning:'비뚤',strokes:9,pilhoek:9,rad:'止',jawonElement:'토'}
+      {ch:'歪',meaning:'비뚤',strokes:9,pilhoek:9,rad:'止',jawonElement:'토'},
+      {ch:'媧',meaning:'여자이름',strokes:12,pilhoek:11,rad:'女',jawonElement:'토',unverified:true}
     ],
     '외': [
       {ch:'外',meaning:'바깥',strokes:5,pilhoek:5,rad:'夕',jawonElement:null},
       {ch:'畏',meaning:'겁낼',strokes:9,pilhoek:9,rad:'田',jawonElement:null},
       {ch:'猥',meaning:'섞일',strokes:13,pilhoek:12,rad:'犬',jawonElement:null},
       {ch:'巍',meaning:'높을',strokes:21,pilhoek:20,rad:'山',jawonElement:'토'},
-      {ch:'嵬',meaning:'산 뾰족할',strokes:13,pilhoek:12,rad:'山',jawonElement:'토'}
+      {ch:'嵬',meaning:'산 뾰족할',strokes:13,pilhoek:12,rad:'山',jawonElement:'토'},
+      {ch:'煨',meaning:'불에 묻어 구울',strokes:13,pilhoek:13,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'隗',meaning:'높을',strokes:18,pilhoek:11,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'磈',meaning:'돌 사닥다리',strokes:15,pilhoek:14,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'偎',meaning:'사랑할',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'崴',meaning:'평평치 아니할',strokes:12,pilhoek:12,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'碨',meaning:'바위 옹두라지',strokes:14,pilhoek:14,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'嵔',meaning:'산이름',strokes:12,pilhoek:12,rad:'山',jawonElement:'토',unverified:true}
     ],
     '욕': [
       {ch:'欲',meaning:'욕심낼',strokes:11,pilhoek:11,rad:'欠',jawonElement:null},
@@ -2895,7 +6754,9 @@
       {ch:'辱',meaning:'욕될',strokes:10,pilhoek:10,rad:'辰',jawonElement:'토'},
       {ch:'慾',meaning:'욕심낼',strokes:15,pilhoek:15,rad:'心',jawonElement:'화'},
       {ch:'褥',meaning:'요',strokes:16,pilhoek:15,rad:'衣',jawonElement:'목'},
-      {ch:'縟',meaning:'꾸밀',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'}
+      {ch:'縟',meaning:'꾸밀',strokes:16,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'溽',meaning:'유월 더위',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'蓐',meaning:'새싹',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '욱': [
       {ch:'旭',meaning:'빛날',strokes:6,pilhoek:6,rad:'日',jawonElement:null},
@@ -2905,16 +6766,18 @@
       {ch:'昱',meaning:'햇빛 밝을',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
       {ch:'勖',meaning:'힘쓸',strokes:11,pilhoek:11,rad:'力',jawonElement:null},
       {ch:'彧',meaning:'빛날',strokes:10,pilhoek:10,rad:'彡',jawonElement:null},
-      {ch:'栯',meaning:'산앵두',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'}
+      {ch:'栯',meaning:'산앵두',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'稶',meaning:'서직 무성할',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'}
     ],
     '울': [
       {ch:'鬱',meaning:'향기로운 풀',strokes:29,pilhoek:29,rad:'鬯',jawonElement:'목'},
       {ch:'蔚',meaning:'고을이름',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
-      {ch:'亐',meaning:'땅이름',strokes:3,pilhoek:3,rad:'一',jawonElement:null}
+      {ch:'亐',meaning:'땅이름',strokes:3,pilhoek:3,rad:'一',jawonElement:null,unverified:true}
     ],
     '월': [
       {ch:'月',meaning:'달',strokes:4,pilhoek:4,rad:'月',jawonElement:'수'},
-      {ch:'越',meaning:'넘을',strokes:12,pilhoek:12,rad:'走',jawonElement:'화'}
+      {ch:'越',meaning:'넘을',strokes:12,pilhoek:12,rad:'走',jawonElement:'화'},
+      {ch:'粤',meaning:'말 내킬',strokes:12,pilhoek:12,rad:'米',jawonElement:'목',unverified:true}
     ],
     '융': [
       {ch:'隆',meaning:'성할',strokes:17,pilhoek:11,rad:'阜',jawonElement:'토'},
@@ -2924,12 +6787,16 @@
       {ch:'瀜',meaning:'물 깊을',strokes:20,pilhoek:19,rad:'水',jawonElement:'수'}
     ],
     '을': [
-      {ch:'乙',meaning:'새',strokes:1,pilhoek:1,rad:'乙',jawonElement:null}
+      {ch:'乙',meaning:'새',strokes:1,pilhoek:1,rad:'乙',jawonElement:null},
+      {ch:'鳦',meaning:'제비',strokes:12,pilhoek:12,rad:'鳥',jawonElement:'화'}
     ],
     '읍': [
       {ch:'邑',meaning:'고을',strokes:7,pilhoek:7,rad:'邑',jawonElement:'토'},
       {ch:'泣',meaning:'부글부글 끓는 소리',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
-      {ch:'揖',meaning:'읍할',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'}
+      {ch:'揖',meaning:'읍할',strokes:13,pilhoek:12,rad:'手',jawonElement:'목'},
+      {ch:'挹',meaning:'잡아당길',strokes:11,pilhoek:10,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'悒',meaning:'답답할',strokes:11,pilhoek:10,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'浥',meaning:'흠치르르할',strokes:11,pilhoek:10,rad:'水',jawonElement:'수',unverified:true}
     ],
     '응': [
       {ch:'應',meaning:'응당',strokes:17,pilhoek:17,rad:'心',jawonElement:'화'},
@@ -2941,13 +6808,15 @@
       {ch:'立',meaning:'설',strokes:5,pilhoek:5,rad:'立',jawonElement:null},
       {ch:'笠',meaning:'우리',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
       {ch:'粒',meaning:'쌀알',strokes:11,pilhoek:11,rad:'米',jawonElement:'목'},
-      {ch:'卄',meaning:'스물',strokes:3,pilhoek:3,rad:'一',jawonElement:null}
+      {ch:'卄',meaning:'스물',strokes:3,pilhoek:3,rad:'一',jawonElement:null},
+      {ch:'廿',meaning:'스물',strokes:4,pilhoek:4,rad:'廾',jawonElement:null}
     ],
     '잉': [
       {ch:'剩',meaning:'남을',strokes:11,pilhoek:12,rad:'刀',jawonElement:'금'},
       {ch:'孕',meaning:'아이밸',strokes:5,pilhoek:5,rad:'子',jawonElement:'수'},
       {ch:'仍',meaning:'인할',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'},
-      {ch:'芿',meaning:'새풀싹',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'}
+      {ch:'芿',meaning:'새풀싹',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'媵',meaning:'보낼',strokes:13,pilhoek:13,rad:'女',jawonElement:'토',unverified:true}
     ],
     '작': [
       {ch:'作',meaning:'지을',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
@@ -2957,28 +6826,55 @@
       {ch:'杓',meaning:'구기',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
       {ch:'灼',meaning:'구을',strokes:7,pilhoek:7,rad:'火',jawonElement:'화'},
       {ch:'雀',meaning:'참새',strokes:11,pilhoek:11,rad:'隹',jawonElement:'화'},
-      {ch:'鵲',meaning:'까치',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화'}
+      {ch:'鵲',meaning:'까치',strokes:19,pilhoek:19,rad:'鳥',jawonElement:'화'},
+      {ch:'綽',meaning:'너그러울',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'勺',meaning:'구기',strokes:3,pilhoek:3,rad:'勹',jawonElement:null},
+      {ch:'嚼',meaning:'씹을',strokes:21,pilhoek:20,rad:'口',jawonElement:null},
+      {ch:'芍',meaning:'작약',strokes:9,pilhoek:6,rad:'艸',jawonElement:'목'},
+      {ch:'醋',meaning:'술잔을 돌릴',strokes:15,pilhoek:15,rad:'酉',jawonElement:null},
+      {ch:'炸',meaning:'터질',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
+      {ch:'斫',meaning:'쪼갤',strokes:9,pilhoek:9,rad:'斤',jawonElement:null},
+      {ch:'怍',meaning:'부끄러울',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'焯',meaning:'밝을',strokes:12,pilhoek:12,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'碏',meaning:'삼갈',strokes:13,pilhoek:13,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'柞',meaning:'나무이름',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'岝',meaning:'산 높을',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'汋',meaning:'삶을',strokes:7,pilhoek:6,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'犳',meaning:'아롱 짐승',strokes:7,pilhoek:6,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'斱',meaning:'쪼갤',strokes:13,pilhoek:12,rad:'斤',jawonElement:null,unverified:true}
     ],
     '잔': [
       {ch:'殘',meaning:'해칠',strokes:12,pilhoek:12,rad:'歹',jawonElement:'수'},
       {ch:'盞',meaning:'작은 술잔',strokes:13,pilhoek:13,rad:'皿',jawonElement:null},
       {ch:'棧',meaning:'잔교',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
-      {ch:'孱',meaning:'잔약할',strokes:12,pilhoek:12,rad:'子',jawonElement:'수'}
+      {ch:'孱',meaning:'잔약할',strokes:12,pilhoek:12,rad:'子',jawonElement:'수'},
+      {ch:'戔',meaning:'쌓일',strokes:8,pilhoek:8,rad:'戈',jawonElement:null,unverified:true},
+      {ch:'剗',meaning:'깍을',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금',unverified:true}
     ],
     '잠': [
       {ch:'暫',meaning:'잠시',strokes:15,pilhoek:15,rad:'日',jawonElement:null},
       {ch:'蠶',meaning:'누에',strokes:24,pilhoek:24,rad:'虫',jawonElement:'수'},
       {ch:'箴',meaning:'바늘',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목'},
-      {ch:'岑',meaning:'봉우리',strokes:7,pilhoek:7,rad:'山',jawonElement:'토'}
+      {ch:'岑',meaning:'봉우리',strokes:7,pilhoek:7,rad:'山',jawonElement:'토'},
+      {ch:'蚕',meaning:'누에',strokes:10,pilhoek:10,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'涔',meaning:'괸물',strokes:11,pilhoek:10,rad:'水',jawonElement:'수',unverified:true}
     ],
     '잡': [
-      {ch:'雜',meaning:'섞일',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화'}
+      {ch:'雜',meaning:'섞일',strokes:18,pilhoek:18,rad:'隹',jawonElement:'화'},
+      {ch:'磼',meaning:'산 높을',strokes:17,pilhoek:17,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'卡',meaning:'관',strokes:5,pilhoek:5,rad:'卜',jawonElement:null,unverified:true},
+      {ch:'囃',meaning:'장단 잡을',strokes:21,pilhoek:21,rad:'口',jawonElement:null,unverified:true}
     ],
     '쟁': [
       {ch:'爭',meaning:'다스릴',strokes:8,pilhoek:8,rad:'爪',jawonElement:null},
       {ch:'錚',meaning:'쇳소리 쟁그렁거릴',strokes:16,pilhoek:14,rad:'金',jawonElement:'금'},
       {ch:'諍',meaning:'간할',strokes:15,pilhoek:13,rad:'言',jawonElement:'금'},
-      {ch:'箏',meaning:'쟁',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'}
+      {ch:'箏',meaning:'쟁',strokes:14,pilhoek:14,rad:'竹',jawonElement:'목'},
+      {ch:'崢',meaning:'산 높을',strokes:11,pilhoek:11,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'鎗',meaning:'금석소리',strokes:18,pilhoek:18,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'瞠',meaning:'똑바로 볼',strokes:16,pilhoek:16,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'琤',meaning:'옥소리',strokes:13,pilhoek:10,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'猙',meaning:'밉살스럴',strokes:12,pilhoek:11,rad:'犬',jawonElement:null,unverified:true}
     ],
     '저': [
       {ch:'低',meaning:'낮을',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
@@ -2988,7 +6884,37 @@
       {ch:'抵',meaning:'밀칠',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
       {ch:'沮',meaning:'막을',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'躇',meaning:'머뭇거릴',strokes:20,pilhoek:18,rad:'足',jawonElement:'토'},
-      {ch:'邸',meaning:'사처',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'}
+      {ch:'邸',meaning:'사처',strokes:12,pilhoek:7,rad:'邑',jawonElement:'토'},
+      {ch:'咀',meaning:'씹을',strokes:8,pilhoek:8,rad:'口',jawonElement:null},
+      {ch:'詛',meaning:'저주할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금'},
+      {ch:'狙',meaning:'살필',strokes:9,pilhoek:8,rad:'犬',jawonElement:null},
+      {ch:'儲',meaning:'쌓을',strokes:18,pilhoek:17,rad:'人',jawonElement:'화'},
+      {ch:'楮',meaning:'닥나무',strokes:13,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'佇',meaning:'오래 설',strokes:7,pilhoek:7,rad:'人',jawonElement:'화'},
+      {ch:'這',meaning:'맞을',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
+      {ch:'渚',meaning:'물가',strokes:13,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'杵',meaning:'공이',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'疽',meaning:'등창',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
+      {ch:'雎',meaning:'저구',strokes:13,pilhoek:13,rad:'隹',jawonElement:'화'},
+      {ch:'樗',meaning:'가죽나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'菹',meaning:'김치',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
+      {ch:'姐',meaning:'맏누이',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
+      {ch:'觝',meaning:'받을',strokes:12,pilhoek:12,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'藷',meaning:'마',strokes:22,pilhoek:18,rad:'艸',jawonElement:'목'},
+      {ch:'詆',meaning:'알소할',strokes:12,pilhoek:12,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'氐',meaning:'낮을',strokes:5,pilhoek:5,rad:'氏',jawonElement:'화',unverified:true},
+      {ch:'宁',meaning:'조회 받는 곳',strokes:5,pilhoek:5,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'柢',meaning:'뿌리',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'瀦',meaning:'물 괼',strokes:20,pilhoek:18,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'苴',meaning:'암삼',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'杼',meaning:'북',strokes:8,pilhoek:8,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'袛',meaning:'속적삼',strokes:11,pilhoek:10,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'牴',meaning:'대강',strokes:9,pilhoek:9,rad:'牛',jawonElement:'토',unverified:true},
+      {ch:'羝',meaning:'숫양',strokes:11,pilhoek:11,rad:'羊',jawonElement:'토',unverified:true},
+      {ch:'褚',meaning:'주머니',strokes:15,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'罝',meaning:'짐승 그물',strokes:11,pilhoek:10,rad:'网',jawonElement:null,unverified:true},
+      {ch:'岨',meaning:'돌산에 흙 덮일',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'陼',meaning:'모래섬',strokes:17,pilhoek:10,rad:'阜',jawonElement:'토',unverified:true}
     ],
     '적': [
       {ch:'赤',meaning:'붉을',strokes:7,pilhoek:7,rad:'赤',jawonElement:'화'},
@@ -2998,7 +6924,31 @@
       {ch:'賊',meaning:'도적',strokes:13,pilhoek:13,rad:'貝',jawonElement:'금'},
       {ch:'積',meaning:'포갤',strokes:16,pilhoek:16,rad:'禾',jawonElement:'목'},
       {ch:'籍',meaning:'문서',strokes:20,pilhoek:20,rad:'竹',jawonElement:'목'},
-      {ch:'跡',meaning:'자취',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'}
+      {ch:'跡',meaning:'자취',strokes:13,pilhoek:13,rad:'足',jawonElement:'토'},
+      {ch:'績',meaning:'길쌈',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
+      {ch:'摘',meaning:'딸',strokes:15,pilhoek:14,rad:'手',jawonElement:'목'},
+      {ch:'寂',meaning:'고요할',strokes:11,pilhoek:11,rad:'宀',jawonElement:null},
+      {ch:'滴',meaning:'물방울',strokes:15,pilhoek:14,rad:'水',jawonElement:'수'},
+      {ch:'蹟',meaning:'행적',strokes:18,pilhoek:18,rad:'足',jawonElement:'토'},
+      {ch:'笛',meaning:'피리',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목'},
+      {ch:'炙',meaning:'고기구이',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'迹',meaning:'발자국',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
+      {ch:'嫡',meaning:'정실',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'},
+      {ch:'藉',meaning:'어수선할',strokes:20,pilhoek:17,rad:'艸',jawonElement:'목'},
+      {ch:'謫',meaning:'귀양갈',strokes:18,pilhoek:18,rad:'言',jawonElement:'금'},
+      {ch:'狄',meaning:'꿩 그린 옷',strokes:8,pilhoek:7,rad:'犬',jawonElement:null},
+      {ch:'迪',meaning:'나아갈',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토'},
+      {ch:'勣',meaning:'공적',strokes:13,pilhoek:13,rad:'力',jawonElement:null},
+      {ch:'翟',meaning:'꿩의 깃',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화'},
+      {ch:'鏑',meaning:'화살촉',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'荻',meaning:'쑥',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'糴',meaning:'쌀 사들일',strokes:22,pilhoek:22,rad:'米',jawonElement:'목',unverified:true},
+      {ch:'逖',meaning:'멀',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'覿',meaning:'볼',strokes:22,pilhoek:22,rad:'見',jawonElement:'화',unverified:true},
+      {ch:'磧',meaning:'돌무더기',strokes:16,pilhoek:16,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'樀',meaning:'추녀',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'菂',meaning:'연밥',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'馰',meaning:'별배기',strokes:13,pilhoek:13,rad:'馬',jawonElement:'화',unverified:true}
     ],
     '절': [
       {ch:'節',meaning:'마디',strokes:15,pilhoek:13,rad:'竹',jawonElement:'목'},
@@ -3008,7 +6958,8 @@
       {ch:'竊',meaning:'얕을',strokes:22,pilhoek:22,rad:'穴',jawonElement:'수'},
       {ch:'截',meaning:'끊을',strokes:14,pilhoek:14,rad:'戈',jawonElement:null},
       {ch:'浙',meaning:'쌀 씻을',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
-      {ch:'癤',meaning:'멍울',strokes:20,pilhoek:18,rad:'疒',jawonElement:'수'}
+      {ch:'癤',meaning:'멍울',strokes:20,pilhoek:18,rad:'疒',jawonElement:'수'},
+      {ch:'晢',meaning:'밝을',strokes:11,pilhoek:11,rad:'日',jawonElement:null}
     ],
     '점': [
       {ch:'店',meaning:'가게',strokes:8,pilhoek:8,rad:'广',jawonElement:'목'},
@@ -3018,22 +6969,40 @@
       {ch:'粘',meaning:'붙일',strokes:11,pilhoek:11,rad:'米',jawonElement:'목'},
       {ch:'霑',meaning:'비 지정거릴',strokes:16,pilhoek:16,rad:'雨',jawonElement:'수'},
       {ch:'点',meaning:'검은 점',strokes:9,pilhoek:9,rad:'火',jawonElement:'화'},
-      {ch:'岾',meaning:'고개',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'}
+      {ch:'岾',meaning:'고개',strokes:8,pilhoek:8,rad:'山',jawonElement:'토'},
+      {ch:'鮎',meaning:'메기',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수'},
+      {ch:'玷',meaning:'옥의 티',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'佔',meaning:'숙일',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'簟',meaning:'삿자리',strokes:18,pilhoek:18,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'苫',meaning:'이엉',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'墊',meaning:'축축할',strokes:14,pilhoek:14,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'黏',meaning:'붙일',strokes:17,pilhoek:17,rad:'黍',jawonElement:'목',unverified:true},
+      {ch:'颭',meaning:'펄렁거릴',strokes:14,pilhoek:14,rad:'風',jawonElement:'목',unverified:true},
+      {ch:'蔪',meaning:'보리 팰',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '접': [
       {ch:'接',meaning:'사귈',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
       {ch:'蝶',meaning:'들나비',strokes:15,pilhoek:15,rad:'虫',jawonElement:'수'},
       {ch:'渫',meaning:'물결 출렁출렁할',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
-      {ch:'摺',meaning:'접을',strokes:15,pilhoek:14,rad:'手',jawonElement:'목'}
+      {ch:'摺',meaning:'접을',strokes:15,pilhoek:14,rad:'手',jawonElement:'목'},
+      {ch:'楪',meaning:'널평상',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鰈',meaning:'가자미',strokes:20,pilhoek:20,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'慴',meaning:'겁낼',strokes:15,pilhoek:14,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'蹀',meaning:'저벅저벅 걸을',strokes:16,pilhoek:16,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'跕',meaning:'미끄러질',strokes:12,pilhoek:12,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'椄',meaning:'나무 접붙일',strokes:12,pilhoek:12,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'蜨',meaning:'나비',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '족': [
       {ch:'族',meaning:'겨레',strokes:11,pilhoek:11,rad:'方',jawonElement:null},
       {ch:'簇',meaning:'모일',strokes:17,pilhoek:17,rad:'竹',jawonElement:'목'},
-      {ch:'鏃',meaning:'화살촉',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'}
+      {ch:'鏃',meaning:'화살촉',strokes:19,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'瘯',meaning:'피부병 이름',strokes:16,pilhoek:16,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '존': [
       {ch:'存',meaning:'있을',strokes:6,pilhoek:6,rad:'子',jawonElement:'수'},
-      {ch:'尊',meaning:'존귀할',strokes:12,pilhoek:12,rad:'寸',jawonElement:null}
+      {ch:'尊',meaning:'존귀할',strokes:12,pilhoek:12,rad:'寸',jawonElement:null},
+      {ch:'拵',meaning:'꽂을',strokes:10,pilhoek:9,rad:'手',jawonElement:'목',unverified:true}
     ],
     '졸': [
       {ch:'卒',meaning:'군사',strokes:8,pilhoek:8,rad:'十',jawonElement:null},
@@ -3045,13 +7014,16 @@
       {ch:'粥',meaning:'죽',strokes:12,pilhoek:12,rad:'米',jawonElement:'목'}
     ],
     '줄': [
-      {ch:'茁',meaning:'풀 처음 나는 모양',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'}
+      {ch:'茁',meaning:'풀 처음 나는 모양',strokes:11,pilhoek:8,rad:'艸',jawonElement:'목'},
+      {ch:'乼',meaning:'줄',strokes:9,pilhoek:9,rad:'乙',jawonElement:null,unverified:true}
     ],
     '즉': [
       {ch:'卽',meaning:'곧',strokes:9,pilhoek:9,rad:'卩',jawonElement:null}
     ],
     '즐': [
-      {ch:'櫛',meaning:'빗',strokes:19,pilhoek:17,rad:'木',jawonElement:'목'}
+      {ch:'櫛',meaning:'빗',strokes:19,pilhoek:17,rad:'木',jawonElement:'목'},
+      {ch:'騭',meaning:'수말',strokes:20,pilhoek:19,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'喞',meaning:'두런거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true}
     ],
     '증': [
       {ch:'曾',meaning:'일찍',strokes:12,pilhoek:12,rad:'曰',jawonElement:null},
@@ -3061,14 +7033,19 @@
       {ch:'症',meaning:'증세',strokes:10,pilhoek:10,rad:'疒',jawonElement:'수'},
       {ch:'蒸',meaning:'찔',strokes:16,pilhoek:13,rad:'火',jawonElement:'화'},
       {ch:'拯',meaning:'건질',strokes:10,pilhoek:9,rad:'手',jawonElement:'목'},
-      {ch:'烝',meaning:'김 오를',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'}
+      {ch:'烝',meaning:'김 오를',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
+      {ch:'甑',meaning:'시루',strokes:17,pilhoek:16,rad:'瓦',jawonElement:null},
+      {ch:'繒',meaning:'비단',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목'},
+      {ch:'矰',meaning:'주살',strokes:17,pilhoek:17,rad:'矢',jawonElement:'금',unverified:true},
+      {ch:'罾',meaning:'어망',strokes:18,pilhoek:17,rad:'网',jawonElement:null,unverified:true}
     ],
     '직': [
       {ch:'直',meaning:'곧을',strokes:8,pilhoek:8,rad:'目',jawonElement:'목'},
       {ch:'職',meaning:'벼슬',strokes:18,pilhoek:18,rad:'耳',jawonElement:'화'},
       {ch:'織',meaning:'짤',strokes:18,pilhoek:18,rad:'糸',jawonElement:'목'},
       {ch:'稷',meaning:'기장',strokes:15,pilhoek:15,rad:'禾',jawonElement:'목'},
-      {ch:'稙',meaning:'올벼',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'}
+      {ch:'稙',meaning:'올벼',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'禝',meaning:'사람 이름',strokes:15,pilhoek:14,rad:'示',jawonElement:null,unverified:true}
     ],
     '질': [
       {ch:'質',meaning:'바탕',strokes:15,pilhoek:15,rad:'貝',jawonElement:'금'},
@@ -3078,11 +7055,20 @@
       {ch:'跌',meaning:'넘어질',strokes:12,pilhoek:12,rad:'足',jawonElement:'토'},
       {ch:'窒',meaning:'막을',strokes:11,pilhoek:11,rad:'穴',jawonElement:'수'},
       {ch:'帙',meaning:'책갑',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'},
-      {ch:'桎',meaning:'차꼬',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'}
+      {ch:'桎',meaning:'차꼬',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'膣',meaning:'새살 날',strokes:17,pilhoek:15,rad:'肉',jawonElement:null},
+      {ch:'侄',meaning:'굳을',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'瓆',meaning:'사람 이름',strokes:20,pilhoek:19,rad:'玉',jawonElement:'금'},
+      {ch:'絰',meaning:'질',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'垤',meaning:'개밋둑',strokes:9,pilhoek:9,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'郅',meaning:'고을 이름',strokes:13,pilhoek:8,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'鑕',meaning:'모루',strokes:23,pilhoek:23,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'蒺',meaning:'납가새',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '짐': [
       {ch:'朕',meaning:'나',strokes:10,pilhoek:10,rad:'月',jawonElement:'수'},
-      {ch:'斟',meaning:'술 따를',strokes:13,pilhoek:13,rad:'斗',jawonElement:'화'}
+      {ch:'斟',meaning:'술 따를',strokes:13,pilhoek:13,rad:'斗',jawonElement:'화'},
+      {ch:'鴆',meaning:'짐새',strokes:15,pilhoek:15,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '집': [
       {ch:'集',meaning:'모일',strokes:12,pilhoek:12,rad:'隹',jawonElement:'화'},
@@ -3091,12 +7077,16 @@
       {ch:'什',meaning:'세간',strokes:4,pilhoek:4,rad:'人',jawonElement:'화'},
       {ch:'緝',meaning:'낳을',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
       {ch:'潗',meaning:'샘솟을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
-      {ch:'鏶',meaning:'판금',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'}
+      {ch:'鏶',meaning:'판금',strokes:20,pilhoek:20,rad:'金',jawonElement:'금'},
+      {ch:'咠',meaning:'참소할',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true}
     ],
     '징': [
       {ch:'徵',meaning:'부를',strokes:15,pilhoek:15,rad:'彳',jawonElement:'화'},
       {ch:'懲',meaning:'혼날',strokes:19,pilhoek:19,rad:'心',jawonElement:'화'},
-      {ch:'澄',meaning:'맑을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'}
+      {ch:'澄',meaning:'맑을',strokes:16,pilhoek:15,rad:'水',jawonElement:'수'},
+      {ch:'瀓',meaning:'맑을',strokes:19,pilhoek:18,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'瞪',meaning:'바로 볼',strokes:17,pilhoek:17,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'癥',meaning:'적취',strokes:20,pilhoek:20,rad:'疒',jawonElement:'수',unverified:true}
     ],
     '착': [
       {ch:'着',meaning:'붙을',strokes:12,pilhoek:11,rad:'目',jawonElement:'목'},
@@ -3106,13 +7096,17 @@
       {ch:'躇',meaning:'머뭇거릴',strokes:20,pilhoek:18,rad:'足',jawonElement:'토'},
       {ch:'搾',meaning:'짤',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
       {ch:'鑿',meaning:'뚫을',strokes:28,pilhoek:28,rad:'金',jawonElement:'금'},
-      {ch:'窄',meaning:'끼일',strokes:10,pilhoek:10,rad:'穴',jawonElement:'수'}
+      {ch:'窄',meaning:'끼일',strokes:10,pilhoek:10,rad:'穴',jawonElement:'수'},
+      {ch:'齪',meaning:'악착할',strokes:22,pilhoek:22,rad:'齒',jawonElement:'금'},
+      {ch:'斲',meaning:'깎을',strokes:14,pilhoek:14,rad:'斤',jawonElement:null,unverified:true}
     ],
     '찰': [
       {ch:'察',meaning:'살필',strokes:14,pilhoek:14,rad:'宀',jawonElement:null},
       {ch:'刹',meaning:'절',strokes:8,pilhoek:8,rad:'刀',jawonElement:'금'},
       {ch:'札',meaning:'패',strokes:5,pilhoek:5,rad:'木',jawonElement:'목'},
-      {ch:'擦',meaning:'뿌릴',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'}
+      {ch:'擦',meaning:'뿌릴',strokes:18,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'扎',meaning:'뺄',strokes:5,pilhoek:4,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'拶',meaning:'핍박할',strokes:10,pilhoek:9,rad:'手',jawonElement:'목',unverified:true}
     ],
     '참': [
       {ch:'參',meaning:'간여할',strokes:11,pilhoek:11,rad:'厶',jawonElement:null},
@@ -3122,18 +7116,37 @@
       {ch:'讒',meaning:'참소할',strokes:24,pilhoek:24,rad:'言',jawonElement:'금'},
       {ch:'僭',meaning:'참람할',strokes:14,pilhoek:14,rad:'人',jawonElement:'화'},
       {ch:'讖',meaning:'참서',strokes:24,pilhoek:24,rad:'言',jawonElement:'금'},
-      {ch:'塹',meaning:'구덩이',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'}
+      {ch:'塹',meaning:'구덩이',strokes:14,pilhoek:14,rad:'土',jawonElement:'토'},
+      {ch:'叅',meaning:'의논할',strokes:12,pilhoek:12,rad:'厶',jawonElement:null,unverified:true},
+      {ch:'慚',meaning:'부끄러울',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'驂',meaning:'곁마',strokes:21,pilhoek:21,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'譖',meaning:'참소할',strokes:19,pilhoek:19,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'黲',meaning:'검푸르죽죽할',strokes:23,pilhoek:23,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'嶄',meaning:'높을',strokes:14,pilhoek:14,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'槧',meaning:'판',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'鑱',meaning:'보습',strokes:25,pilhoek:25,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'饞',meaning:'탐할',strokes:26,pilhoek:25,rad:'食',jawonElement:'수',unverified:true},
+      {ch:'欃',meaning:'살별',strokes:21,pilhoek:21,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'毚',meaning:'토끼',strokes:17,pilhoek:17,rad:'比',jawonElement:null,unverified:true},
+      {ch:'鏨',meaning:'끌',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true}
     ],
     '책': [
       {ch:'冊',meaning:'책',strokes:5,pilhoek:5,rad:'冂',jawonElement:null},
       {ch:'策',meaning:'꾀',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
       {ch:'柵',meaning:'우리',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
-      {ch:'翟',meaning:'꿩',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화'}
+      {ch:'翟',meaning:'꿩',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화'},
+      {ch:'簀',meaning:'살평상',strokes:17,pilhoek:17,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'嘖',meaning:'외칠',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true},
+      {ch:'幘',meaning:'건',strokes:14,pilhoek:14,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'笧',meaning:'책 상자',strokes:11,pilhoek:11,rad:'竹',jawonElement:'목',unverified:true}
     ],
     '처': [
       {ch:'處',meaning:'살',strokes:11,pilhoek:11,rad:'虍',jawonElement:null},
       {ch:'妻',meaning:'아내',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
-      {ch:'凄',meaning:'쓸쓸할',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'}
+      {ch:'凄',meaning:'쓸쓸할',strokes:10,pilhoek:10,rad:'冫',jawonElement:'수'},
+      {ch:'淒',meaning:'쓸쓸할',strokes:12,pilhoek:11,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'褄',meaning:'깃의 가',strokes:14,pilhoek:13,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'郪',meaning:'고을 이름',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토',unverified:true}
     ],
     '척': [
       {ch:'尺',meaning:'자',strokes:4,pilhoek:4,rad:'尸',jawonElement:null},
@@ -3143,7 +7156,21 @@
       {ch:'隻',meaning:'새 한 마리',strokes:10,pilhoek:10,rad:'隹',jawonElement:'화'},
       {ch:'陟',meaning:'오를',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토'},
       {ch:'滌',meaning:'씻을',strokes:15,pilhoek:13,rad:'水',jawonElement:'수'},
-      {ch:'擲',meaning:'던질',strokes:19,pilhoek:17,rad:'手',jawonElement:'목'}
+      {ch:'擲',meaning:'던질',strokes:19,pilhoek:17,rad:'手',jawonElement:'목'},
+      {ch:'瘠',meaning:'파리할',strokes:15,pilhoek:15,rad:'疒',jawonElement:'수'},
+      {ch:'脊',meaning:'등성마루',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'倜',meaning:'대범할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
+      {ch:'剔',meaning:'바를',strokes:10,pilhoek:10,rad:'刀',jawonElement:'금'},
+      {ch:'蹠',meaning:'밟을',strokes:18,pilhoek:18,rad:'足',jawonElement:'토'},
+      {ch:'惕',meaning:'두려워할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'跖',meaning:'발바닥',strokes:12,pilhoek:12,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'摭',meaning:'주울',strokes:15,pilhoek:14,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'躑',meaning:'머뭇거릴',strokes:22,pilhoek:21,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'俶',meaning:'시작할',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'蜴',meaning:'도마뱀',strokes:14,pilhoek:14,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'塉',meaning:'메마른 땅',strokes:13,pilhoek:13,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'呎',meaning:'길이 단위',strokes:7,pilhoek:7,rad:'口',jawonElement:null,unverified:true},
+      {ch:'坧',meaning:'기지',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'}
     ],
     '첨': [
       {ch:'添',meaning:'더할',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
@@ -3153,7 +7180,17 @@
       {ch:'籤',meaning:'제비',strokes:23,pilhoek:23,rad:'竹',jawonElement:'목'},
       {ch:'沾',meaning:'더할',strokes:9,pilhoek:8,rad:'水',jawonElement:'수'},
       {ch:'詹',meaning:'이를',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
-      {ch:'簽',meaning:'농',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목'}
+      {ch:'簽',meaning:'농',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목'},
+      {ch:'甛',meaning:'달',strokes:11,pilhoek:11,rad:'甘',jawonElement:'토'},
+      {ch:'忝',meaning:'더럽힐',strokes:8,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'簷',meaning:'처마',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'檐',meaning:'처마',strokes:17,pilhoek:17,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'槧',meaning:'편지',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'襜',meaning:'행주치마',strokes:19,pilhoek:18,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'惉',meaning:'팰',strokes:12,pilhoek:12,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'瀸',meaning:'적실',strokes:21,pilhoek:20,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'幨',meaning:'휘장',strokes:16,pilhoek:16,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'櫼',meaning:'쐐기',strokes:21,pilhoek:21,rad:'木',jawonElement:'목',unverified:true}
     ],
     '첩': [
       {ch:'諜',meaning:'염탐할',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
@@ -3163,7 +7200,12 @@
       {ch:'貼',meaning:'붙을',strokes:12,pilhoek:12,rad:'貝',jawonElement:'금'},
       {ch:'捷',meaning:'이길',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
       {ch:'輒',meaning:'문득',strokes:14,pilhoek:14,rad:'車',jawonElement:'화'},
-      {ch:'堞',meaning:'성가퀴',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'}
+      {ch:'堞',meaning:'성가퀴',strokes:12,pilhoek:12,rad:'土',jawonElement:'토'},
+      {ch:'褶',meaning:'덧옷',strokes:17,pilhoek:16,rad:'衣',jawonElement:'목'},
+      {ch:'喋',meaning:'재잘거릴',strokes:12,pilhoek:12,rad:'口',jawonElement:null,unverified:true},
+      {ch:'怗',meaning:'고요할',strokes:9,pilhoek:8,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'倢',meaning:'빠를',strokes:10,pilhoek:10,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'呫',meaning:'맛 볼',strokes:8,pilhoek:8,rad:'口',jawonElement:null,unverified:true}
     ],
     '체': [
       {ch:'體',meaning:'몸',strokes:23,pilhoek:22,rad:'骨',jawonElement:null},
@@ -3173,7 +7215,16 @@
       {ch:'替',meaning:'바꿀',strokes:12,pilhoek:12,rad:'曰',jawonElement:null},
       {ch:'締',meaning:'맺을',strokes:15,pilhoek:15,rad:'糸',jawonElement:'목'},
       {ch:'綴',meaning:'꿰멜',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
-      {ch:'諦',meaning:'살필',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'}
+      {ch:'諦',meaning:'살필',strokes:16,pilhoek:16,rad:'言',jawonElement:'금'},
+      {ch:'剃',meaning:'머리 깎을',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'},
+      {ch:'体',meaning:'몸',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'軆',meaning:'몸',strokes:20,pilhoek:20,rad:'身',jawonElement:null,unverified:true},
+      {ch:'砌',meaning:'섬돌',strokes:9,pilhoek:9,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'棣',meaning:'산앵두나무',strokes:12,pilhoek:12,rad:'木',jawonElement:'목'},
+      {ch:'蔕',meaning:'작은 가시',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'蒂',meaning:'작은 가시',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'殢',meaning:'나른할',strokes:15,pilhoek:15,rad:'歹',jawonElement:'수',unverified:true},
+      {ch:'靆',meaning:'구름 낄',strokes:24,pilhoek:23,rad:'雨',jawonElement:'수',unverified:true}
     ],
     '촉': [
       {ch:'觸',meaning:'받을',strokes:20,pilhoek:20,rad:'角',jawonElement:'목'},
@@ -3181,13 +7232,20 @@
       {ch:'燭',meaning:'촛불',strokes:17,pilhoek:17,rad:'火',jawonElement:'화'},
       {ch:'促',meaning:'핍박할',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
       {ch:'蜀',meaning:'큰 닭',strokes:13,pilhoek:13,rad:'虫',jawonElement:'수'},
-      {ch:'矗',meaning:'곧을',strokes:24,pilhoek:24,rad:'目',jawonElement:'목'}
+      {ch:'矗',meaning:'곧을',strokes:24,pilhoek:24,rad:'目',jawonElement:'목'},
+      {ch:'躅',meaning:'자취',strokes:20,pilhoek:20,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'矚',meaning:'볼',strokes:26,pilhoek:26,rad:'目',jawonElement:'목',unverified:true},
+      {ch:'髑',meaning:'해골',strokes:23,pilhoek:22,rad:'骨',jawonElement:null,unverified:true},
+      {ch:'爥',meaning:'비칠',strokes:25,pilhoek:25,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'曯',meaning:'비칠',strokes:25,pilhoek:25,rad:'日',jawonElement:null,unverified:true},
+      {ch:'薥',meaning:'촉규화',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '촌': [
       {ch:'寸',meaning:'치',strokes:3,pilhoek:3,rad:'寸',jawonElement:null},
       {ch:'村',meaning:'마을',strokes:7,pilhoek:7,rad:'木',jawonElement:'목'},
       {ch:'忖',meaning:'헤아릴',strokes:7,pilhoek:6,rad:'心',jawonElement:'화'},
-      {ch:'邨',meaning:'마을',strokes:11,pilhoek:6,rad:'邑',jawonElement:'토'}
+      {ch:'邨',meaning:'마을',strokes:11,pilhoek:6,rad:'邑',jawonElement:'토'},
+      {ch:'吋',meaning:'인치',strokes:6,pilhoek:6,rad:'口',jawonElement:null,unverified:true}
     ],
     '총': [
       {ch:'總',meaning:'꿰맬',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
@@ -3197,7 +7255,12 @@
       {ch:'叢',meaning:'떨기',strokes:18,pilhoek:18,rad:'又',jawonElement:null},
       {ch:'摠',meaning:'거느릴',strokes:15,pilhoek:14,rad:'手',jawonElement:'목'},
       {ch:'悤',meaning:'바쁠',strokes:11,pilhoek:11,rad:'心',jawonElement:'화'},
-      {ch:'蔥',meaning:'파',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'}
+      {ch:'蔥',meaning:'파',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목'},
+      {ch:'憁',meaning:'바쁠',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'葱',meaning:'풀 더북할',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'驄',meaning:'총이말',strokes:21,pilhoek:21,rad:'馬',jawonElement:'화',unverified:true},
+      {ch:'蓯',meaning:'풀 더북할',strokes:17,pilhoek:14,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'鏦',meaning:'창',strokes:19,pilhoek:19,rad:'金',jawonElement:'금',unverified:true}
     ],
     '촬': [
       {ch:'撮',meaning:'머리 끄덩이 잡을',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'}
@@ -3210,7 +7273,16 @@
       {ch:'縮',meaning:'줄어들',strokes:17,pilhoek:17,rad:'糸',jawonElement:'목'},
       {ch:'畜',meaning:'가축',strokes:10,pilhoek:10,rad:'田',jawonElement:null},
       {ch:'蓄',meaning:'쌓을',strokes:16,pilhoek:13,rad:'艸',jawonElement:'목'},
-      {ch:'軸',meaning:'바디집',strokes:12,pilhoek:12,rad:'車',jawonElement:'화'}
+      {ch:'軸',meaning:'바디집',strokes:12,pilhoek:12,rad:'車',jawonElement:'화'},
+      {ch:'蹴',meaning:'찰',strokes:19,pilhoek:19,rad:'足',jawonElement:'토'},
+      {ch:'柚',meaning:'북',strokes:9,pilhoek:9,rad:'木',jawonElement:'목'},
+      {ch:'蹙',meaning:'찡그릴',strokes:18,pilhoek:18,rad:'足',jawonElement:'토'},
+      {ch:'筑',meaning:'비파',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
+      {ch:'竺',meaning:'나라이름',strokes:8,pilhoek:8,rad:'竹',jawonElement:'목'},
+      {ch:'舳',meaning:'고물',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목',unverified:true},
+      {ch:'蹜',meaning:'발 끌어 디딜',strokes:18,pilhoek:18,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'槭',meaning:'단풍나무',strokes:15,pilhoek:15,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'妯',meaning:'동서',strokes:8,pilhoek:8,rad:'女',jawonElement:'토',unverified:true}
     ],
     '춘': [
       {ch:'春',meaning:'봄',strokes:9,pilhoek:9,rad:'日',jawonElement:null},
@@ -3220,13 +7292,15 @@
     '출': [
       {ch:'出',meaning:'보일',strokes:5,pilhoek:5,rad:'凵',jawonElement:null},
       {ch:'黜',meaning:'내칠',strokes:17,pilhoek:17,rad:'黑',jawonElement:'수'},
-      {ch:'朮',meaning:'삽주뿌리',strokes:5,pilhoek:5,rad:'木',jawonElement:'목'}
+      {ch:'朮',meaning:'삽주뿌리',strokes:5,pilhoek:5,rad:'木',jawonElement:'목'},
+      {ch:'秫',meaning:'차조',strokes:10,pilhoek:10,rad:'禾',jawonElement:'목',unverified:true}
     ],
     '췌': [
       {ch:'悴',meaning:'파리할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
       {ch:'萃',meaning:'모을',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목'},
       {ch:'贅',meaning:'붙일',strokes:18,pilhoek:17,rad:'貝',jawonElement:'금'},
-      {ch:'膵',meaning:'지라',strokes:18,pilhoek:15,rad:'肉',jawonElement:null}
+      {ch:'膵',meaning:'지라',strokes:18,pilhoek:15,rad:'肉',jawonElement:null},
+      {ch:'惴',meaning:'두려워할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화',unverified:true}
     ],
     '취': [
       {ch:'取',meaning:'거둘',strokes:8,pilhoek:8,rad:'又',jawonElement:null},
@@ -3236,7 +7310,17 @@
       {ch:'臭',meaning:'냄새',strokes:10,pilhoek:10,rad:'自',jawonElement:null},
       {ch:'醉',meaning:'궤란할',strokes:15,pilhoek:15,rad:'酉',jawonElement:null},
       {ch:'聚',meaning:'모을',strokes:14,pilhoek:14,rad:'耳',jawonElement:'화'},
-      {ch:'炊',meaning:'불 지필',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'}
+      {ch:'炊',meaning:'불 지필',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'娶',meaning:'장가들',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
+      {ch:'翠',meaning:'비취',strokes:14,pilhoek:14,rad:'羽',jawonElement:'화'},
+      {ch:'脆',meaning:'연할',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'驟',meaning:'달릴',strokes:24,pilhoek:24,rad:'馬',jawonElement:'화'},
+      {ch:'鷲',meaning:'독수리',strokes:23,pilhoek:23,rad:'鳥',jawonElement:'화'},
+      {ch:'嘴',meaning:'부리',strokes:15,pilhoek:16,rad:'口',jawonElement:null},
+      {ch:'揣',meaning:'잴',strokes:13,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'觜',meaning:'부리',strokes:13,pilhoek:13,rad:'角',jawonElement:'목',unverified:true},
+      {ch:'毳',meaning:'솜털',strokes:12,pilhoek:12,rad:'毛',jawonElement:'화',unverified:true},
+      {ch:'冣',meaning:'쌓을',strokes:10,pilhoek:10,rad:'冖',jawonElement:null,unverified:true}
     ],
     '측': [
       {ch:'測',meaning:'측량할',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
@@ -3256,15 +7340,54 @@
       {ch:'恥',meaning:'부끄럼',strokes:10,pilhoek:10,rad:'心',jawonElement:'화'},
       {ch:'値',meaning:'값',strokes:10,pilhoek:10,rad:'人',jawonElement:'화'},
       {ch:'徵',meaning:'치성',strokes:15,pilhoek:15,rad:'彳',jawonElement:'화'},
-      {ch:'雉',meaning:'꿩',strokes:13,pilhoek:13,rad:'隹',jawonElement:'화'}
+      {ch:'雉',meaning:'꿩',strokes:13,pilhoek:13,rad:'隹',jawonElement:'화'},
+      {ch:'稚',meaning:'어린 벼',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'峙',meaning:'산이 우뚝 솟을',strokes:9,pilhoek:9,rad:'山',jawonElement:'토'},
+      {ch:'馳',meaning:'달릴',strokes:13,pilhoek:13,rad:'馬',jawonElement:'화'},
+      {ch:'侈',meaning:'사치할',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
+      {ch:'熾',meaning:'불 활활 붙을',strokes:16,pilhoek:16,rad:'火',jawonElement:'화'},
+      {ch:'幟',meaning:'깃대',strokes:15,pilhoek:15,rad:'巾',jawonElement:'목'},
+      {ch:'嗤',meaning:'비웃을',strokes:13,pilhoek:13,rad:'口',jawonElement:null},
+      {ch:'緻',meaning:'톡톡할',strokes:15,pilhoek:16,rad:'糸',jawonElement:'목'},
+      {ch:'痔',meaning:'치질',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수'},
+      {ch:'癡',meaning:'미치광이',strokes:19,pilhoek:19,rad:'疒',jawonElement:'수'},
+      {ch:'緇',meaning:'검을',strokes:14,pilhoek:14,rad:'糸',jawonElement:'목'},
+      {ch:'穉',meaning:'어린벼',strokes:17,pilhoek:17,rad:'禾',jawonElement:'목'},
+      {ch:'嵯',meaning:'산 울뚝질뚝할',strokes:13,pilhoek:12,rad:'山',jawonElement:'토'},
+      {ch:'埴',meaning:'흙 이길',strokes:11,pilhoek:11,rad:'土',jawonElement:'토'},
+      {ch:'梔',meaning:'치자',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'淄',meaning:'물이름',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
+      {ch:'輜',meaning:'짐수레',strokes:15,pilhoek:15,rad:'車',jawonElement:'화'},
+      {ch:'寘',meaning:'둘',strokes:13,pilhoek:13,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'鴟',meaning:'솔개',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'廁',meaning:'뒷간',strokes:12,pilhoek:12,rad:'广',jawonElement:'목'},
+      {ch:'巵',meaning:'잔',strokes:7,pilhoek:7,rad:'己',jawonElement:null,unverified:true},
+      {ch:'菑',meaning:'따비밭',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'錙',meaning:'조금',strokes:16,pilhoek:16,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'褫',meaning:'옷 빼앗을',strokes:16,pilhoek:15,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'豸',meaning:'풀',strokes:7,pilhoek:7,rad:'豸',jawonElement:'수',unverified:true},
+      {ch:'絺',meaning:'가는 칡베',strokes:13,pilhoek:13,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'薙',meaning:'풀 깎을',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'哆',meaning:'입 딱 벌일',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'畤',meaning:'제터',strokes:11,pilhoek:11,rad:'田',jawonElement:null,unverified:true},
+      {ch:'卮',meaning:'술잔',strokes:5,pilhoek:5,rad:'卩',jawonElement:null,unverified:true},
+      {ch:'鵄',meaning:'솔개',strokes:17,pilhoek:17,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'跱',meaning:'머뭇거릴',strokes:13,pilhoek:13,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'阤',meaning:'헐릴',strokes:11,pilhoek:5,rad:'阜',jawonElement:'토',unverified:true},
+      {ch:'痓',meaning:'풍병',strokes:11,pilhoek:11,rad:'疒',jawonElement:'수',unverified:true},
+      {ch:'鯔',meaning:'숭어',strokes:19,pilhoek:19,rad:'魚',jawonElement:'수',unverified:true}
     ],
     '칙': [
       {ch:'則',meaning:'법칙',strokes:9,pilhoek:9,rad:'刀',jawonElement:'금'},
       {ch:'勅',meaning:'신칙할',strokes:9,pilhoek:9,rad:'力',jawonElement:null},
-      {ch:'飭',meaning:'갖출',strokes:13,pilhoek:12,rad:'食',jawonElement:'수'}
+      {ch:'飭',meaning:'갖출',strokes:13,pilhoek:12,rad:'食',jawonElement:'수'},
+      {ch:'敕',meaning:'경계할',strokes:11,pilhoek:11,rad:'攴',jawonElement:'금',unverified:true}
     ],
     '친': [
-      {ch:'親',meaning:'사랑할',strokes:16,pilhoek:16,rad:'見',jawonElement:'화'}
+      {ch:'親',meaning:'사랑할',strokes:16,pilhoek:16,rad:'見',jawonElement:'화'},
+      {ch:'襯',meaning:'속옷',strokes:22,pilhoek:21,rad:'衣',jawonElement:'목',unverified:true},
+      {ch:'櫬',meaning:'관',strokes:20,pilhoek:20,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'齔',meaning:'이 갈',strokes:17,pilhoek:17,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '칠': [
       {ch:'七',meaning:'일곱',strokes:7,pilhoek:2,rad:null,jawonElement:null},
@@ -3279,7 +7402,13 @@
       {ch:'浸',meaning:'적실',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
       {ch:'枕',meaning:'베개',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
       {ch:'鍼',meaning:'바늘',strokes:17,pilhoek:17,rad:'金',jawonElement:'금'},
-      {ch:'砧',meaning:'방칫돌',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'}
+      {ch:'砧',meaning:'방칫돌',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'},
+      {ch:'琛',meaning:'보배',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'忱',meaning:'믿을',strokes:8,pilhoek:7,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'鋟',meaning:'새길',strokes:15,pilhoek:15,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'寖',meaning:'점점',strokes:13,pilhoek:13,rad:'宀',jawonElement:null,unverified:true},
+      {ch:'椹',meaning:'모탕',strokes:13,pilhoek:13,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'郴',meaning:'땅이름',strokes:15,pilhoek:10,rad:'邑',jawonElement:'토',unverified:true}
     ],
     '칩': [
       {ch:'蟄',meaning:'우물거릴',strokes:17,pilhoek:17,rad:'虫',jawonElement:'수'}
@@ -3290,7 +7419,9 @@
     ],
     '쾌': [
       {ch:'快',meaning:'기분이 좋을',strokes:8,pilhoek:7,rad:'心',jawonElement:'화'},
-      {ch:'獪',meaning:'간교할',strokes:17,pilhoek:16,rad:'犬',jawonElement:null}
+      {ch:'獪',meaning:'간교할',strokes:17,pilhoek:16,rad:'犬',jawonElement:null},
+      {ch:'夬',meaning:'결단할',strokes:4,pilhoek:4,rad:'大',jawonElement:null},
+      {ch:'噲',meaning:'목구멍',strokes:16,pilhoek:16,rad:'口',jawonElement:null,unverified:true}
     ],
     '타': [
       {ch:'他',meaning:'다를',strokes:5,pilhoek:5,rad:'人',jawonElement:'화'},
@@ -3300,29 +7431,56 @@
       {ch:'惰',meaning:'태만할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'},
       {ch:'唾',meaning:'침',strokes:11,pilhoek:11,rad:'口',jawonElement:null},
       {ch:'陀',meaning:'비탈',strokes:13,pilhoek:7,rad:'阜',jawonElement:'토'},
-      {ch:'駝',meaning:'약대',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'}
+      {ch:'駝',meaning:'약대',strokes:15,pilhoek:15,rad:'馬',jawonElement:'화'},
+      {ch:'舵',meaning:'키',strokes:11,pilhoek:11,rad:'舟',jawonElement:'목'},
+      {ch:'楕',meaning:'나무그릇',strokes:13,pilhoek:13,rad:'木',jawonElement:'목'},
+      {ch:'馱',meaning:'탈',strokes:13,pilhoek:13,rad:'馬',jawonElement:'화'},
+      {ch:'朶',meaning:'떨기',strokes:6,pilhoek:6,rad:'木',jawonElement:'목'},
+      {ch:'咤',meaning:'뿜을',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
+      {ch:'拖',meaning:'당길',strokes:9,pilhoek:8,rad:'手',jawonElement:'목'},
+      {ch:'迤',meaning:'어정거릴',strokes:12,pilhoek:8,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'躱',meaning:'피할',strokes:13,pilhoek:13,rad:'身',jawonElement:null,unverified:true},
+      {ch:'沱',meaning:'물이 갈래질',strokes:9,pilhoek:8,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'跎',meaning:'미끄러질',strokes:12,pilhoek:12,rad:'足',jawonElement:'토',unverified:true},
+      {ch:'詫',meaning:'자랑할',strokes:13,pilhoek:13,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'佗',meaning:'다를',strokes:7,pilhoek:7,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'鼉',meaning:'자라',strokes:25,pilhoek:25,rad:'黽',jawonElement:'토',unverified:true},
+      {ch:'柁',meaning:'키',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'拕',meaning:'끌',strokes:9,pilhoek:8,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'橢',meaning:'둥글길죽할',strokes:16,pilhoek:15,rad:'木',jawonElement:'목'},
+      {ch:'鮀',meaning:'모래무지',strokes:16,pilhoek:16,rad:'魚',jawonElement:'수',unverified:true},
+      {ch:'鴕',meaning:'타조',strokes:16,pilhoek:16,rad:'鳥',jawonElement:'화',unverified:true}
     ],
     '탈': [
       {ch:'脫',meaning:'벗어날',strokes:13,pilhoek:11,rad:'肉',jawonElement:null},
-      {ch:'奪',meaning:'빼앗을',strokes:14,pilhoek:14,rad:'大',jawonElement:null}
+      {ch:'奪',meaning:'빼앗을',strokes:14,pilhoek:14,rad:'大',jawonElement:null},
+      {ch:'侻',meaning:'가벼울',strokes:9,pilhoek:9,rad:'人',jawonElement:'화',unverified:true}
     ],
     '탐': [
       {ch:'探',meaning:'더듬을',strokes:12,pilhoek:11,rad:'手',jawonElement:'목'},
       {ch:'貪',meaning:'탐할',strokes:11,pilhoek:11,rad:'貝',jawonElement:'금'},
       {ch:'耽',meaning:'즐길',strokes:10,pilhoek:10,rad:'耳',jawonElement:'화'},
-      {ch:'眈',meaning:'노려볼',strokes:9,pilhoek:9,rad:'目',jawonElement:'목'}
+      {ch:'眈',meaning:'노려볼',strokes:9,pilhoek:9,rad:'目',jawonElement:'목'},
+      {ch:'酖',meaning:'술 즐길',strokes:11,pilhoek:11,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'嗿',meaning:'여럿이 먹는 소리',strokes:14,pilhoek:14,rad:'口',jawonElement:null,unverified:true}
     ],
     '탑': [
       {ch:'塔',meaning:'탑',strokes:13,pilhoek:12,rad:'土',jawonElement:'토'},
-      {ch:'搭',meaning:'모뜰',strokes:14,pilhoek:12,rad:'手',jawonElement:'목'},
-      {ch:'榻',meaning:'평상',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'}
+      {ch:'搭',meaning:'모뜰',strokes:14,pilhoek:12,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'榻',meaning:'평상',strokes:14,pilhoek:14,rad:'木',jawonElement:'목'},
+      {ch:'搨',meaning:'비문 박을',strokes:14,pilhoek:13,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'塌',meaning:'낮은 땅',strokes:13,pilhoek:13,rad:'土',jawonElement:'토',unverified:true},
+      {ch:'傝',meaning:'답답할',strokes:12,pilhoek:12,rad:'人',jawonElement:'화',unverified:true}
     ],
     '탕': [
       {ch:'糖',meaning:'엿',strokes:16,pilhoek:16,rad:'米',jawonElement:'목'},
       {ch:'湯',meaning:'물 끓일',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
       {ch:'蕩',meaning:'넓고 클',strokes:18,pilhoek:15,rad:'艸',jawonElement:'목'},
       {ch:'宕',meaning:'골집',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
-      {ch:'帑',meaning:'처자식',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'}
+      {ch:'帑',meaning:'처자식',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목'},
+      {ch:'盪',meaning:'씻을',strokes:17,pilhoek:17,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'碭',meaning:'무늬진 돌',strokes:14,pilhoek:14,rad:'石',jawonElement:'금',unverified:true},
+      {ch:'燙',meaning:'씻을',strokes:16,pilhoek:16,rad:'火',jawonElement:'화',unverified:true}
     ],
     '택': [
       {ch:'宅',meaning:'집',strokes:6,pilhoek:6,rad:'宀',jawonElement:null},
@@ -3330,7 +7488,8 @@
       {ch:'澤',meaning:'못',strokes:17,pilhoek:16,rad:'水',jawonElement:'수'}
     ],
     '탱': [
-      {ch:'撑',meaning:'버틸',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'}
+      {ch:'撑',meaning:'버틸',strokes:16,pilhoek:15,rad:'手',jawonElement:'목'},
+      {ch:'撐',meaning:'버틸',strokes:16,pilhoek:15,rad:'手',jawonElement:'목',unverified:true}
     ],
     '터': [
       {ch:'攄',meaning:'펼칠',strokes:19,pilhoek:18,rad:'手',jawonElement:'목'}
@@ -3348,7 +7507,9 @@
       {ch:'痛',meaning:'상할',strokes:12,pilhoek:12,rad:'疒',jawonElement:'수'},
       {ch:'慟',meaning:'서러울',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
       {ch:'筒',meaning:'사통대',strokes:12,pilhoek:12,rad:'竹',jawonElement:'목'},
-      {ch:'桶',meaning:'엿되들이 통',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'}
+      {ch:'桶',meaning:'엿되들이 통',strokes:11,pilhoek:11,rad:'木',jawonElement:'목'},
+      {ch:'筩',meaning:'대나무통',strokes:13,pilhoek:13,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'樋',meaning:'대 홈',strokes:15,pilhoek:14,rad:'木',jawonElement:'목',unverified:true}
     ],
     '퇴': [
       {ch:'退',meaning:'물러갈',strokes:13,pilhoek:9,rad:'辵',jawonElement:'토'},
@@ -3357,7 +7518,8 @@
       {ch:'槌',meaning:'너스레',strokes:14,pilhoek:13,rad:'木',jawonElement:'목'},
       {ch:'腿',meaning:'넓적다리',strokes:16,pilhoek:13,rad:'肉',jawonElement:null},
       {ch:'鎚',meaning:'옥 다듬을',strokes:18,pilhoek:17,rad:'金',jawonElement:'금'},
-      {ch:'褪',meaning:'옷 벗을',strokes:16,pilhoek:14,rad:'衣',jawonElement:'목'}
+      {ch:'褪',meaning:'옷 벗을',strokes:16,pilhoek:14,rad:'衣',jawonElement:'목'},
+      {ch:'隤',meaning:'미끄러질',strokes:20,pilhoek:14,rad:'阜',jawonElement:'토',unverified:true}
     ],
     '투': [
       {ch:'投',meaning:'던질',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
@@ -3365,11 +7527,15 @@
       {ch:'透',meaning:'통할',strokes:14,pilhoek:10,rad:'辵',jawonElement:'토'},
       {ch:'套',meaning:'전례',strokes:10,pilhoek:10,rad:'大',jawonElement:null},
       {ch:'妬',meaning:'투기할',strokes:8,pilhoek:8,rad:'女',jawonElement:'토'},
-      {ch:'偸',meaning:'엷을',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'}
+      {ch:'偸',meaning:'엷을',strokes:11,pilhoek:11,rad:'人',jawonElement:'화'},
+      {ch:'渝',meaning:'빛 변할',strokes:13,pilhoek:12,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'妒',meaning:'투기할',strokes:7,pilhoek:7,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'骰',meaning:'주사위',strokes:14,pilhoek:13,rad:'骨',jawonElement:null,unverified:true}
     ],
     '특': [
       {ch:'特',meaning:'우뚝할',strokes:10,pilhoek:10,rad:'牛',jawonElement:'토'},
-      {ch:'慝',meaning:'간악할',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'}
+      {ch:'慝',meaning:'간악할',strokes:15,pilhoek:14,rad:'心',jawonElement:'화'},
+      {ch:'忒',meaning:'변할',strokes:7,pilhoek:7,rad:'心',jawonElement:'화',unverified:true}
     ],
     '파': [
       {ch:'破',meaning:'깨뜨릴',strokes:10,pilhoek:10,rad:'石',jawonElement:'금'},
@@ -3379,7 +7545,29 @@
       {ch:'派',meaning:'물 갈래',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'頗',meaning:'비뚤어질',strokes:14,pilhoek:14,rad:'頁',jawonElement:'화'},
       {ch:'把',meaning:'잡을',strokes:9,pilhoek:7,rad:'手',jawonElement:'목'},
-      {ch:'坡',meaning:'언덕',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'}
+      {ch:'坡',meaning:'언덕',strokes:8,pilhoek:8,rad:'土',jawonElement:'토'},
+      {ch:'巴',meaning:'뱀',strokes:4,pilhoek:4,rad:'己',jawonElement:null},
+      {ch:'婆',meaning:'할머니',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
+      {ch:'跛',meaning:'절뚝발이',strokes:12,pilhoek:12,rad:'足',jawonElement:'토'},
+      {ch:'琶',meaning:'비파',strokes:13,pilhoek:12,rad:'玉',jawonElement:'금'},
+      {ch:'芭',meaning:'파초',strokes:10,pilhoek:7,rad:'艸',jawonElement:'목'},
+      {ch:'爬',meaning:'긁을',strokes:8,pilhoek:8,rad:'爪',jawonElement:null},
+      {ch:'擺',meaning:'열',strokes:19,pilhoek:18,rad:'手',jawonElement:'목'},
+      {ch:'杷',meaning:'비파나무',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'叵',meaning:'못할',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'葩',meaning:'꽃봉오리',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목',unverified:true},
+      {ch:'皤',meaning:'흴',strokes:17,pilhoek:17,rad:'白',jawonElement:null,unverified:true},
+      {ch:'帕',meaning:'머리 동이수건',strokes:8,pilhoek:8,rad:'巾',jawonElement:'목',unverified:true},
+      {ch:'簸',meaning:'까부를',strokes:19,pilhoek:19,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'灞',meaning:'물이름',strokes:25,pilhoek:24,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'玻',meaning:'파려옥',strokes:10,pilhoek:9,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'笆',meaning:'가시 대',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'鄱',meaning:'땅이름',strokes:19,pilhoek:14,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'妑',meaning:'새앙머리',strokes:7,pilhoek:7,rad:'女',jawonElement:'토',unverified:true},
+      {ch:'岥',meaning:'산 비알질',strokes:8,pilhoek:8,rad:'山',jawonElement:'토',unverified:true},
+      {ch:'爸',meaning:'아비',strokes:8,pilhoek:8,rad:'父',jawonElement:'목',unverified:true},
+      {ch:'耙',meaning:'쇠시랑',strokes:10,pilhoek:10,rad:'耒',jawonElement:null,unverified:true},
+      {ch:'菠',meaning:'시금치',strokes:14,pilhoek:11,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '팔': [
       {ch:'八',meaning:'여덟',strokes:8,pilhoek:2,rad:null,jawonElement:null},
@@ -3393,13 +7581,23 @@
       {ch:'覇',meaning:'두목',strokes:19,pilhoek:19,rad:'襾',jawonElement:null},
       {ch:'佩',meaning:'패옥',strokes:8,pilhoek:8,rad:'人',jawonElement:'화'},
       {ch:'沛',meaning:'둥둥 뜰',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
-      {ch:'稗',meaning:'돌피',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'}
+      {ch:'稗',meaning:'돌피',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'唄',meaning:'염불소리',strokes:10,pilhoek:10,rad:'口',jawonElement:null},
+      {ch:'狽',meaning:'이리',strokes:11,pilhoek:10,rad:'犬',jawonElement:null},
+      {ch:'浿',meaning:'물이름',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'霈',meaning:'비 쏟아질',strokes:15,pilhoek:15,rad:'雨',jawonElement:'수',unverified:true},
+      {ch:'霸',meaning:'으뜸',strokes:21,pilhoek:21,rad:'雨',jawonElement:'수'},
+      {ch:'孛',meaning:'혜성',strokes:7,pilhoek:7,rad:'子',jawonElement:'수',unverified:true},
+      {ch:'旆',meaning:'기',strokes:10,pilhoek:10,rad:'方',jawonElement:null,unverified:true},
+      {ch:'珮',meaning:'노리개',strokes:11,pilhoek:10,rad:'玉',jawonElement:'금',unverified:true}
     ],
     '퍅': [
       {ch:'愎',meaning:'고집할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화'}
     ],
     '폄': [
-      {ch:'貶',meaning:'덜릴',strokes:12,pilhoek:11,rad:'貝',jawonElement:'금'}
+      {ch:'貶',meaning:'덜릴',strokes:12,pilhoek:11,rad:'貝',jawonElement:'금'},
+      {ch:'窆',meaning:'하관할',strokes:10,pilhoek:9,rad:'穴',jawonElement:'수',unverified:true},
+      {ch:'砭',meaning:'돌침',strokes:10,pilhoek:9,rad:'石',jawonElement:'금',unverified:true}
     ],
     '폐': [
       {ch:'閉',meaning:'닫을',strokes:11,pilhoek:11,rad:'門',jawonElement:null},
@@ -3409,7 +7607,12 @@
       {ch:'蔽',meaning:'가리울',strokes:18,pilhoek:14,rad:'艸',jawonElement:'목'},
       {ch:'幣',meaning:'폐백',strokes:15,pilhoek:14,rad:'巾',jawonElement:'목'},
       {ch:'陛',meaning:'대궐 섬돌',strokes:15,pilhoek:9,rad:'阜',jawonElement:'토'},
-      {ch:'斃',meaning:'엎드러질',strokes:18,pilhoek:17,rad:'攴',jawonElement:'금'}
+      {ch:'斃',meaning:'엎드러질',strokes:18,pilhoek:17,rad:'攴',jawonElement:'금'},
+      {ch:'吠',meaning:'짖을',strokes:7,pilhoek:7,rad:'口',jawonElement:null},
+      {ch:'嬖',meaning:'사랑할',strokes:16,pilhoek:16,rad:'女',jawonElement:'토'},
+      {ch:'獘',meaning:'곤할',strokes:16,pilhoek:15,rad:'犬',jawonElement:null,unverified:true},
+      {ch:'敝',meaning:'옷 해질',strokes:12,pilhoek:11,rad:'攴',jawonElement:'금',unverified:true},
+      {ch:'狴',meaning:'짐승이름',strokes:11,pilhoek:10,rad:'犬',jawonElement:null,unverified:true}
     ],
     '폭': [
       {ch:'暴',meaning:'햇빛 쪼일',strokes:15,pilhoek:15,rad:'日',jawonElement:null},
@@ -3420,11 +7623,16 @@
     ],
     '품': [
       {ch:'品',meaning:'뭇',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
-      {ch:'稟',meaning:'여쭐',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'}
+      {ch:'稟',meaning:'여쭐',strokes:13,pilhoek:13,rad:'禾',jawonElement:'목'},
+      {ch:'禀',meaning:'여쭐',strokes:13,pilhoek:13,rad:'示',jawonElement:null,unverified:true}
+    ],
+    '픽': [
+      {ch:'腷',meaning:'답답할',strokes:15,pilhoek:13,rad:'肉',jawonElement:null,unverified:true}
     ],
     '핍': [
       {ch:'乏',meaning:'옹색할',strokes:5,pilhoek:4,rad:'丿',jawonElement:null},
-      {ch:'逼',meaning:'가까울',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'}
+      {ch:'逼',meaning:'가까울',strokes:16,pilhoek:12,rad:'辵',jawonElement:'토'},
+      {ch:'偪',meaning:'핍박할',strokes:11,pilhoek:11,rad:'人',jawonElement:'화',unverified:true}
     ],
     '할': [
       {ch:'轄',meaning:'다스릴',strokes:17,pilhoek:17,rad:'車',jawonElement:'화'}
@@ -3436,7 +7644,14 @@
       {ch:'盒',meaning:'소반 뚜껑',strokes:11,pilhoek:11,rad:'皿',jawonElement:null},
       {ch:'閤',meaning:'도장',strokes:14,pilhoek:14,rad:'門',jawonElement:null},
       {ch:'哈',meaning:'한 모금',strokes:9,pilhoek:9,rad:'口',jawonElement:null},
-      {ch:'闔',meaning:'문짝',strokes:18,pilhoek:18,rad:'門',jawonElement:null}
+      {ch:'闔',meaning:'문짝',strokes:18,pilhoek:18,rad:'門',jawonElement:null},
+      {ch:'盍',meaning:'덮을',strokes:10,pilhoek:10,rad:'皿',jawonElement:null,unverified:true},
+      {ch:'溘',meaning:'문득',strokes:14,pilhoek:13,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'榼',meaning:'술그릇',strokes:14,pilhoek:14,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'郃',meaning:'땅이름',strokes:13,pilhoek:8,rad:'邑',jawonElement:'토',unverified:true},
+      {ch:'柙',meaning:'우리',strokes:9,pilhoek:9,rad:'木',jawonElement:'목',unverified:true},
+      {ch:'匌',meaning:'기운 답답할',strokes:8,pilhoek:8,rad:'勹',jawonElement:null,unverified:true},
+      {ch:'嗑',meaning:'잔말할',strokes:13,pilhoek:13,rad:'口',jawonElement:null,unverified:true}
     ],
     '항': [
       {ch:'行',meaning:'항렬',strokes:6,pilhoek:6,rad:'行',jawonElement:null},
@@ -3446,11 +7661,26 @@
       {ch:'抗',meaning:'막을',strokes:8,pilhoek:7,rad:'手',jawonElement:'목'},
       {ch:'巷',meaning:'거리',strokes:9,pilhoek:9,rad:'己',jawonElement:null},
       {ch:'港',meaning:'물 갈라질',strokes:13,pilhoek:12,rad:'水',jawonElement:'수'},
-      {ch:'航',meaning:'쌍배',strokes:10,pilhoek:10,rad:'舟',jawonElement:'목'}
+      {ch:'航',meaning:'쌍배',strokes:10,pilhoek:10,rad:'舟',jawonElement:'목'},
+      {ch:'沆',meaning:'큰 물',strokes:8,pilhoek:7,rad:'水',jawonElement:'수'},
+      {ch:'亢',meaning:'목',strokes:4,pilhoek:4,rad:'亠',jawonElement:null},
+      {ch:'缸',meaning:'항아리',strokes:9,pilhoek:9,rad:'缶',jawonElement:'토'},
+      {ch:'肛',meaning:'배 뚱뚱할',strokes:9,pilhoek:7,rad:'肉',jawonElement:null},
+      {ch:'杭',meaning:'건널',strokes:8,pilhoek:8,rad:'木',jawonElement:'목'},
+      {ch:'伉',meaning:'강직할',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
+      {ch:'姮',meaning:'항아',strokes:9,pilhoek:9,rad:'女',jawonElement:'토'},
+      {ch:'桁',meaning:'수갑',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
+      {ch:'嫦',meaning:'항아',strokes:14,pilhoek:14,rad:'女',jawonElement:'토'},
+      {ch:'頏',meaning:'목',strokes:13,pilhoek:13,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'炕',meaning:'마를',strokes:8,pilhoek:8,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'夯',meaning:'멜',strokes:5,pilhoek:5,rad:'大',jawonElement:null,unverified:true},
+      {ch:'缿',meaning:'항통',strokes:12,pilhoek:12,rad:'缶',jawonElement:'토',unverified:true}
     ],
     '핵': [
       {ch:'核',meaning:'실과',strokes:10,pilhoek:10,rad:'木',jawonElement:'목'},
-      {ch:'劾',meaning:'캐물을',strokes:8,pilhoek:8,rad:'力',jawonElement:null}
+      {ch:'劾',meaning:'캐물을',strokes:8,pilhoek:8,rad:'力',jawonElement:null},
+      {ch:'覈',meaning:'핵실할',strokes:19,pilhoek:19,rad:'襾',jawonElement:null,unverified:true},
+      {ch:'翮',meaning:'깃촉',strokes:16,pilhoek:16,rad:'羽',jawonElement:'화',unverified:true}
     ],
     '행': [
       {ch:'幸',meaning:'다행할',strokes:8,pilhoek:8,rad:'干',jawonElement:'목'},
@@ -3470,7 +7700,9 @@
       {ch:'血',meaning:'피',strokes:6,pilhoek:6,rad:'血',jawonElement:'수'},
       {ch:'穴',meaning:'움',strokes:5,pilhoek:5,rad:'穴',jawonElement:'수'},
       {ch:'孑',meaning:'외로울',strokes:3,pilhoek:3,rad:'子',jawonElement:'수'},
-      {ch:'頁',meaning:'머리',strokes:9,pilhoek:9,rad:'頁',jawonElement:'화'}
+      {ch:'頁',meaning:'머리',strokes:9,pilhoek:9,rad:'頁',jawonElement:'화'},
+      {ch:'絜',meaning:'헤아릴',strokes:12,pilhoek:12,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'趐',meaning:'나아갈',strokes:13,pilhoek:13,rad:'走',jawonElement:'화',unverified:true}
     ],
     '혐': [
       {ch:'嫌',meaning:'싫어할',strokes:13,pilhoek:13,rad:'女',jawonElement:'토'}
@@ -3483,7 +7715,15 @@
       {ch:'俠',meaning:'의기',strokes:9,pilhoek:9,rad:'人',jawonElement:'화'},
       {ch:'頰',meaning:'뺨',strokes:16,pilhoek:16,rad:'頁',jawonElement:'화'},
       {ch:'夾',meaning:'곁',strokes:7,pilhoek:7,rad:'大',jawonElement:null},
-      {ch:'浹',meaning:'사무칠',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'}
+      {ch:'浹',meaning:'사무칠',strokes:11,pilhoek:10,rad:'水',jawonElement:'수'},
+      {ch:'脇',meaning:'갈비',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
+      {ch:'鋏',meaning:'칼 손잡이',strokes:15,pilhoek:15,rad:'金',jawonElement:'금'},
+      {ch:'莢',meaning:'콩 꼬투리',strokes:13,pilhoek:10,rad:'艸',jawonElement:'목'},
+      {ch:'叶',meaning:'화합할',strokes:5,pilhoek:5,rad:'口',jawonElement:null,unverified:true},
+      {ch:'恊',meaning:'겁낼',strokes:10,pilhoek:9,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'愜',meaning:'쾌할',strokes:13,pilhoek:12,rad:'心',jawonElement:'화',unverified:true},
+      {ch:'篋',meaning:'상자',strokes:15,pilhoek:15,rad:'竹',jawonElement:'목',unverified:true},
+      {ch:'匧',meaning:'옷상자',strokes:9,pilhoek:9,rad:'匚',jawonElement:null,unverified:true}
     ],
     '혹': [
       {ch:'或',meaning:'혹',strokes:8,pilhoek:8,rad:'戈',jawonElement:null},
@@ -3493,12 +7733,16 @@
       {ch:'混',meaning:'섞을',strokes:12,pilhoek:11,rad:'水',jawonElement:'수'},
       {ch:'婚',meaning:'혼인할',strokes:11,pilhoek:11,rad:'女',jawonElement:'토'},
       {ch:'魂',meaning:'넋',strokes:14,pilhoek:13,rad:'鬼',jawonElement:'화'},
-      {ch:'琿',meaning:'아름다운옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금'}
+      {ch:'琿',meaning:'아름다운옥',strokes:14,pilhoek:13,rad:'玉',jawonElement:'금',unverified:true},
+      {ch:'閽',meaning:'문지기',strokes:16,pilhoek:16,rad:'門',jawonElement:null,unverified:true},
+      {ch:'焜',meaning:'빛날',strokes:12,pilhoek:12,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'圂',meaning:'뒷간',strokes:10,pilhoek:10,rad:'囗',jawonElement:null,unverified:true}
     ],
     '홀': [
       {ch:'忽',meaning:'소흘히 할',strokes:8,pilhoek:8,rad:'心',jawonElement:'화'},
       {ch:'笏',meaning:'홀',strokes:10,pilhoek:10,rad:'竹',jawonElement:'목'},
-      {ch:'惚',meaning:'황홀할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'}
+      {ch:'惚',meaning:'황홀할',strokes:12,pilhoek:11,rad:'心',jawonElement:'화'},
+      {ch:'囫',meaning:'온전할',strokes:7,pilhoek:7,rad:'囗',jawonElement:null,unverified:true}
     ],
     '확': [
       {ch:'確',meaning:'굳을',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
@@ -3506,41 +7750,59 @@
       {ch:'穫',meaning:'곡식거둘',strokes:19,pilhoek:18,rad:'禾',jawonElement:'목'},
       {ch:'廓',meaning:'둘레',strokes:14,pilhoek:13,rad:'广',jawonElement:'목'},
       {ch:'攫',meaning:'움킬',strokes:24,pilhoek:23,rad:'手',jawonElement:'목'},
-      {ch:'碻',meaning:'굳을',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'}
+      {ch:'碻',meaning:'굳을',strokes:15,pilhoek:15,rad:'石',jawonElement:'금'},
+      {ch:'鑊',meaning:'가마',strokes:22,pilhoek:21,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'矍',meaning:'두리번거릴',strokes:20,pilhoek:20,rad:'目',jawonElement:'목',unverified:true}
     ],
     '활': [
       {ch:'活',meaning:'살',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'闊',meaning:'트일',strokes:17,pilhoek:17,rad:'門',jawonElement:null},
       {ch:'猾',meaning:'교활할',strokes:14,pilhoek:12,rad:'犬',jawonElement:null},
-      {ch:'豁',meaning:'뚫린 골',strokes:17,pilhoek:17,rad:'谷',jawonElement:'수'}
+      {ch:'豁',meaning:'뚫린 골',strokes:17,pilhoek:17,rad:'谷',jawonElement:'수'},
+      {ch:'蛞',meaning:'괄태충',strokes:12,pilhoek:12,rad:'虫',jawonElement:'수',unverified:true}
     ],
     '획': [
       {ch:'獲',meaning:'얻을',strokes:18,pilhoek:16,rad:'犬',jawonElement:null},
-      {ch:'劃',meaning:'쪼갤',strokes:14,pilhoek:14,rad:'刀',jawonElement:'금'}
+      {ch:'劃',meaning:'쪼갤',strokes:14,pilhoek:14,rad:'刀',jawonElement:'금'},
+      {ch:'嚄',meaning:'외칠',strokes:17,pilhoek:16,rad:'口',jawonElement:null,unverified:true}
     ],
     '횡': [
       {ch:'橫',meaning:'가로',strokes:16,pilhoek:16,rad:'木',jawonElement:'목'},
       {ch:'薨',meaning:'많을',strokes:19,pilhoek:16,rad:'艸',jawonElement:'목'},
       {ch:'宖',meaning:'평안할',strokes:8,pilhoek:8,rad:'宀',jawonElement:null},
-      {ch:'鐄',meaning:'큰 종',strokes:20,pilhoek:19,rad:'金',jawonElement:'금'}
+      {ch:'鐄',meaning:'큰 종',strokes:20,pilhoek:19,rad:'金',jawonElement:'금'},
+      {ch:'黌',meaning:'글방',strokes:25,pilhoek:24,rad:'黃',jawonElement:'토',unverified:true},
+      {ch:'鈜',meaning:'쇳소리',strokes:12,pilhoek:12,rad:'金',jawonElement:'금',unverified:true},
+      {ch:'澋',meaning:'물이 빙 돌',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true}
+    ],
+    '훌': [
+      {ch:'欻',meaning:'문득',strokes:12,pilhoek:12,rad:'欠',jawonElement:null,unverified:true}
     ],
     '훤': [
       {ch:'喧',meaning:'의젓할',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
       {ch:'萱',meaning:'원추리',strokes:15,pilhoek:12,rad:'艸',jawonElement:'목'},
       {ch:'暄',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'日',jawonElement:null},
-      {ch:'煊',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'}
+      {ch:'煊',meaning:'따뜻할',strokes:13,pilhoek:13,rad:'火',jawonElement:'화'},
+      {ch:'諠',meaning:'잊을',strokes:16,pilhoek:16,rad:'言',jawonElement:'금',unverified:true},
+      {ch:'烜',meaning:'마를',strokes:10,pilhoek:10,rad:'火',jawonElement:'화',unverified:true}
     ],
     '훼': [
       {ch:'毁',meaning:'헐',strokes:13,pilhoek:13,rad:'殳',jawonElement:'금'},
       {ch:'喙',meaning:'부리',strokes:12,pilhoek:12,rad:'口',jawonElement:null},
-      {ch:'卉',meaning:'풀',strokes:5,pilhoek:5,rad:'十',jawonElement:null}
+      {ch:'卉',meaning:'풀',strokes:5,pilhoek:5,rad:'十',jawonElement:null},
+      {ch:'虺',meaning:'살무사',strokes:9,pilhoek:9,rad:'虫',jawonElement:'수',unverified:true},
+      {ch:'燬',meaning:'불',strokes:17,pilhoek:17,rad:'火',jawonElement:'화',unverified:true},
+      {ch:'芔',meaning:'풀',strokes:9,pilhoek:9,rad:'艸',jawonElement:'목',unverified:true}
     ],
     '휴': [
       {ch:'休',meaning:'쉴',strokes:6,pilhoek:6,rad:'人',jawonElement:'화'},
       {ch:'携',meaning:'끌',strokes:14,pilhoek:13,rad:'手',jawonElement:'목'},
       {ch:'烋',meaning:'경사로울',strokes:10,pilhoek:10,rad:'火',jawonElement:'화'},
       {ch:'虧',meaning:'이지러질',strokes:17,pilhoek:17,rad:'虍',jawonElement:null},
-      {ch:'畦',meaning:'밭두둑',strokes:11,pilhoek:11,rad:'田',jawonElement:null}
+      {ch:'畦',meaning:'밭두둑',strokes:11,pilhoek:11,rad:'田',jawonElement:null},
+      {ch:'鵂',meaning:'수리부엉이',strokes:17,pilhoek:17,rad:'鳥',jawonElement:'화',unverified:true},
+      {ch:'咻',meaning:'떠들',strokes:9,pilhoek:9,rad:'口',jawonElement:null,unverified:true},
+      {ch:'髹',meaning:'옻칠할',strokes:16,pilhoek:16,rad:'髟',jawonElement:'화',unverified:true}
     ],
     '휵': [
       {ch:'畜',meaning:'기를',strokes:10,pilhoek:10,rad:'田',jawonElement:null}
@@ -3553,7 +7815,8 @@
       {ch:'胸',meaning:'가슴',strokes:12,pilhoek:10,rad:'肉',jawonElement:null},
       {ch:'匈',meaning:'가슴',strokes:6,pilhoek:6,rad:'勹',jawonElement:null},
       {ch:'兇',meaning:'나쁜',strokes:6,pilhoek:6,rad:'儿',jawonElement:null},
-      {ch:'洶',meaning:'물살세찰',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'}
+      {ch:'洶',meaning:'물살세찰',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
+      {ch:'恟',meaning:'두려워할',strokes:10,pilhoek:9,rad:'心',jawonElement:'화',unverified:true}
     ],
     '흑': [
       {ch:'黑',meaning:'검을',strokes:12,pilhoek:12,rad:'黑',jawonElement:'수'}
@@ -3561,22 +7824,38 @@
     '흔': [
       {ch:'昕',meaning:'아침',strokes:8,pilhoek:8,rad:'日',jawonElement:null},
       {ch:'欣',meaning:'기뻐할',strokes:8,pilhoek:8,rad:'欠',jawonElement:null},
-      {ch:'炘',meaning:'화끈거릴',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'}
+      {ch:'炘',meaning:'화끈거릴',strokes:8,pilhoek:8,rad:'火',jawonElement:'화'},
+      {ch:'釁',meaning:'피바를',strokes:25,pilhoek:26,rad:'酉',jawonElement:null,unverified:true},
+      {ch:'忻',meaning:'기뻐할',strokes:8,pilhoek:7,rad:'心',jawonElement:'화'},
+      {ch:'訢',meaning:'기뻐할',strokes:11,pilhoek:11,rad:'言',jawonElement:'금'},
+      {ch:'掀',meaning:'치켜들',strokes:12,pilhoek:11,rad:'手',jawonElement:'목',unverified:true},
+      {ch:'很',meaning:'패려궂을',strokes:9,pilhoek:9,rad:'彳',jawonElement:'화',unverified:true}
     ],
     '흘': [
       {ch:'訖',meaning:'이를',strokes:10,pilhoek:10,rad:'言',jawonElement:'금'},
       {ch:'吃',meaning:'말더듬을',strokes:6,pilhoek:6,rad:'口',jawonElement:null},
       {ch:'屹',meaning:'산 우뚝솟을',strokes:6,pilhoek:6,rad:'山',jawonElement:'토'},
-      {ch:'紇',meaning:'질 낮은 명주실',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'}
+      {ch:'紇',meaning:'질 낮은 명주실',strokes:9,pilhoek:9,rad:'糸',jawonElement:'목'},
+      {ch:'迄',meaning:'이를',strokes:10,pilhoek:6,rad:'辵',jawonElement:'토',unverified:true},
+      {ch:'汔',meaning:'거의',strokes:7,pilhoek:6,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'仡',meaning:'날랠',strokes:5,pilhoek:5,rad:'人',jawonElement:'화',unverified:true},
+      {ch:'齕',meaning:'깨물',strokes:18,pilhoek:18,rad:'齒',jawonElement:'금',unverified:true}
     ],
     '흡': [
       {ch:'吸',meaning:'숨 들이쉴',strokes:7,pilhoek:6,rad:'口',jawonElement:null},
       {ch:'洽',meaning:'윤태하게 할',strokes:10,pilhoek:9,rad:'水',jawonElement:'수'},
       {ch:'恰',meaning:'마치',strokes:10,pilhoek:9,rad:'心',jawonElement:'화'},
-      {ch:'翕',meaning:'합할',strokes:12,pilhoek:12,rad:'羽',jawonElement:'화'}
+      {ch:'翕',meaning:'합할',strokes:12,pilhoek:12,rad:'羽',jawonElement:'화'},
+      {ch:'潝',meaning:'빨리 흐르는 소리',strokes:16,pilhoek:15,rad:'水',jawonElement:'수',unverified:true},
+      {ch:'歙',meaning:'줄일',strokes:16,pilhoek:16,rad:'欠',jawonElement:null,unverified:true},
+      {ch:'噏',meaning:'숨 들이쉴',strokes:15,pilhoek:15,rad:'口',jawonElement:null,unverified:true}
     ],
     '힐': [
-      {ch:'詰',meaning:'물을',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'}
+      {ch:'詰',meaning:'물을',strokes:13,pilhoek:13,rad:'言',jawonElement:'금'},
+      {ch:'黠',meaning:'약을',strokes:18,pilhoek:18,rad:'黑',jawonElement:'수',unverified:true},
+      {ch:'頡',meaning:'곧은목',strokes:15,pilhoek:15,rad:'頁',jawonElement:'화',unverified:true},
+      {ch:'纈',meaning:'홀치기염색',strokes:21,pilhoek:21,rad:'糸',jawonElement:'목',unverified:true},
+      {ch:'襭',meaning:'옷자락 꽂을',strokes:21,pilhoek:20,rad:'衣',jawonElement:'목',unverified:true}
     ],
   };
 
@@ -3589,7 +7868,7 @@
   });
 
   global.HanjaDB = {
-    version: '1.3',
+    version: '1.7',
     byReading: byReading,
     byChar: byChar,
     readings: Object.keys(byReading),
@@ -3606,7 +7885,7 @@
     },
     /** 서로 다른 한자 글자 수(다음자 중복 제외) */
     uniqueChars: Object.keys(byChar).length,
-    count: 2571
+    count: 6819
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = global.HanjaDB;
 })(typeof window !== 'undefined' ? window : this);

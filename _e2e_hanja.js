@@ -155,6 +155,88 @@ function check(label, cond, extra) {
   await page.waitForSelector('.hanja-picker', { timeout: 5000 });
   check('다른 이름도 선택 UI 정상 렌더', await page.locator('.hanja-syl').count() === 3);
 
+  // ==========================================================
+  // v1.7 한자 검색 (음/뜻/획수 3모드) — DB 확대로 음절당 10자를 넘는 경우가
+  // 흔해져 검색 없이는 "제한적"이라는 지적을 받았던 부분. 독립된 이름으로 새로
+  // 열어 위쪽 흐름(선택 → 결과 → 폴백 → 다시 고르기)과 상태가 섞이지 않게 한다.
+  // ==========================================================
+  await page.click('#result-restart-btn');
+  await page.waitForTimeout(200);
+  await submitName('김민준');
+  await page.click('#hanja-open-btn');
+  await page.waitForSelector('.hanja-picker', { timeout: 5000 });
+
+  // idx0=김(후보 1자, 검색창 없음) / idx1=민(17자) / idx2=준(31자, 검색창 있음)
+  var syl0SearchRow = await page.locator('.hanja-syl').nth(0).locator('.hanja-search-row').count();
+  check('후보 10자 이하 음절엔 검색창 미노출(김)', syl0SearchRow === 0, '실제 ' + syl0SearchRow);
+  var syl2SearchRow = await page.locator('.hanja-syl').nth(2).locator('.hanja-search-row').count();
+  check('후보 10자 초과 음절엔 검색창 노출(준, 31자)', syl2SearchRow === 1);
+
+  var syl2 = page.locator('.hanja-syl').nth(2);
+  var defaultChips = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('기본 노출 = 빈도순 상위 10 + 더 보기 버튼', defaultChips === 10, '실제 ' + defaultChips);
+  var moreBtnText = await syl2.locator('.hanja-more-btn').textContent();
+  check('"더 보기" 버튼에 잔여 글자 수 표기(21자)', moreBtnText.indexOf('21') >= 0, moreBtnText);
+
+  await syl2.locator('.hanja-more-btn').click();
+  await page.waitForTimeout(150);
+  var afterMore = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('"더 보기" 클릭 시 31자 전체 노출', afterMore === 31, '실제 ' + afterMore);
+
+  // ① 음 검색 — 이 음절 자체를 입력하면(=이미 그 음으로 걸러진 목록이라) 전체가 다시 보인다
+  var readingInput = syl2.locator('.hanja-search-input');
+  await readingInput.fill('준');
+  await page.waitForTimeout(400); // 200ms 디바운스 + 여유
+  var afterReadingSearch = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('① 음 검색: "준" 입력 시 그 음의 전 한자(31자) 노출', afterReadingSearch === 31, '실제 ' + afterReadingSearch);
+  var focusedIsSearch = await page.evaluate(function () {
+    return document.activeElement && document.activeElement.classList.contains('hanja-search-input');
+  });
+  check('디바운스 재렌더 후에도 검색창 포커스 유지', focusedIsSearch);
+
+  // ② 뜻 키워드 검색 — 모드를 "뜻"으로 바꾸고 "밝을" 검색 → 晙(밝을,11) 1건만 남아야 함
+  await syl2.locator('.hanja-search-mode-btn[data-mode="meaning"]').click();
+  await page.waitForTimeout(100);
+  await readingInput.fill('밝을');
+  await page.waitForTimeout(400);
+  var meaningHits = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('② 뜻 검색: "밝을" → 1건(晙)만 노출', meaningHits === 1, '실제 ' + meaningHits);
+  var meaningHitText = await syl2.locator('.hanja-opt:not(.none) .mn').first().textContent();
+  check('뜻 검색 결과 뜻 문자열 부분일치 확인', meaningHitText.indexOf('밝을') >= 0, meaningHitText);
+
+  // 검색어를 지우면 다시 기본 상위 10 노출로 돌아온다("더 보기"를 눌러둔 상태였으므로 31로 유지되는지 확인)
+  await readingInput.fill('');
+  await page.waitForTimeout(400);
+  var afterClear = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('검색어 비우면 이전 노출 상태(더 보기 눌러둔 31자)로 복귀', afterClear === 31, '실제 ' + afterClear);
+
+  // ③ 획수 필터 — 10획만: 峻/埈/准/隼 4건
+  await syl2.locator('.hanja-search-strokes').selectOption('10');
+  await page.waitForTimeout(150);
+  var strokeHits = await syl2.locator('.hanja-opt:not(.none)').count();
+  check('③ 획수 필터: 10획 → 4건', strokeHits === 4, '실제 ' + strokeHits);
+  var strokeTexts = await syl2.locator('.hanja-opt:not(.none) .st').allTextContents();
+  check('획수 필터 결과가 전부 10획', strokeTexts.every(function (t) { return t.indexOf('10획') >= 0; }), strokeTexts.join(','));
+
+  // 검색 결과 칩도 기존 플로우 그대로 선택된다 (data-idx/data-ch/data-reading → 분석 실행)
+  await syl2.locator('.hanja-opt:not(.none)').first().click();
+  await page.waitForTimeout(200);
+  var pickedFromSearch = await syl2.locator('.hanja-opt.selected').count();
+  check('검색 결과 칩 선택도 기존 selected 표시로 반영', pickedFromSearch === 1, '실제 ' + pickedFromSearch);
+
+  // "목록에 없음" 폴백은 검색 필터가 걸려 있어도 항상 노출된다
+  var noneStillThere = await syl2.locator('.hanja-opt.none').count();
+  check('검색 필터 중에도 "목록에 없음" 선택지 유지', noneStillThere === 1);
+
+  await page.locator('.hanja-syl').nth(0).locator('.hanja-opt:not(.none)').first().click();
+  await page.waitForTimeout(120);
+  await page.locator('.hanja-syl').nth(1).locator('.hanja-opt:not(.none)').first().click();
+  await page.waitForTimeout(200);
+  var afterAllPicked = await page.evaluate(function () {
+    return document.querySelectorAll('.hanja-card').length;
+  });
+  check('검색으로 고른 글자 포함 3자 모두 결과에 반영', afterAllPicked === 3, '실제 ' + afterAllPicked);
+
   check('콘솔 에러 0건', errors.length === 0, errors.slice(0, 3).join(' / '));
 
   await browser.close();

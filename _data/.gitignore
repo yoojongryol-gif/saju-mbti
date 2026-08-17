@@ -6,3 +6,8 @@ Unihan_*.txt
 CJKRadicals.txt
 db_draft.json
 verify_all_out.txt
+verify_all_out2.txt
+verify_all_result.json
+mismatch_pairs.txt
+mismatch_pairs_utf8.txt
+# unverified_pairs.json 은 예외: build_db.py가 매 빌드마다 읽는 입력이라 커밋 대상.

@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-name-hanja-db.js 생성기 (MZ사주풀이 v1.3)
+name-hanja-db.js 생성기 (MZ사주풀이 v1.7)
 
 원자료(전부 공개 데이터셋, 2026-08-16 다운로드):
   [A] libhangul hanja.txt  — 한자:음:뜻
       https://raw.githubusercontent.com/libhangul/libhangul/main/data/hanja/hanja.txt
-  [B] Unicode Unihan (UCD latest) kTotalStrokes / kRSUnicode
+  [B] Unicode Unihan (UCD latest) kTotalStrokes / kRSUnicode / kIRG_KSource
       https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip
   [C] Unicode CJKRadicals.txt — 부수번호 → 원형(原形) 한자
       https://www.unicode.org/Public/UCD/latest/ucd/CJKRadicals.txt
   [D] 자원오행 부수 배속표 (ksname.co.kr "한자의 부수 및 자원오행")
       https://www.ksname.co.kr/bbs/tb.php/m51/44
+  [E] 원획 교차검증표 (irum.com 인명용한자 조회) — _data/verify_all.py 가 전수 대조해
+      _data/verify_all_result.json 을 만들고, 그중 "irum.com 대조표 자체에 없어
+      확인 불가"였던 (음,한자) 목록만 _data/unverified_pairs.json 로 추려 이 스크립트가
+      읽어 unverified:true 플래그로 반영한다(불일치였던 43건은 COMPONENT_FIX로 직접
+      교정했으므로 unverified 대상이 아니다).
 """
 import sys, io, re, json, collections
 sys.stdout.reconfigure(encoding='utf-8')
@@ -18,8 +23,16 @@ sys.stdout.reconfigure(encoding='utf-8')
 D = r'C:/Users/NHNE/saju-mbti/_data/'
 OUT = r'C:/Users/NHNE/saju-mbti/name-hanja-db.js'
 
+# [E] 원획 검증에서 irum.com 대조표에 없던 (음,한자) 쌍 — 프로그램 계산값은 그대로 두고
+# name-hanja-db.js 항목에 unverified:true 만 붙인다. 파일이 없으면(=검증을 아직 안 돌린
+# 상태) 빈 집합으로 두고 전량 미검증 취급하지 않는다(첫 draft 생성 단계를 막지 않기 위함).
+try:
+    UNVERIFIED_PAIRS = set(tuple(p) for p in json.load(io.open(D + 'unverified_pairs.json', encoding='utf-8')))
+except IOError:
+    UNVERIFIED_PAIRS = set()
+
 # ---------------------------------------------------------------- [B] Unihan
-total_strokes, rsdata = {}, {}
+total_strokes, rsdata, ksource = {}, {}, {}
 with io.open(D + 'Unihan_IRGSources.txt', encoding='utf-8') as f:
     for line in f:
         if line.startswith('#') or not line.strip():
@@ -34,6 +47,8 @@ with io.open(D + 'Unihan_IRGSources.txt', encoding='utf-8') as f:
             m = re.match(r"^(\d+)('*)\.(-?\d+)$", p[2].split()[0])
             if m:
                 rsdata[cp] = (int(m.group(1)), len(m.group(2)), int(m.group(3)))
+        elif p[1] == 'kIRG_KSource':
+            ksource[cp] = p[2]
 
 # ------------------------------------------------------------ [C] CJKRadicals
 rad_orig_cp = {}
@@ -58,8 +73,8 @@ NUMBER_WONHOEK = {'四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '�
 # 부수 보정은 아래 wonhoek()가 전량 자동 처리하지만, 부수가 아닌 구성요소를
 # Unihan(현대 CJK 셈법)과 康熙字典(성명학 기준)이 다르게 세는 글자가 소수 있다.
 # (예: 者 8 vs 9, 成 6 vs 7, 異 11 vs 12)
-# 아래 값은 DB 전수를 irum.com 인명용한자 원획표와 대조해(verify_all.py) 확인한
-# 50건으로, 대조표 값을 채택했다. 나머지 글자는 자동 계산값과 그대로 일치했다.
+# 아래 50건은 v1.3 당시 DB(2,564자)를 irum.com 인명용한자 원획표와 대조해
+# (verify_all.py) 확인한 값으로, 대조표 값을 채택했다.
 COMPONENT_FIX = {
     '戴': 18, '暑': 13, '署': 15, '成': 7, '城': 10, '誠': 14, '瘟': 15,
     '異': 12, '翼': 18, '充': 5, '響': 22, '邢': 13, '姬': 9,
@@ -69,6 +84,17 @@ COMPONENT_FIX = {
     '隷': 17, '朦': 20, '猫': 12, '薩': 19, '乷': 7, '屬': 20, '瓦': 5, '頊': 14,
     '剩': 11, '芿': 10, '著': 15, '節': 15, '鑿': 28, '兎': 8, '把': 9, '魂': 14, '蒸': 16,
 }
+# v1.7 확대분(2,564자 → 6,819자) 전수 대조에서 추가로 확인한 43건. 같은 방식으로
+# 대조표([E]) 값을 채택했다 (재현 스크립트: _data/verify_all.py, 결과 원본:
+# _data/verify_all_result.json → mismatch 배열).
+COMPONENT_FIX.update({
+    '卿': 12, '嘯': 16, '囍': 22, '壺': 11, '夔': 20, '導': 16, '慨': 15, '搜': 14,
+    '敭': 13, '整': 16, '斌': 12, '朣': 18, '榔': 14, '橚': 17, '欌': 22, '渚': 13,
+    '湺': 12, '漓': 15, '潚': 17, '瀟': 21, '煮': 13, '珷': 12, '瓷': 11, '甑': 17,
+    '盛': 12, '睡': 13, '磁': 15, '礖': 19, '离': 11, '篠': 17, '簫': 19, '罕': 7,
+    '脯': 11, '臾': 9, '莽': 14, '蔬': 18, '蕭': 19, '襁': 18, '邃': 21, '錨': 16,
+    '鍈': 17, '鼇': 24, '鼎': 13,
+})
 
 
 def wonhoek(ch):
@@ -206,12 +232,19 @@ def meaning_options(hj, mean):
     return out
 
 
-def ks(ch):
-    try:
-        ch.encode('euc-kr')
-        return True
-    except Exception:
-        return False
+# v1.7 벽자(僻字) 제외 기준 확대: 종전에는 KS X 1001(EUC-KR 인코딩 가능 여부로 판별)
+# 범위로만 걸렀으나 이는 상용한자 4,888자에 그쳐 "이름에 흔히 쓰이지만 상용한자는
+# 아닌 글자"(예: KS X 1002 확장한자)가 다수 빠졌다. Unicode kIRG_KSource 필드는
+# 이 코드가 어느 한국 표준에 등재됐는지를 밝히는데, 그중
+#   K0 = KS X 1001:2004 (구 KS C 5601, 상용한자 4,888자)
+#   K1 = KS X 1002:2001 (구 KS C 5657, 한자 부수·추가한자 2,856자)
+# 는 실제 한국 국가표준(KS)으로 제정된 것이 실물로 확인되나, K2~K6(PKS C 5700 계열)는
+# Unicode IRG 심의 당시 제출용으로 편집된 목록일 뿐 한국 공식 표준이 아니라는 점이
+# 유니코드 메일링리스트 기록(unicode.org/mail-arch, 1999)에 남아 있어 채택하지 않는다.
+# → v1.7 벽자 제외 기준 = kIRG_KSource 가 K0 또는 K1 로 시작하는 글자만 인명 후보로 채택.
+def registered_ks(ch):
+    src = ksource.get(ord(ch), '')
+    return src.startswith('K0') or src.startswith('K1')
 
 
 BAD_EXACT = set('병 종 죄 재 티 무 숨 배 놈 비 초 신 들 근 효 되 그 또 갈 써 발 바 알 굴 날 점 능 띠 되 근'.split())
@@ -236,7 +269,9 @@ PRIORITY = (
 ).split()
 PRIORITY = [c for c in PRIORITY if len(c) == 1 and not ('가' <= c <= '힣')]
 
-PER_READING_MAX = 8
+# v1.7: "인명 빈용" 8자 상한(PER_READING_MAX)을 없애 음절당 후보를 전량 담는다.
+# (UI 쪽 기본 노출은 index.html 검색 섹션에서 빈도순 상위 10 + "더 보기"로 제어하므로
+#  DB 자체는 자르지 않는다 — 데이터와 화면 표시 정책을 분리)
 PRIORITY_SET = set(PRIORITY)
 db, all_chars = collections.OrderedDict(), []
 priority_seen = set()
@@ -247,9 +282,7 @@ for r in READINGS:
     pool = ([x for x in pool if x[0] in PRIORITY_SET] +
             [x for x in pool if x[0] not in PRIORITY_SET])
     for hj, mean in pool:
-        if len(picked) >= PER_READING_MAX:
-            break
-        if not ks(hj):
+        if not registered_ks(hj):
             continue
         forced = hj in PRIORITY_SET
         if forced:
@@ -275,6 +308,7 @@ for r in READINGS:
             'strokes': won, 'pilhoek': pil,
             'rad': RAD_ORIG_CHAR.get(radnum),
             'jawonElement': RAD_ELEMENT.get(radnum),
+            'unverified': (r, hj) in UNVERIFIED_PAIRS,
         })
     if len(picked) >= 1:
         db[r] = picked
@@ -290,16 +324,20 @@ for r in db:
     print(r, ' '.join('%s %s/%s%s' % (c['ch'], c['meaning'], c['strokes'], '' if c['jawonElement'] else '·') for c in db[r]))
 
 # ============================================================ JS 파일 생성
+UNVERIFIED_COUNT = sum(1 for c in all_chars if c['unverified'])
+UNIQUE_CHARS = len(set(c['ch'] for c in all_chars))
+
 HEADER = '''/**
- * name-hanja-db.js — MZ사주풀이 인명 한자 DB (v1.3)
+ * name-hanja-db.js — MZ사주풀이 인명 한자 DB (v1.7)
  * ⚠ 이 파일은 _data/build_db.py 가 공개 데이터셋에서 자동 생성한다. 직접 수정하지 말 것.
- *   (생성일 2026-08-16 / 총 %(N)d자 · %(S)d음절)
+ *   (생성일 2026-08-17 / 총 %(N)d자(다음자 포함) · 고유 %(U)d자 · %(S)d음절)
  *
  * ─────────────────────────────────────────────────────────────────────────
  * 1. 원자료 출처 (모두 공개 데이터셋, 기억이 아닌 원본 파일에서 기계 추출)
  *   [A] 음(音)·뜻(訓) — libhangul hanja.txt (BSD-3, Choe Hwanjin)
  *       https://raw.githubusercontent.com/libhangul/libhangul/main/data/hanja/hanja.txt
- *   [B] 필획(筆劃)·부수 — Unicode Unihan Database, kTotalStrokes / kRSUnicode
+ *   [B] 필획(筆劃)·부수·한국 표준 등재여부 — Unicode Unihan DB,
+ *       kTotalStrokes / kRSUnicode / kIRG_KSource
  *       https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip
  *   [C] 부수번호→원형(原形) 부수 한자 — Unicode CJKRadicals.txt
  *       https://www.unicode.org/Public/UCD/latest/ucd/CJKRadicals.txt
@@ -310,7 +348,7 @@ HEADER = '''/**
  *       ("성명학에서 한자의 획수는 康熙字典과 玉篇을 근본으로 하여 원획으로 하여야 합니다")
  *
  * ─────────────────────────────────────────────────────────────────────────
- * 2. 원획(原劃) 산출 규약  ★ SPEC.md v1.3 "부수 보정표" 구현
+ * 2. 원획(原劃) 산출 규약  ★ SPEC.md v1.3 "부수 보정표" 구현 (v1.7도 동일 로직 재사용)
  *   strokes(원획) = [C]의 원형 부수 획수 + kRSUnicode 의 나머지 획수
  *   - 즉 필획에서 "실제 쓰인 변형부수 획수"를 빼고 "원형 부수 획수"를 넣는다.
  *     보정표를 손으로 나열하는 대신 부수번호로 프로그램이 전량 적용하므로
@@ -318,10 +356,9 @@ HEADER = '''/**
  *     月육달→肉6, 辶→辵7, 礻→示5, 衤→衣6, 犭→犬4, 灬→火4, 罒→网6)가 모두 자동 충족된다.
  *   - 부수가 변형되지 않은 글자는 원획 = 필획 (예: 家 10, 明 8, 東 8).
  *   - 숫자한자 예외(성명학 관례): 四4 五5 六6 七7 八8 九9 十10.
- *   - 部件(부수 아닌 구성요소)을 Unihan(현대 셈법)과 康熙字典이 다르게 세는 50자
- *     (戴 暑 署 成 城 誠 瘟 異 翼 充 響 邢 姬 考 魄 噓 魔 衛 毓 禽 萬 渗 巡 甕 瓮 禹 魏
- *      甄 魁 裙 龜 廊 擥 隷 朦 猫 薩 乷 屬 瓦 頊 剩 芿 著 節 鑿 兎 把 魂 蒸)는
- *     [E] 대조표 값을 채택했다. 나머지 글자는 자동 계산값이 [E]와 그대로 일치한다.
+ *   - 部件(부수 아닌 구성요소)을 Unihan(현대 셈법)과 康熙字典이 다르게 세는 글자는
+ *     [E] 대조표 값을 채택했다(build_db.py COMPONENT_FIX — v1.3때 50건 + v1.7 확대분
+ *     대조에서 추가로 나온 43건, 합계 93건). 나머지 글자는 자동 계산값이 [E]와 일치한다.
  *
  * 3. 원획 교차검증 결과 (스크립트: _data/verify_wonhoek.py, _data/verify_all.py)
  *   ① 표본 42자 대조 — 42/42 일치 (불일치 0). 변형부수 전 유형 + 무보정 대조군:
@@ -332,9 +369,14 @@ HEADER = '''/**
  *      福14 祖10 神10 (礻→示) / 裕13 (衤→衣) / 熱15 烈10 (灬→火) / 羅20 (罒→网) /
  *      家10 明8 星9 東8 金8 (무보정 대조군)
  *      이 표본은 _verify_hanja_db.js 가 매 실행마다 재대조한다.
- *   ② 전수 대조 — DB %(N)d자 전량을 [E]와 대조: 2,564자 대조 성공 **불일치 0**,
- *      미조회 7자(彌 尹 卷 暖 亐 搭 琿 — 대조처 목록에 없는 글자).
- *      재현 스크립트: _data/verify_all.py (음절 조회 → 개별 조회 폴백)
+ *   ② 전수 대조(v1.7, 확대분 %(N)d자 전량) — [E]와 대조해 셋으로 나뉜다:
+ *      · 일치 %(VOK)d자 — 프로그램 계산값 그대로 채택.
+ *      · 불일치 %(VBAD)d자 — [E] 표(irum.com)의 값이 옳다고 보고 COMPONENT_FIX에
+ *        반영해 그 값으로 교정했다(위 2번 항목의 43건). 즉 최종 출력에는 불일치가 없다.
+ *      · 미조회 %(VMISS)d자 — [E] 대조표 자체에 없는(성명학 사이트가 다루지 않는) 글자.
+ *        이 경우 프로그램 계산값을 그대로 두고 unverified:true 로 표시한다.
+ *      재현 스크립트: _data/verify_all.py (음절 배치 조회 → 개별 조회 폴백, 병렬화).
+ *      원본 결과: _data/verify_all_result.json / 채택한 미조회 목록: _data/unverified_pairs.json
  *
  * 4. 자원오행(jawonElement)
  *   [D] 원문은 한 부수를 여러 오행에 중복 배속하는 경우가 많아(유파별 이설),
@@ -342,17 +384,27 @@ HEADER = '''/**
  *   (SPEC v1.3 "매핑 불가 부수는 jawonElement:null 허용" — UI에서 생략)
  *   현재 %(J)d자에 자원오행이 부여돼 있다.
  *
- * 5. 후보 선별
- *   [A]의 음절별 등재 순서(한글 IME 변환 빈도순)를 우선순위로 삼되,
- *   KS X 1001 상용한자(EUC-KR 인코딩 가능) 범위로 제한하고, 이름에 쓰기 어려운 뜻
- *   (질병·죽음·부정·동물/기물 등)은 키워드로 걸러 음절당 최대 8자를 담는다.
- *   한국 주요 성씨와 이름에 특히 잦은 글자는 build_db.py 의 PRIORITY 목록으로 앞에 고정한다.
+ * 5. 후보 선별 — v1.7 "벽자(僻字) 제외 기준" 확대
+ *   v1.3까지는 KS X 1001(구 KS C 5601, EUC-KR 인코딩 가능) 상용한자 4,888자 범위로만
+ *   제한해 음절당 최대 8자를 담았다. 사장님 실검수 피드백("이름 한자 찾을 때 너무
+ *   제한적")에 따라 v1.7은 그 상한을 없애고, 벽자 제외 기준 자체를
+ *     Unicode kIRG_KSource 가 K0(KS X 1001) 또는 K1(KS X 1002, 구 KS C 5657 한자
+ *     추가표) 로 시작하는 글자 — 즉 "실제로 한국 국가표준(KS)에 등재된 한자" 전량
+ *   으로 넓혔다. K2~K6(PKS C 5700 계열)은 유니코드 IRG 심의용으로 임의 편집된 목록일
+ *   뿐 한국 공식 표준이 아니라는 기록(unicode.org 메일링리스트, 1999)이 있어 채택하지
+ *   않았다 — 근거 불명 확장으로 벽자가 섞여 들어오는 것을 막기 위함.
+ *   [A]의 음절별 등재 순서(한글 IME 변환 빈도순)를 우선순위로 삼되, 이름에 쓰기 어려운
+ *   뜻(질병·죽음·부정·동물/기물 등)은 키워드로 걸러낸다(음절당 상한은 v1.7에서 폐지).
+ *   한국 주요 성씨와 이름에 특히 잦은 글자는 build_db.py 의 PRIORITY 목록으로 앞에
+ *   고정한다(화면 기본 노출 "상위 10 + 더 보기" 순서로 그대로 이어진다).
  *   ※ 선별(어떤 글자를 보여줄지)만 사람이 정하고, 뜻·음·획수 값은 전부 원자료에서 기계 추출한다.
  *   ※ 다음자(多音字, 例 金=금/김)는 음절마다 별도 항목으로 들어가므로
  *      count(항목 총수) ≠ uniqueChars(고유 글자 수)일 수 있다.
  *
  * 필드: ch 한자 / reading 음 / meaning 뜻 / strokes 원획 / pilhoek 필획 /
- *       rad 원형부수 / jawonElement 자원오행(없으면 null)
+ *       rad 원형부수 / jawonElement 자원오행(없으면 null) /
+ *       unverified 원획을 [E] 대조표에서 확인하지 못해 프로그램 계산값을 그대로 쓴
+ *       항목이면 true (총 %(UV)d건, UI 표시는 검증 항목과 동일)
  */
 '''
 
@@ -361,14 +413,18 @@ def jsval(v):
     return 'null' if v is None else "'" + v.replace("\\\\", "\\\\\\\\").replace("'", "\\'") + "'"
 
 
-lines = [HEADER % {'N': len(all_chars), 'S': len(db), 'J': sum(1 for c in all_chars if c['jawonElement'])}]
+lines = [HEADER % {
+    'N': len(all_chars), 'S': len(db), 'U': UNIQUE_CHARS, 'J': sum(1 for c in all_chars if c['jawonElement']),
+    'UV': UNVERIFIED_COUNT, 'VOK': 4803, 'VBAD': 43, 'VMISS': 1973,
+}]
 lines.append("(function (global) {\n  'use strict';\n\n  var byReading = {")
 for r in db:
     items = []
     for c in db[r]:
-        items.append("{ch:'%s',meaning:%s,strokes:%d,pilhoek:%d,rad:%s,jawonElement:%s}"
+        items.append("{ch:'%s',meaning:%s,strokes:%d,pilhoek:%d,rad:%s,jawonElement:%s%s}"
                      % (c['ch'], jsval(c['meaning']), c['strokes'], c['pilhoek'],
-                        jsval(c['rad']), jsval(c['jawonElement'])))
+                        jsval(c['rad']), jsval(c['jawonElement']),
+                        ',unverified:true' if c['unverified'] else ''))
     lines.append("    '%s': [\n      %s\n    ]," % (r, ',\n      '.join(items)))
 lines.append('  };\n')
 lines.append("""  // reading 필드는 키에서 채워 넣는다(중복 저장 방지).
@@ -380,7 +436,7 @@ lines.append("""  // reading 필드는 키에서 채워 넣는다(중복 저장 
   });
 
   global.HanjaDB = {
-    version: '1.3',
+    version: '1.7',
     byReading: byReading,
     byChar: byChar,
     readings: Object.keys(byReading),

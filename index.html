@@ -474,6 +474,30 @@
     border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:8px 10px;margin:0 0 10px;line-height:1.55;
   }
 
+  /* ---- 한자 검색 (v1.7) ---- */
+  .hanja-search-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .hanja-search-modes{display:flex;border:1px solid var(--card-border);border-radius:9px;overflow:hidden;flex:none;}
+  .hanja-search-mode-btn{
+    padding:8px 10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;
+    background:var(--bg-elevated);color:var(--muted);border:none;
+  }
+  .hanja-search-mode-btn+.hanja-search-mode-btn{border-left:1px solid var(--card-border);}
+  .hanja-search-mode-btn.active{background:var(--accent2);color:#fff;}
+  .hanja-search-input{
+    flex:1 1 120px;min-width:0;padding:8px 10px;border-radius:9px;font-size:13px;font-family:inherit;
+    background:var(--bg-elevated);border:1px solid var(--card-border);color:var(--text);
+  }
+  .hanja-search-input:focus{outline:none;border-color:var(--accent2);}
+  .hanja-search-strokes{
+    flex:none;padding:8px 8px;border-radius:9px;font-size:12px;font-family:inherit;
+    background:var(--bg-elevated);border:1px solid var(--card-border);color:var(--text);
+  }
+  .hanja-search-empty{font-size:12px;color:var(--muted2);padding:6px 2px;}
+  .hanja-more-btn{
+    margin-top:4px;padding:7px 12px;border-radius:9px;font-size:12px;font-weight:700;
+    font-family:inherit;cursor:pointer;background:transparent;border:1px dashed var(--card-border);color:var(--accent2);
+  }
+
   /* ---- daily ---- */
   .daily-card{
     background:linear-gradient(160deg,#2a2013,#15110c 80%);
@@ -1532,6 +1556,47 @@ window.ProfileStore = (function () {
       typeof window.NameReader.analyzeHanja === 'function' && ctx.nameInput);
   }
 
+  // ---- 한자 검색 (v1.7) ----
+  // 검색창 상태는 화면 UI 전용(저장/복원 불필요)이라 state/ctx가 아니라 이 모듈 스코프
+  // 맵에 별도로 둔다 — 기존 hanjaOpen/hanjaSelection 리셋 지점을 건드리지 않고도
+  // 이름이 바뀌면(음절 수·값이 달라지면) 자동으로 새로 초기화된다.
+  var hanjaSearchState = {};
+  var hanjaSearchTimers = {};
+  var hanjaFocusedSearch = null; // { targetId, idx, pos } — 디바운스 재렌더 직후 포커스 복원용(1회성)
+  function getHanjaSearchState(ctx, sylls){
+    var key = ctx.targetId || 'default';
+    var sig = sylls.join('|');
+    var box = hanjaSearchState[key];
+    if(!box || box.sig !== sig){
+      box = { sig: sig, rows: sylls.map(function(){ return { q: '', mode: 'reading', strokes: '', showAll: false }; }) };
+      hanjaSearchState[key] = box;
+    }
+    return box.rows;
+  }
+  function hanjaEsc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  // 검색어/획수 필터를 후보 목록에 적용. 음 검색은 이 음절 칸의 후보(=이미 그 음으로
+  // 걸러진 목록)에서 입력한 음이 정확히 같은지만 보고, 뜻 검색은 뜻 문자열 부분일치.
+  function filterHanjaCandidates(list, s){
+    var out = list;
+    var q = (s.q || '').trim();
+    if(q){
+      if(s.mode === 'meaning'){
+        out = out.filter(function(e){ return e.meaning.indexOf(q) !== -1; });
+      } else {
+        out = out.filter(function(e){ return e.reading === q; });
+      }
+    }
+    if(s.strokes){
+      var sv = parseInt(s.strokes, 10);
+      out = out.filter(function(e){ return e.strokes === sv; });
+    }
+    return out;
+  }
+  var HANJA_DEFAULT_SHOW = 10;
+
   function renderHanjaSection(ctx){
     ctx = ctx || selfNameCtx;
     if(!hanjaAvailable(ctx)) return '';
@@ -1543,14 +1608,43 @@ window.ProfileStore = (function () {
 
     var sylls = ctx.nameInput.split('');
     var sel = ctx.hanjaSelection || [];
+    var searchRows = getHanjaSearchState(ctx, sylls);
     var h = '<div class="reco-section"><div class="reco-section-title">한자 뜻풀이</div>';
-    h += '<p class="tab-para" style="margin-bottom:10px;">음절마다 실제 쓰시는 한자를 하나씩 골라주세요. 목록에 없으면 &lsquo;목록에 없음&rsquo;을 고르시면 됩니다.</p>';
+    h += '<p class="tab-para" style="margin-bottom:10px;">음절마다 실제 쓰시는 한자를 하나씩 골라주세요. 목록에 없으면 &lsquo;목록에 없음&rsquo;을 고르시면 됩니다. 후보가 많으면 검색으로 좁혀보세요.</p>';
     h += '<div class="hanja-picker">';
     sylls.forEach(function(syl, i){
-      var list = window.HanjaDB.candidates(syl);
+      var fullList = window.HanjaDB.candidates(syl);
+      var srow = searchRows[i];
+      var filtered = filterHanjaCandidates(fullList, srow);
+      var searching = !!(srow.q.trim() || srow.strokes);
+      var visible = searching ? filtered : (srow.showAll ? filtered : filtered.slice(0, HANJA_DEFAULT_SHOW));
+      var strokesSet = {};
+      fullList.forEach(function(e){ strokesSet[e.strokes] = true; });
+      var strokesOpts = Object.keys(strokesSet).map(Number).sort(function(a, b){ return a - b; });
+
       h += '<div class="hanja-syl"><div class="hanja-syl-head"><b>' + syl + '</b> — '
-        + (list.length ? list.length + '자 중 선택' : '등록된 후보가 없습니다') + '</div><div class="hanja-opts">';
-      list.forEach(function(e){
+        + (fullList.length ? fullList.length + '자 중 선택' : '등록된 후보가 없습니다') + '</div>';
+
+      if(fullList.length > HANJA_DEFAULT_SHOW){
+        h += '<div class="hanja-search-row">';
+        h += '<div class="hanja-search-modes">'
+          + '<button type="button" class="hanja-search-mode-btn' + (srow.mode === 'reading' ? ' active' : '') + '" data-idx="' + i + '" data-mode="reading">음</button>'
+          + '<button type="button" class="hanja-search-mode-btn' + (srow.mode === 'meaning' ? ' active' : '') + '" data-idx="' + i + '" data-mode="meaning">뜻</button>'
+          + '</div>';
+        h += '<input type="text" class="hanja-search-input" data-idx="' + i + '" autocomplete="off" '
+          + 'placeholder="' + (srow.mode === 'meaning' ? '뜻으로 찾기 (예: 빛)' : '음으로 찾기 (예: ' + hanjaEsc(syl) + ')') + '" '
+          + 'value="' + hanjaEsc(srow.q) + '">';
+        h += '<select class="hanja-search-strokes" data-idx="' + i + '"><option value="">획수 전체</option>'
+          + strokesOpts.map(function(n){ return '<option value="' + n + '"' + (String(n) === String(srow.strokes) ? ' selected' : '') + '>' + n + '획</option>'; }).join('')
+          + '</select>';
+        h += '</div>';
+      }
+
+      h += '<div class="hanja-opts">';
+      if(!visible.length){
+        h += '<p class="hanja-search-empty">검색 결과가 없습니다.</p>';
+      }
+      visible.forEach(function(e){
         h += '<button type="button" class="hanja-opt' + (sel[i] && sel[i].ch === e.ch ? ' selected' : '')
           + '" data-idx="' + i + '" data-ch="' + e.ch + '" data-reading="' + syl + '">'
           + '<span class="hj">' + e.ch + '</span>'
@@ -1559,7 +1653,11 @@ window.ProfileStore = (function () {
       });
       h += '<button type="button" class="hanja-opt none' + (sel[i] === null ? ' selected' : '')
         + '" data-idx="' + i + '" data-ch=""><span class="hj">목록에<br>없음</span></button>';
-      h += '</div></div>';
+      h += '</div>';
+      if(!searching && !srow.showAll && filtered.length > HANJA_DEFAULT_SHOW){
+        h += '<button type="button" class="hanja-more-btn" data-idx="' + i + '">나머지 ' + (filtered.length - HANJA_DEFAULT_SHOW) + '자 더 보기</button>';
+      }
+      h += '</div>';
     });
     h += '</div>';
     h += '<div class="hanja-actions"><button type="button" class="hanja-reset-btn" id="hanja-reset-btn">다시 고르기</button></div>';
@@ -1677,6 +1775,59 @@ window.ProfileStore = (function () {
         renderNameTab(ctx.nameResult, ctx);
       });
     });
+
+    // ---- 한자 검색 (v1.7) ----
+    container.querySelectorAll('.hanja-search-mode-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
+        rows[idx].mode = btn.dataset.mode;
+        renderNameTab(ctx.nameResult, ctx);
+      });
+    });
+    container.querySelectorAll('.hanja-search-strokes').forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var idx = parseInt(sel.dataset.idx, 10);
+        var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
+        rows[idx].strokes = sel.value;
+        renderNameTab(ctx.nameResult, ctx);
+      });
+    });
+    container.querySelectorAll('.hanja-more-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
+        rows[idx].showAll = true;
+        renderNameTab(ctx.nameResult, ctx);
+      });
+    });
+    container.querySelectorAll('.hanja-search-input').forEach(function(inp){
+      var idx = parseInt(inp.dataset.idx, 10);
+      var timerKey = (ctx.targetId || 'default') + ':' + idx;
+      inp.addEventListener('input', function(){
+        var val = inp.value;
+        var pos = inp.selectionStart;
+        if(hanjaSearchTimers[timerKey]) clearTimeout(hanjaSearchTimers[timerKey]);
+        // 200ms 디바운스: 재렌더가 <input>을 통째로 새로 만들기 때문에, 렌더를 일으키는
+        // 시점에만 hanjaFocusedSearch를 세워야(입력 중간 클릭 등과 겹치지 않게) 포커스가
+        // 엉뚱한 순간에 다시 뺏기지 않는다.
+        hanjaSearchTimers[timerKey] = setTimeout(function(){
+          hanjaFocusedSearch = { targetId: ctx.targetId || 'default', idx: idx, pos: pos };
+          var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
+          rows[idx].q = val;
+          renderNameTab(ctx.nameResult, ctx);
+        }, 200);
+      });
+    });
+    // 검색으로 인한 재렌더라면 같은 자리 입력창에 포커스·커서 위치를 되돌려준다(1회성 소비).
+    if(hanjaFocusedSearch && hanjaFocusedSearch.targetId === (ctx.targetId || 'default')){
+      var toFocus = container.querySelector('.hanja-search-input[data-idx="' + hanjaFocusedSearch.idx + '"]');
+      if(toFocus){
+        toFocus.focus();
+        try { toFocus.setSelectionRange(hanjaFocusedSearch.pos, hanjaFocusedSearch.pos); } catch(e){}
+      }
+      hanjaFocusedSearch = null;
+    }
   }
 
   // ============================================================
