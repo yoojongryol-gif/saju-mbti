@@ -74,8 +74,9 @@
     font-family:var(--font-title);
     letter-spacing:0;
   }
-  /* 한지 카드 스코프: .card/.tab-content 및 그 내부 요소는 --text/--muted 가 잉크(먹) 톤으로 바뀐다 */
-  .card, .tab-content{
+  /* 한지 카드 스코프: .card/.tab-content 및 그 내부 요소는 --text/--muted 가 잉크(먹) 톤으로 바뀐다
+     (.menu-sheet 포함 — 빠져 있으면 메뉴 타일이 어두운 --bg-elevated 원값+먹색 글자로 겹쳐 안 보임, 8/17 실사고) */
+  .card, .tab-content, .menu-sheet{
     --text:var(--ink);
     --muted:var(--ink-soft);
     --muted2:var(--ink-soft2);
