@@ -1,0 +1,557 @@
+{
+  "_meta": {
+    "purpose": "한국 성씨 음절별 한자+본관 매핑 DB (MZ사주풀이 PWA 성씨 한자 검색용 리서치 원자료)",
+    "method": "위키백과 한국의_성씨/한국의_성씨_목록/대한민국의_인구순_성씨_목록/개별 성씨(X_(성씨)) 문서를 교차 fetch. 어떤 성씨의 한자·본관도 서로 다른 2개 이상 출처(예: 개별 성씨 문서 + 한국의_성씨_목록 가나다순 문서, 또는 개별 성씨 문서 + 인구순 성씨 목록)에서 확인된 것만 채택. 1개 출처에서만 확인되었거나 서로 다른 fetch 결과가 상충하는 항목은 생략함(예: ㅍ~ㅎ 구간 일부 fetch는 문서 길이 초과로 내용이 잘려 신뢰 불가 판정, 폐기).",
+    "researchDate": "2026-08-17",
+    "coverageNote": "다빈도 28개 성씨(김이박최정강조윤장임한오서신권황안송전홍유고문양손배백허)는 본관 다수 상세 수록. 그 외 실존 한국 성씨는 한자별 1~3개 본관 위주로 최대한 폭넓게 수록. 복성(2음절) 포함. 두음법칙 표기쌍 포함."
+  },
+  "sources": [
+    "https://ko.wikipedia.org/wiki/한국의_성씨",
+    "https://ko.wikipedia.org/wiki/한국의_성씨_목록",
+    "https://ko.wikipedia.org/wiki/대한민국의_인구순_성씨_목록",
+    "https://ko.wikipedia.org/wiki/한국의_성씨와_이름",
+    "https://ko.wikipedia.org/wiki/김_(성씨)",
+    "https://ko.wikipedia.org/wiki/이_(성씨)",
+    "https://ko.wikipedia.org/wiki/박_(성씨)",
+    "https://ko.wikipedia.org/wiki/최_(성씨)",
+    "https://ko.wikipedia.org/wiki/정_(성씨)",
+    "https://ko.wikipedia.org/wiki/강_(성씨)",
+    "https://ko.wikipedia.org/wiki/조_(성씨)",
+    "https://ko.wikipedia.org/wiki/윤_(성씨)",
+    "https://ko.wikipedia.org/wiki/장_(성씨)",
+    "https://ko.wikipedia.org/wiki/임_(성씨)",
+    "https://ko.wikipedia.org/wiki/한_(성씨)",
+    "https://ko.wikipedia.org/wiki/오_(성씨)",
+    "https://ko.wikipedia.org/wiki/서_(성씨)",
+    "https://ko.wikipedia.org/wiki/신_(성씨)",
+    "https://ko.wikipedia.org/wiki/권_(성씨)",
+    "https://ko.wikipedia.org/wiki/황_(성씨)",
+    "https://ko.wikipedia.org/wiki/안_(성씨)",
+    "https://ko.wikipedia.org/wiki/송_(성씨)",
+    "https://ko.wikipedia.org/wiki/전_(성씨)",
+    "https://ko.wikipedia.org/wiki/홍_(성씨)",
+    "https://ko.wikipedia.org/wiki/유_(성씨)",
+    "https://ko.wikipedia.org/wiki/고_(성씨)",
+    "https://ko.wikipedia.org/wiki/문_(성씨)",
+    "https://ko.wikipedia.org/wiki/양_(성씨)",
+    "https://ko.wikipedia.org/wiki/손_(성씨)",
+    "https://ko.wikipedia.org/wiki/배_(성씨)",
+    "https://ko.wikipedia.org/wiki/백_(성씨)",
+    "https://ko.wikipedia.org/wiki/허_(성씨)",
+    "https://ko.wikipedia.org/wiki/남_(성씨)",
+    "https://ko.wikipedia.org/wiki/심_(성씨)",
+    "https://ko.wikipedia.org/wiki/노_(성씨)",
+    "https://ko.wikipedia.org/wiki/하_(성씨)",
+    "https://ko.wikipedia.org/wiki/곽_(성씨)",
+    "https://ko.wikipedia.org/wiki/성_(성씨)",
+    "https://ko.wikipedia.org/wiki/차_(성씨)",
+    "https://ko.wikipedia.org/wiki/주_(성씨)",
+    "https://ko.wikipedia.org/wiki/우_(성씨)",
+    "https://ko.wikipedia.org/wiki/구_(성씨)",
+    "https://ko.wikipedia.org/wiki/민_(성씨)",
+    "https://ko.wikipedia.org/wiki/진_(성씨)",
+    "https://ko.wikipedia.org/wiki/지_(성씨)",
+    "https://ko.wikipedia.org/wiki/엄_(성씨)",
+    "https://ko.wikipedia.org/wiki/채_(성씨)",
+    "https://ko.wikipedia.org/wiki/원_(성씨)",
+    "https://ko.wikipedia.org/wiki/천_(성씨)",
+    "https://ko.wikipedia.org/wiki/방_(성씨)",
+    "https://ko.wikipedia.org/wiki/공_(성씨)",
+    "https://ko.wikipedia.org/wiki/현_(성씨)",
+    "https://ko.wikipedia.org/wiki/함_(성씨)",
+    "https://ko.wikipedia.org/wiki/변_(성씨)",
+    "https://ko.wikipedia.org/wiki/염_(성씨)",
+    "https://ko.wikipedia.org/wiki/여_(성씨)",
+    "https://ko.wikipedia.org/wiki/추_(성씨)",
+    "https://ko.wikipedia.org/wiki/도_(성씨)",
+    "https://ko.wikipedia.org/wiki/소_(성씨)",
+    "https://ko.wikipedia.org/wiki/석_(성씨)",
+    "https://ko.wikipedia.org/wiki/선_(성씨)",
+    "https://ko.wikipedia.org/wiki/설_(성씨)",
+    "https://ko.wikipedia.org/wiki/마_(성씨)",
+    "https://ko.wikipedia.org/wiki/길_(성씨)",
+    "https://ko.wikipedia.org/wiki/연_(성씨)",
+    "https://ko.wikipedia.org/wiki/위_(성씨)",
+    "https://ko.wikipedia.org/wiki/표_(성씨)",
+    "https://ko.wikipedia.org/wiki/명_(성씨)",
+    "https://ko.wikipedia.org/wiki/기_(성씨)",
+    "https://ko.wikipedia.org/wiki/반_(성씨)",
+    "https://ko.wikipedia.org/wiki/나_(성씨)",
+    "https://ko.wikipedia.org/wiki/왕_(한국_성씨)",
+    "https://ko.wikipedia.org/wiki/옥_(성씨)",
+    "https://ko.wikipedia.org/wiki/육_(성씨)",
+    "https://ko.wikipedia.org/wiki/인_(성씨)",
+    "https://ko.wikipedia.org/wiki/맹_(성씨)",
+    "https://ko.wikipedia.org/wiki/제_(성씨)",
+    "https://ko.wikipedia.org/wiki/남궁_(성씨)",
+    "https://ko.wikipedia.org/wiki/탁_(성씨)",
+    "https://ko.wikipedia.org/wiki/국_(성씨)",
+    "https://ko.wikipedia.org/wiki/어_(성씨)",
+    "https://ko.wikipedia.org/wiki/은_(성씨)",
+    "https://ko.wikipedia.org/wiki/편_(성씨)",
+    "https://ko.wikipedia.org/wiki/피_(성씨)",
+    "https://ko.wikipedia.org/wiki/예_(성씨)",
+    "https://ko.wikipedia.org/wiki/태_(성씨)",
+    "https://ko.wikipedia.org/wiki/좌_(성씨)",
+    "https://ko.wikipedia.org/wiki/황보_(성씨)",
+    "https://ko.wikipedia.org/wiki/선우_(성씨)",
+    "https://ko.wikipedia.org/wiki/독고",
+    "https://ko.wikipedia.org/wiki/제갈_(성씨)",
+    "https://ko.wikipedia.org/wiki/사공_(성씨)",
+    "https://ko.wikipedia.org/wiki/서문_(성씨)",
+    "https://ko.wikipedia.org/wiki/두_(성씨)",
+    "https://ko.wikipedia.org/wiki/봉_(성씨)",
+    "https://ko.wikipedia.org/wiki/승_(성씨)",
+    "https://ko.wikipedia.org/wiki/시_(성씨)",
+    "https://ko.wikipedia.org/wiki/계_(성씨)",
+    "https://ko.wikipedia.org/wiki/온_(성씨)",
+    "https://ko.wikipedia.org/wiki/팽_(성씨)",
+    "https://ko.wikipedia.org/wiki/평_(성씨)",
+    "https://ko.wikipedia.org/wiki/화_(성씨)",
+    "https://ko.wikipedia.org/wiki/종_(성씨)",
+    "https://ko.wikipedia.org/wiki/후_(성씨)",
+    "https://ko.wikipedia.org/wiki/경_(성씨)",
+    "https://ko.wikipedia.org/wiki/견_(성씨)",
+    "https://ko.wikipedia.org/wiki/목_(성씨)",
+    "https://ko.wikipedia.org/wiki/복_(성씨)",
+    "https://ko.wikipedia.org/wiki/빈_(성씨)",
+    "https://ko.wikipedia.org/wiki/범_(성씨)",
+    "https://ko.wikipedia.org/wiki/상_(성씨)",
+    "https://ko.wikipedia.org/wiki/옹_(성씨)",
+    "https://ko.wikipedia.org/wiki/갈_(성씨)",
+    "https://ko.wikipedia.org/wiki/금_(성씨)",
+    "https://ko.wikipedia.org/wiki/만_(성씨)",
+    "https://ko.wikipedia.org/wiki/사_(성씨)",
+    "https://www.hankookilbo.com/news/article/200909062381084904",
+    "https://www.kbmaeil.com/article/200707301275419",
+    "https://www.busan.com/view/busan/view.php?code=20070730000212",
+    "https://www.kyeonggi.com/article/200707300241690"
+  ],
+  "dueumAliasesNote": "2007년 8월 대법원이 두음법칙 획일적용 규정(1996년)을 폐지하며 李(이/리)·林(임/림)·柳(유/류)·劉(유/류)·陸(육/륙)·梁(양/량)·羅(나/라)·呂(여/려)·廉(염/렴)·盧(노/로) 등 성씨는 가족 관행에 따라 원음 표기를 허용. 이후 실제 개명 사례 다수 발생(예: 유→류 54,346명, 나→라 575명, 이→리 211명, 2009년 기준). census(2015)에서도 柳/羅는 두 표기가 별도 집계됨.",
+  "dueumAliases": [
+    ["유", "류"],
+    ["이", "리"],
+    ["임", "림"],
+    ["나", "라"],
+    ["노", "로"],
+    ["양", "량"],
+    ["염", "렴"],
+    ["여", "려"],
+    ["육", "륙"]
+  ],
+  "surnames": [
+    {"reading":"김","hanja":[
+      {"ch":"金","bongwans":["김해","경주","광산","강릉","선산","연안","영산","순천","울산","의성","언양","삼척","나주","안동","상산","고령","전주","경산","진주","일선","청풍","곡산","水原(수원)"],"meaning":"쇠 금 / 성씨 김","strokes":null,"sourceNote":"위키 개별문서(김_(성씨))+한국의_성씨_목록+인구순_성씨_목록 3중 교차확인. 김해·경주 두 본관이 전체 김씨의 대다수."}
+    ]},
+    {"reading":"이","hanja":[
+      {"ch":"李","bongwans":["전주","경주","성주","광주","합천","연안","한산","전의","함평","영천","벽진","고성","성산","여주","인천"],"meaning":"오얏나무 이","strokes":null,"note":"두음법칙상 '리'로도 등록 가능(2007 대법원 판례, 실제 개명 211명 확인)","sourceNote":"위키 개별문서(이_(성씨))+한국의_성씨_목록+인구순_성씨_목록 교차확인. 546본이 전한다고 기록되나 모두 李 한 한자."},
+      {"ch":"伊","bongwans":["충주","태원"],"meaning":"저 이","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨(인구 극소)."},
+      {"ch":"異","bongwans":["밀양","청양"],"meaning":"다를 이","strokes":null,"sourceNote":"한국의_성씨_목록 확인."}
+    ]},
+    {"reading":"박","hanja":[
+      {"ch":"朴","bongwans":["밀양","고령","반남","함양","순천","죽산","충주","무안","경주","강릉","경산","광산","무령"],"meaning":"성씨 박 / 후박나무 박","strokes":null,"sourceNote":"위키 개별문서(박_(성씨))+한국의_성씨_목록 교차확인. 밀양 박씨가 박씨 인구의 77.8% 차지. 모든 박씨가 단일 한자 朴만 사용."}
+    ]},
+    {"reading":"최","hanja":[
+      {"ch":"崔","bongwans":["경주","전주","해주","강릉","탐진","수성","삭녕","화순","강화","낭주","완산","동주","우봉","흥해","수원","통천","영흥","영천","충주","경산","월성","진주","화순"],"meaning":"높을 최","strokes":null,"sourceNote":"위키 개별문서(최_(성씨))+한국의_성씨_목록 교차확인(80여 문헌 본관 중 시조·계대 확인된 19본 우선 채택, 목록문서에서 재확인)."}
+    ]},
+    {"reading":"정","hanja":[
+      {"ch":"鄭","bongwans":["동래","경주","연일","해주","진주","하동","초계","청주","온양","봉화","광주","나주","서산","함평","청산","영일","연일"],"meaning":"나라 이름 정","strokes":null,"sourceNote":"위키 개별문서(정_(성씨))+한국의_성씨_목록 교차확인. 문헌상 247본 기록되나 실질 다수는 동래·경주·연일·해주·진주 등."},
+      {"ch":"丁","bongwans":["나주","영광","창원","의성","압해"],"meaning":"고무래 정","strokes":null,"sourceNote":"위키 개별문서(정_(성씨))+한국의_성씨_목록 교차확인. 압해가 원래 본관, 나주로 개칭."},
+      {"ch":"程","bongwans":["하남"],"meaning":"법 정","strokes":null,"sourceNote":"위키 개별문서(정_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"강","hanja":[
+      {"ch":"姜","bongwans":["진주","금천","경주","광주","나주","동복","배천","안동","전주","충주","해미"],"meaning":"성씨 강","strokes":null,"sourceNote":"위키 개별문서(강_(성씨))+한국의_성씨_목록 교차확인. 진주 강씨가 압도적 다수."},
+      {"ch":"康","bongwans":["곡산","신천","재령","영강","임실","진주","충주"],"meaning":"편안할 강","strokes":null,"sourceNote":"위키 개별문서(강_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"조","hanja":[
+      {"ch":"趙","bongwans":["한양","함안","풍양","배천","옥천","평양","직산","횡성","순창","임천","양주","김제","영흥","신창","강진","진보"],"meaning":"나라 조","strokes":null,"sourceNote":"위키 개별문서(조_(성씨))+한국의_성씨_목록 교차확인. 한양(31.2%)·함안(26.3%)·풍양(12.6%)이 대다수."},
+      {"ch":"曺","bongwans":["창녕","가흥","능성","남평","영암","장흥","수성","안동","청도"],"meaning":"무리 조","strokes":null,"sourceNote":"위키 개별문서(조_(성씨))+한국의_성씨_목록 교차확인. 창녕이 대다수."}
+    ]},
+    {"reading":"윤","hanja":[
+      {"ch":"尹","bongwans":["파평","해남","칠원","해평","무송","경주","예천","영천","해주","양주","남원","함안","야성","덕산","신녕","서흥"],"meaning":"성씨 윤 / 다스릴 윤","strokes":null,"sourceNote":"위키 개별문서(윤_(성씨))+한국의_성씨_목록 교차확인. 파평 윤씨가 인구의 75.5% 차지."}
+    ]},
+    {"reading":"장","hanja":[
+      {"ch":"張","bongwans":["인동","흥덕","흥성","안동","창녕","목천","결성","단양","구례","봉성","덕수","태원","순천","절강","광주","고성","교동","나주","남양","남원","단양","대구","덕천","동래","무안","밀양","부여","서산","순창","안성","연안","영월","예산","옥구","옥천","울진","인덕","장수","장연","장택","전주","정읍","제주","진안","진주","진천","창원","청송","청주","춘천","충주","평택","평양","풍덕","한양","함평","해주","흥양","흥해"],"meaning":"베풀 장","strokes":null,"sourceNote":"위키 개별문서(장_(성씨))+한국의_성씨_목록 교차확인. 인동 장씨(상장군계+직제학계)가 전체 중 최대 비중(약 66만)."},
+      {"ch":"蔣","bongwans":["아산"],"meaning":"줄 장","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."},
+      {"ch":"章","bongwans":["거창"],"meaning":"글 장","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."},
+      {"ch":"莊","bongwans":["금천","전주","장연"],"meaning":"씩씩할 장","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소(200여명)."}
+    ]},
+    {"reading":"임","hanja":[
+      {"ch":"林","bongwans":["나주","평택","부안","예천","조양","은진","진천","울진","길안","전주","보성","경주","상산","선산","순창","안동","옥구","옥야","익산","장흥","충주","회진"],"meaning":"수풀 림","strokes":null,"note":"두음법칙상 '림'으로도 등록 가능(2007 대법원 판례)","sourceNote":"위키 개별문서(임_(성씨))+한국의_성씨_목록 교차확인. 나주·평택·부안이 대다수(림씨 전체 90개 본관 중)."},
+      {"ch":"任","bongwans":["풍천","장흥","관산","곡성","나주","안동","평택"],"meaning":"맡길 임","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 풍천이 대다수."}
+    ]},
+    {"reading":"한","hanja":[
+      {"ch":"韓","bongwans":["청주","곡산","단주","평산","한양","안변","양주","홍산","대흥","부안","개성","함흥","금산","보성","남원","밀양"],"meaning":"나라 이름 한","strokes":null,"sourceNote":"위키 개별문서(한_(성씨))+한국의_성씨_목록 교차확인. 청주 한씨가 대다수."}
+    ]},
+    {"reading":"오","hanja":[
+      {"ch":"吳","bongwans":["해주","동복","보성","함양","군위","고창","나주","낙안","장흥","화순","함평","울산","흥양","평해","연일","영원","의성","두원","전주"],"meaning":"성씨 오 / 나라 이름 오","strokes":null,"sourceNote":"위키 개별문서(오_(성씨))+한국의_성씨_목록 교차확인. 해주 오씨가 대다수(46만+)."}
+    ]},
+    {"reading":"서","hanja":[
+      {"ch":"徐","bongwans":["이천","달성","대구","장성","연산","남평","부여","평당","남양","당성","연안","전주","봉성","안동","울산","절강"],"meaning":"천천할 서","strokes":null,"sourceNote":"위키 개별문서(서_(성씨))+한국의_성씨_목록 교차확인. 모든 서씨가 이천에서 나와 나머지는 별파라고 문헌 기록."},
+      {"ch":"西","bongwans":["충주"],"meaning":"서녘 서","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"신","hanja":[
+      {"ch":"申","bongwans":["평산","고령","아주","삭녕","고창","울산","의성","진주","평창","조종","영월"],"meaning":"펼 신 / 원숭이 신","strokes":null,"sourceNote":"위키 개별문서(신_(성씨))+한국의_성씨_목록 교차확인. 평산 신씨가 대다수(56만+)."},
+      {"ch":"辛","bongwans":["영산","영월","평창"],"meaning":"매울 신","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 영월은 영산신씨 9세손에서 분관."},
+      {"ch":"愼","bongwans":["거창","진주"],"meaning":"삼갈 신","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"권","hanja":[
+      {"ch":"權","bongwans":["안동","예천"],"meaning":"권세 권","strokes":null,"sourceNote":"위키 개별문서(권_(성씨))+한국의_성씨_목록 교차확인. 본관은 크게 안동·예천 2본. 예천권씨는 원래 흔(昕)씨였다가 1198년 개성."}
+    ]},
+    {"reading":"황","hanja":[
+      {"ch":"黃","bongwans":["창원","장수","평해","우주","회덕","상주","덕산","제안","황주","항주","경주","진주"],"meaning":"누를 황","strokes":null,"sourceNote":"위키 개별문서(황_(성씨))+한국의_성씨_목록 교차확인. 창원·장수·평해 3본이 대다수."}
+    ]},
+    {"reading":"안","hanja":[
+      {"ch":"安","bongwans":["순흥","죽산","광주","탐진","안산","공주","태원","제천","주천","순천","수원","강진","당진","양산","창원","함안","죽주"],"meaning":"편안 안","strokes":null,"sourceNote":"위키 개별문서(안_(성씨))+한국의_성씨_목록 교차확인. 순흥·죽산·광주·탐진 4대 본관이 대다수(문헌상 109본)."}
+    ]},
+    {"reading":"송","hanja":[
+      {"ch":"宋","bongwans":["여산","은진","진천","연안","야로","신평","남양","홍주","청주","용성","문경","서산","김해","덕산","태안","태인","철원","홍산","회덕"],"meaning":"성씨 송 / 나라 이름 송","strokes":null,"sourceNote":"위키 개별문서(송_(성씨))+한국의_성씨_목록 교차확인. 여산·은진 2본이 대다수(172본 중). 모두 단일 한자 宋만 사용."}
+    ]},
+    {"reading":"전","hanja":[
+      {"ch":"全","bongwans":["천안","정선","옥천","나주","전주(완산)","용궁","옥산","죽산","평강","경주","성주","감천","부여","함창","계림","황간","기장","팔거","강릉","거창","경산","대구","안동","완산","진안"],"meaning":"온전할 전","strokes":null,"sourceNote":"위키 개별문서(전_(성씨))+한국의_성씨_목록 교차확인. 문헌상 18본."},
+      {"ch":"田","bongwans":["담양","영광","연안","남양","하음","경주","광평","울진","정선","천안","태산","평택"],"meaning":"밭 전","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 담양이 대본(15만+)."},
+      {"ch":"錢","bongwans":["문경","문희","관산","개경"],"meaning":"돈 전","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 문경이 압도적 다수."}
+    ]},
+    {"reading":"홍","hanja":[
+      {"ch":"洪","bongwans":["남양","풍산","홍주","부계","의성","회인","개령","나주","남원","전주","풍천"],"meaning":"넓을 홍","strokes":null,"sourceNote":"위키 개별문서(홍_(성씨))+한국의_성씨_목록 교차확인. 남양 홍씨(당홍계+토홍계)가 대다수(48만+)."}
+    ]},
+    {"reading":"유","hanja":[
+      {"ch":"劉","bongwans":["강릉","거창","배천","연안","충주","성주","연백"],"meaning":"묘금도 유","strokes":null,"note":"두음법칙상 '류'로도 등록/표기","sourceNote":"위키 개별문서(유_(성씨))+한국의_성씨_목록 교차확인. 강릉이 대다수(47본 중)."},
+      {"ch":"兪","bongwans":["기계","무안","강진","인동","고령","창원","장사"],"meaning":"그러할 유","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 기계가 대다수(98본 중, 인구 순위 46위)."},
+      {"ch":"柳","bongwans":["문화","전주","고흥","서산","선산","약목","영광","육창","정주","진주","진천","풍산","하동","하회"],"meaning":"버들 류","strokes":null,"note":"두음법칙상 '류'로도 등록/표기(2007년 이후 다수 개명, census에서 유/류 별도 집계)","sourceNote":"위키 개별문서+한국의_성씨_목록+인구순_성씨_목록 3중 교차확인."},
+      {"ch":"庾","bongwans":["평산","무송"],"meaning":"곳집 유","strokes":null,"sourceNote":"위키 개별문서(유_(성씨))+한국의_성씨_목록 교차확인. 무송이 대다수(1.2만+), 평산은 소수."}
+    ]},
+    {"reading":"고","hanja":[
+      {"ch":"高","bongwans":["제주","횡성","장흥","개성","상당","연안","안동","고봉","김화","담양","옥구","용담","의령","토산"],"meaning":"높을 고","strokes":null,"sourceNote":"위키 개별문서(고_(성씨))+한국의_성씨_목록 교차확인. 제주 고씨가 대다수(31만+), 30여 본 중 장흥·개성·횡성이 다음."}
+    ]},
+    {"reading":"문","hanja":[
+      {"ch":"文","bongwans":["남평","강성","장연","정선","강릉","감천","개령","능성","보령","선산","안동","영산","하양"],"meaning":"글월 문","strokes":null,"sourceNote":"위키 개별문서(문_(성씨))+한국의_성씨_목록 교차확인. 남평 문씨가 전체의 96% 이상."}
+    ]},
+    {"reading":"양","hanja":[
+      {"ch":"梁","bongwans":["제주","남원","충주","전주","나주","경주","임천","진주","청주","안동"],"meaning":"들보 량","strokes":null,"note":"두음법칙상 '량'으로도 등록/표기 가능(2007 대법원 판례)","sourceNote":"위키 개별문서(양_(성씨))+한국의_성씨_목록 교차확인. 제주·남원 2본이 공식 대본."},
+      {"ch":"楊","bongwans":["청주","안악","밀양","중화","남원","통주","대구","진주","충주"],"meaning":"버들 양","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"손","hanja":[
+      {"ch":"孫","bongwans":["밀양","경주","평해","일직","청주","구례","안협","나주","비안","대구","부령","안동","영천","월성"],"meaning":"손자 손","strokes":null,"sourceNote":"위키 개별문서(손_(성씨))+한국의_성씨_목록 교차확인. 밀양 손씨가 대다수(35본 중)."}
+    ]},
+    {"reading":"배","hanja":[
+      {"ch":"裵","bongwans":["경주","성주","성산","분성","김해","대구","달성","흥해","곤양","곤산","함흥","화순","협계","남해"],"meaning":"성씨 배","strokes":null,"sourceNote":"위키 개별문서(배_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"백","hanja":[
+      {"ch":"白","bongwans":["수원","직산","남포","대흥","청도","부여","상당","신풍","적성","평산","임천","해미","태인","서천","선산","대구","남해"],"meaning":"흰 백","strokes":null,"sourceNote":"위키 개별문서(백_(성씨))+한국의_성씨_목록 교차확인. 수원 백씨가 전체의 90% 이상(조선 초부터 타 본관 흡수)."}
+    ]},
+    {"reading":"허","hanja":[
+      {"ch":"許","bongwans":["김해","양천","태인","하양","시산","전주"],"meaning":"허락할 허","strokes":null,"sourceNote":"위키 개별문서(허_(성씨))+한국의_성씨_목록 교차확인. 태인 허씨에서 인천 이씨가 갈라진 동조이성 관계."}
+    ]},
+    {"reading":"남","hanja":[
+      {"ch":"南","bongwans":["의령","영양","고성","남원","경주","고령","남양","남평","대전","밀양","보성","안동","진주","창녕","함안"],"meaning":"남녘 남","strokes":null,"sourceNote":"위키 개별문서(남_(성씨))+한국의_성씨_목록 교차확인. 의령·영양·고성 3본이 형제 분관(홍보→영양, 의보→의령, 광보→고성)."}
+    ]},
+    {"reading":"심","hanja":[
+      {"ch":"沈","bongwans":["청송","삼척","풍산","부유"],"meaning":"성씨 심 / 잠길 침","strokes":null,"sourceNote":"위키 개별문서(심_(성씨))+한국의_성씨_목록 교차확인. 4본 중 청송이 대다수."}
+    ]},
+    {"reading":"노","hanja":[
+      {"ch":"盧","bongwans":["광주","교하","풍천","장연","안동","안강","연일","곡산"],"meaning":"검을 로","strokes":null,"note":"원래 발음 '로', 두음법칙상 '노'로 표기(2007 대법원 판례 대상)","sourceNote":"위키 개별문서(노_(성씨))+한국의_성씨_목록 교차확인. 광주가 대본(9관노씨)."},
+      {"ch":"魯","bongwans":["함평","함풍","강화","광주"],"meaning":"노나라 로","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."},
+      {"ch":"路","bongwans":["개성"],"meaning":"길 로","strokes":null,"sourceNote":"위키 개별문서(노_(성씨)) 단일 확인, 인구 극소(200여명)."}
+    ]},
+    {"reading":"하","hanja":[
+      {"ch":"河","bongwans":["진양(진주)","강화","청주"],"meaning":"물 하","strokes":null,"sourceNote":"위키 개별문서(하_(성씨))+한국의_성씨_목록 교차확인. 진양(진주) 하씨가 대다수(시랑공파·사직공파·단계공파)."},
+      {"ch":"賀","bongwans":["진주"],"meaning":"하례 하","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"곽","hanja":[
+      {"ch":"郭","bongwans":["현풍","청주","선산","해미","봉산","청풍","포산"],"meaning":"성곽 곽","strokes":null,"sourceNote":"위키 개별문서(곽_(성씨))+한국의_성씨_목록 교차확인. 현풍이 대다수(약 82%)."}
+    ]},
+    {"reading":"성","hanja":[
+      {"ch":"成","bongwans":["창녕","강릉"],"meaning":"이룰 성","strokes":null,"sourceNote":"위키 개별문서(성_(성씨))+한국의_성씨_목록 교차확인. 창녕 성씨가 대다수(성삼문 배출)."}
+    ]},
+    {"reading":"차","hanja":[
+      {"ch":"車","bongwans":["연안","남해","용성","평산"],"meaning":"수레 차","strokes":null,"sourceNote":"위키 개별문서(차_(성씨))+한국의_성씨_목록 교차확인. 연안이 단본으로 문헌기록되나 목록문서에는 분관 추가 기재."}
+    ]},
+    {"reading":"주","hanja":[
+      {"ch":"朱","bongwans":["신안","나주","능성","웅천","공주","전주","압해"],"meaning":"붉을 주","strokes":null,"sourceNote":"위키 개별문서(주_(성씨))+한국의_성씨_목록 교차확인. 45본 이상이 1902년 신안으로 통일."},
+      {"ch":"周","bongwans":["상주","초계","철원","함안","장흥","삼계","안의","신안","풍기"],"meaning":"두루 주","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"우","hanja":[
+      {"ch":"禹","bongwans":["단양"],"meaning":"성씨 우","strokes":null,"sourceNote":"위키 개별문서(우_(성씨))+한국의_성씨_목록 교차확인. 단양 단본."},
+      {"ch":"于","bongwans":["목천"],"meaning":"어조사 우","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"구","hanja":[
+      {"ch":"具","bongwans":["능성","창원","평해"],"meaning":"갖출 구","strokes":null,"sourceNote":"위키 개별문서(구_(성씨))+한국의_성씨_목록 교차확인. 능성이 대다수."},
+      {"ch":"丘","bongwans":["평해"],"meaning":"언덕 구","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨(具와 동원 관계 주장 있음)."}
+    ]},
+    {"reading":"민","hanja":[
+      {"ch":"閔","bongwans":["여흥"],"meaning":"성씨 민","strokes":null,"sourceNote":"위키 개별문서(민_(성씨))+한국의_성씨_목록 교차확인. 여흥 단본, 고려 재상지종 가문."}
+    ]},
+    {"reading":"진","hanja":[
+      {"ch":"陳","bongwans":["여양","삼척","강릉","나주","광동","남해","덕창","신광","복주","신광","임피","양산","양주"],"meaning":"베풀 진","strokes":null,"sourceNote":"위키 개별문서(진_(성씨))+한국의_성씨_목록 교차확인. 47본 중 여양·삼척·강릉 등이 주요."},
+      {"ch":"秦","bongwans":["풍기","진주","남원","대원","삼척","영춘","용인"],"meaning":"나라 진","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 풍기·진주 외는 유래 불명이라고 문헌 기록."},
+      {"ch":"晉","bongwans":["남원","삼척"],"meaning":"나아갈 진","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."},
+      {"ch":"眞","bongwans":["서산"],"meaning":"참 진","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 단본, 희귀."}
+    ]},
+    {"reading":"지","hanja":[
+      {"ch":"池","bongwans":["충주","광주","청송","청주","단양"],"meaning":"못 지","strokes":null,"sourceNote":"위키 개별문서(지_(성씨))+한국의_성씨_목록 교차확인. 충주가 대종."},
+      {"ch":"智","bongwans":["봉산"],"meaning":"슬기 지","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"엄","hanja":[
+      {"ch":"嚴","bongwans":["영월"],"meaning":"엄할 엄","strokes":null,"sourceNote":"위키 개별문서(엄_(성씨))+한국의_성씨_목록 교차확인. 영월 단본(군기공파·복야공파·문과공파)."}
+    ]},
+    {"reading":"채","hanja":[
+      {"ch":"蔡","bongwans":["평강","인천","광주","음성"],"meaning":"성씨 채","strokes":null,"sourceNote":"위키 개별문서(채_(성씨))+한국의_성씨_목록 교차확인. 16본 중 평강·인천이 대다수."},
+      {"ch":"采","bongwans":["여산"],"meaning":"풍채 채","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"원","hanja":[
+      {"ch":"元","bongwans":["원주"],"meaning":"으뜸 원","strokes":null,"sourceNote":"위키 개별문서(원_(성씨))+한국의_성씨_목록 교차확인. 원주 단본(원성백계·시중공계)."},
+      {"ch":"袁","bongwans":["비안"],"meaning":"옷 길 원","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"천","hanja":[
+      {"ch":"千","bongwans":["영양"],"meaning":"일천 천","strokes":null,"sourceNote":"위키 개별문서(천_(성씨))+한국의_성씨_목록 교차확인. 영양 단본(증보문헌비고 97본 기록되나 현재는 영양뿐)."},
+      {"ch":"天","bongwans":["밀양","영양","연안","충주"],"meaning":"하늘 천","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"방","hanja":[
+      {"ch":"方","bongwans":["온양","군위","남양","무안","상주","수원"],"meaning":"모 방","strokes":null,"sourceNote":"위키 개별문서(방_(성씨))+한국의_성씨_목록 교차확인. 온양이 대본."},
+      {"ch":"房","bongwans":["남양"],"meaning":"방 방","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"공","hanja":[
+      {"ch":"孔","bongwans":["곡부"],"meaning":"구멍 공","strokes":null,"sourceNote":"위키 개별문서(공_(성씨))+한국의_성씨_목록 교차확인. 1794년 정조 명으로 곡부 단본 통일."},
+      {"ch":"公","bongwans":["김포","문천"],"meaning":"공평할 공","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"현","hanja":[
+      {"ch":"玄","bongwans":["연주"],"meaning":"검을 현","strokes":null,"sourceNote":"위키 개별문서(현_(성씨))+한국의_성씨_목록 교차확인. 연주 단본, 시조 현담윤."}
+    ]},
+    {"reading":"함","hanja":[
+      {"ch":"咸","bongwans":["강릉","양근"],"meaning":"다 함","strokes":null,"sourceNote":"위키 개별문서(함_(성씨))+한국의_성씨_목록 교차확인. 함혁 원조 동원분파(1936년 병자보 합보)."}
+    ]},
+    {"reading":"변","hanja":[
+      {"ch":"卞","bongwans":["초계","밀양","원주"],"meaning":"법 변","strokes":null,"sourceNote":"위키 개별문서(변_(성씨))+한국의_성씨_목록 교차확인."},
+      {"ch":"邊","bongwans":["장연","황주","원주"],"meaning":"가 변","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"염","hanja":[
+      {"ch":"廉","bongwans":["파주","용담"],"meaning":"청렴할 렴","strokes":null,"note":"두음법칙상 '렴'으로도 등록 가능(2007 대법원 판례)","sourceNote":"위키 개별문서(염_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"여","hanja":[
+      {"ch":"呂","bongwans":["함양","성주(성산)"],"meaning":"성씨 려","strokes":null,"note":"두음법칙에 따라 '여' 또는 '려' 두 가지 음으로 실제 병기됨(직접 확인)","sourceNote":"위키 개별문서(여_(성씨))에서 '려 또는 여로 표기됨'을 명시적으로 확인+한국의_성씨_목록 교차확인."},
+      {"ch":"余","bongwans":["의령","하동"],"meaning":"남을 여","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 백제 왕족 부여씨에서 기원."}
+    ]},
+    {"reading":"추","hanja":[
+      {"ch":"秋","bongwans":["추계","전주"],"meaning":"가을 추","strokes":null,"sourceNote":"위키 개별문서(추_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"도","hanja":[
+      {"ch":"都","bongwans":["성주","경주","밀양","청주"],"meaning":"도읍 도","strokes":null,"sourceNote":"위키 개별문서(도_(성씨))+한국의_성씨_목록 교차확인. 성주가 원본, 개별문서는 단본 기록이나 목록문서는 분관 추가."}
+    ]},
+    {"reading":"소","hanja":[
+      {"ch":"蘇","bongwans":["진주"],"meaning":"깨어날 소","strokes":null,"sourceNote":"위키 개별문서(소_(성씨))+한국의_성씨_목록 교차확인. 진주 단본."},
+      {"ch":"邵","bongwans":["평산","진주"],"meaning":"고을 이름 소","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 시조 소옹은 중국에서 신안백 봉해짐."}
+    ]},
+    {"reading":"석","hanja":[
+      {"ch":"石","bongwans":["충주","해주","광주","조주","홍주","성주","화원"],"meaning":"돌 석","strokes":null,"sourceNote":"위키 개별문서(석_(성씨))+한국의_성씨_목록 교차확인. 충주가 대다수(85%)."},
+      {"ch":"昔","bongwans":["경주(월성)"],"meaning":"옛 석","strokes":null,"sourceNote":"위키 개별문서(석_(성씨) 문서 내 언급)+한국의_성씨_목록 교차확인. 신라 4대 석탈해왕 계통, 신라 왕족 성씨."}
+    ]},
+    {"reading":"선","hanja":[
+      {"ch":"宣","bongwans":["보성"],"meaning":"베풀 선","strokes":null,"sourceNote":"위키 개별문서(선_(성씨))+한국의_성씨_목록 교차확인. 광주·밀양 선씨는 보성 선씨의 지역적 호칭(동원)."}
+    ]},
+    {"reading":"설","hanja":[
+      {"ch":"薛","bongwans":["경주","순창","개성"],"meaning":"쑥 설","strokes":null,"sourceNote":"위키 개별문서(설_(성씨))+한국의_성씨_목록 교차확인. 순창이 인구 최다."},
+      {"ch":"偰","bongwans":["경주"],"meaning":"맑을 설","strokes":null,"sourceNote":"한국의_성씨_목록 확인(경주 설손계), 희귀 성씨."}
+    ]},
+    {"reading":"마","hanja":[
+      {"ch":"馬","bongwans":["장흥","목천","개성","의성","장안"],"meaning":"말 마","strokes":null,"sourceNote":"위키 개별문서(마_(성씨))+한국의_성씨_목록 교차확인. 장흥이 시조(백제 개국공신 마려)."},
+      {"ch":"麻","bongwans":["상곡","영평"],"meaning":"삼 마","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"길","hanja":[
+      {"ch":"吉","bongwans":["해평(선산)"],"meaning":"길할 길","strokes":null,"sourceNote":"위키 개별문서(길_(성씨))+한국의_성씨_목록 교차확인. 해평 길씨(선산 길씨와 동일 계통)가 대본."}
+    ]},
+    {"reading":"연","hanja":[
+      {"ch":"延","bongwans":["곡산","나주"],"meaning":"늘일 연","strokes":null,"sourceNote":"위키 개별문서(연_(성씨))+한국의_성씨_목록 교차확인. 곡산이 단본으로 문헌기록, 시조 연사종."},
+      {"ch":"連","bongwans":["나주","전주"],"meaning":"잇닿을 련","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."},
+      {"ch":"燕","bongwans":["곡산","전주","정평"],"meaning":"제비 연","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"위","hanja":[
+      {"ch":"魏","bongwans":["장흥"],"meaning":"나라 이름 위","strokes":null,"sourceNote":"위키 개별문서(위_(성씨))+한국의_성씨_목록 교차확인. 장흥 단본."},
+      {"ch":"韋","bongwans":["강화"],"meaning":"가죽 위","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소."}
+    ]},
+    {"reading":"표","hanja":[
+      {"ch":"表","bongwans":["신창","죽산","남양","동래","풍산"],"meaning":"겉 표","strokes":null,"sourceNote":"위키 개별문서(표_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"명","hanja":[
+      {"ch":"明","bongwans":["연안","서촉"],"meaning":"밝을 명","strokes":null,"sourceNote":"위키 개별문서(명_(성씨))+한국의_성씨_목록 교차확인. 서촉 명씨는 중국계 귀화, 연안은 사당 소재지."}
+    ]},
+    {"reading":"기","hanja":[
+      {"ch":"奇","bongwans":["행주","경주","장성"],"meaning":"기이할 기","strokes":null,"sourceNote":"위키 개별문서(기_(성씨))+한국의_성씨_목록 교차확인. 행주 단본이 문헌 기록이나 목록문서에 경주·장성 추가."},
+      {"ch":"箕","bongwans":["행주","평양"],"meaning":"키 기","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소(수십명)."}
+    ]},
+    {"reading":"반","hanja":[
+      {"ch":"潘","bongwans":["거제","광주","남평","결성","기성","요동"],"meaning":"성씨 반","strokes":null,"sourceNote":"위키 개별문서(반_(성씨))+한국의_성씨_목록 교차확인."},
+      {"ch":"班","bongwans":["광주"],"meaning":"나눌 반","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"나","hanja":[
+      {"ch":"羅","bongwans":["나주","금성","안정","군위","비안","수성"],"meaning":"벌일 라","strokes":null,"note":"두음법칙상 '라'로도 등록/표기(census에서 나/라 별도 집계, 2007 대법원 판례 적용 실제 개명 575명)","sourceNote":"위키 개별문서(나_(성씨))+한국의_성씨_목록+인구순_성씨_목록 3중 교차확인. 나주가 최대, 금성 라씨는 동성동본이족(시조 다름)."}
+    ]},
+    {"reading":"라","hanja":[
+      {"ch":"羅","bongwans":["금성","나주"],"meaning":"벌일 라","strokes":null,"note":"羅씨의 두음법칙 원음 표기(나 항목과 동일 한자, dueumAliases 참고)","sourceNote":"위키 개별문서(나_(성씨))+인구순_성씨_목록(라(羅)* 별도 집계 25,960명) 교차확인."}
+    ]},
+    {"reading":"왕","hanja":[
+      {"ch":"王","bongwans":["개성","제남","강릉","해주","산동"],"meaning":"임금 왕","strokes":null,"sourceNote":"위키 개별문서(왕_(한국_성씨))+한국의_성씨_목록 교차확인. 개성 왕씨는 고려 왕족 후예."}
+    ]},
+    {"reading":"옥","hanja":[
+      {"ch":"玉","bongwans":["의령"],"meaning":"구슬 옥","strokes":null,"sourceNote":"위키 개별문서(옥_(성씨))+한국의_성씨_목록 교차확인. 문헌상 17본이나 현재 의령 단본 합보."}
+    ]},
+    {"reading":"육","hanja":[
+      {"ch":"陸","bongwans":["옥천"],"meaning":"뭍 륙","strokes":null,"note":"두음법칙상 '륙'으로도 표기 언급됨","sourceNote":"위키 개별문서(육_(성씨))+한국의_성씨_목록 교차확인. 옥천(관성) 단본, 시조 육보는 중국 절강성 출신."}
+    ]},
+    {"reading":"인","hanja":[
+      {"ch":"印","bongwans":["교동","연안"],"meaning":"도장 인","strokes":null,"sourceNote":"위키 개별문서(인_(성씨))+한국의_성씨_목록 교차확인. 교동이 대다수, 연안은 몽골계 귀화(인후)."}
+    ]},
+    {"reading":"맹","hanja":[
+      {"ch":"孟","bongwans":["신창"],"meaning":"맏 맹","strokes":null,"sourceNote":"위키 개별문서(맹_(성씨))+한국의_성씨_목록 교차확인. 신창 단본, 그 외는 유래 불명이라 문헌 기록."}
+    ]},
+    {"reading":"제","hanja":[
+      {"ch":"諸","bongwans":["칠원","의성","고성","보성","태원"],"meaning":"모두 제","strokes":null,"sourceNote":"위키 개별문서(제_(성씨))+한국의_성씨_목록 교차확인. 칠원이 다수, 나머지는 세거지명으로 동원."}
+    ]},
+    {"reading":"남궁","hanja":[
+      {"ch":"南宮","bongwans":["함열"],"meaning":"성씨 남궁 (복성)","strokes":null,"sourceNote":"위키 개별문서(남궁_(성씨))+한국의_성씨_목록 교차확인. 함열 단본, 한국 복성 중 최다 인구."}
+    ]},
+    {"reading":"탁","hanja":[
+      {"ch":"卓","bongwans":["광산","광주"],"meaning":"높을 탁","strokes":null,"sourceNote":"위키 개별문서(탁_(성씨))+한국의_성씨_목록 교차확인. 광산 탁씨가 대다수."}
+    ]},
+    {"reading":"국","hanja":[
+      {"ch":"鞠","bongwans":["담양","영광","복성","진주","대구","부령"],"meaning":"성씨 국 / 국문할 국","strokes":null,"sourceNote":"위키 개별문서(국_(성씨))+한국의_성씨_목록 교차확인. 담양이 가장 유명, 시조 국주는 1128년 고려 귀화."},
+      {"ch":"國","bongwans":["담양"],"meaning":"나라 국","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"어","hanja":[
+      {"ch":"魚","bongwans":["함종","충주","경흥"],"meaning":"물고기 어","strokes":null,"sourceNote":"위키 개별문서(어_(성씨))+한국의_성씨_목록 교차확인. 함종이 대다수."}
+    ]},
+    {"reading":"은","hanja":[
+      {"ch":"殷","bongwans":["행주","태인","고부","고양"],"meaning":"성할 은 / 은나라 은","strokes":null,"sourceNote":"위키 개별문서(은_(성씨))+한국의_성씨_목록 교차확인. 행주가 대다수(문헌상 9본)."}
+    ]},
+    {"reading":"편","hanja":[
+      {"ch":"片","bongwans":["절강","밀양"],"meaning":"조각 편","strokes":null,"sourceNote":"위키 개별문서(편_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"피","hanja":[
+      {"ch":"皮","bongwans":["홍천","단양","괴산"],"meaning":"가죽 피","strokes":null,"sourceNote":"위키 개별문서(피_(성씨))+한국의_성씨_목록 교차확인. 중국 천수에서 계출, 백가성 85위."}
+    ]},
+    {"reading":"예","hanja":[
+      {"ch":"芮","bongwans":["의흥"],"meaning":"성씨 예","strokes":null,"sourceNote":"위키 개별문서(예_(성씨))+한국의_성씨_목록 교차확인. 의흥 단본(부계 예씨는 동일 계통 분파)."}
+    ]},
+    {"reading":"태","hanja":[
+      {"ch":"太","bongwans":["협계","영순","남원"],"meaning":"클 태","strokes":null,"sourceNote":"위키 개별문서(태_(성씨))+한국의_성씨_목록 교차확인. 협계·영순은 2010년 백주 태씨로 합본."}
+    ]},
+    {"reading":"좌","hanja":[
+      {"ch":"左","bongwans":["청주(제주)"],"meaning":"왼 좌","strokes":null,"sourceNote":"위키 개별문서(좌_(성씨))+한국의_성씨_목록 교차확인. 원래 중국 청주(靑州)였으나 1922년 한국 청주(淸州)로 표기 변경, 일부는 실거주지 제주로 등록."}
+    ]},
+    {"reading":"황보","hanja":[
+      {"ch":"皇甫","bongwans":["영천","황주"],"meaning":"성씨 황보 (복성)","strokes":null,"sourceNote":"위키 개별문서(황보_(성씨))+한국의_성씨_목록 교차확인. 황주 황보씨는 고려 태조 4비 신정왕후 배출."}
+    ]},
+    {"reading":"선우","hanja":[
+      {"ch":"鮮于","bongwans":["태원"],"meaning":"성씨 선우 (복성)","strokes":null,"sourceNote":"위키 개별문서(선우_(성씨))+한국의_성씨_목록 교차확인. 태원 단본, 기자조선 관련 전승."}
+    ]},
+    {"reading":"독고","hanja":[
+      {"ch":"獨孤","bongwans":["남원"],"meaning":"성씨 독고 (복성)","strokes":null,"sourceNote":"위키백과 '독고' 문서(WebSearch로 확인)+나무위키 '남원 독고씨' 교차확인. 조선씨족통보상 남원·광릉·나주·황주·의주 5본이 있으나 현재는 남원계 위주. 중국 북위 선비족 독고씨에서 유래."}
+    ]},
+    {"reading":"제갈","hanja":[
+      {"ch":"諸葛","bongwans":["남양","칠원","대구","남원","충주"],"meaning":"성씨 제갈 (복성)","strokes":null,"sourceNote":"위키 개별문서(제갈_(성씨))+한국의_성씨_목록 교차확인. 남양이 압도적 다수(80% 이상)."}
+    ]},
+    {"reading":"사공","hanja":[
+      {"ch":"司空","bongwans":["효령(군위)"],"meaning":"성씨 사공 (복성)","strokes":null,"sourceNote":"위키 개별문서(사공_(성씨))+한국의_성씨_목록 교차확인. 효령 단본."}
+    ]},
+    {"reading":"서문","hanja":[
+      {"ch":"西門","bongwans":["안음"],"meaning":"성씨 서문 (복성)","strokes":null,"sourceNote":"위키 개별문서(서문_(성씨))+한국의_성씨_목록 교차확인. 시조는 원나라 진사 출신 서문기."}
+    ]},
+    {"reading":"동방","hanja":[
+      {"ch":"東方","bongwans":["진주","청주"],"meaning":"성씨 동방 (복성)","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 복성."}
+    ]},
+    {"reading":"두","hanja":[
+      {"ch":"杜","bongwans":["두릉","만경"],"meaning":"막을 두","strokes":null,"sourceNote":"위키 개별문서(두_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"봉","hanja":[
+      {"ch":"奉","bongwans":["하음"],"meaning":"받들 봉","strokes":null,"sourceNote":"위키 개별문서(봉_(성씨))+한국의_성씨_목록 교차확인. 하음 단본."},
+      {"ch":"鳳","bongwans":["경주"],"meaning":"봉황 봉","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소(30여명)."}
+    ]},
+    {"reading":"승","hanja":[
+      {"ch":"承","bongwans":["광산","연일"],"meaning":"이을 승","strokes":null,"sourceNote":"위키 개별문서(승_(성씨))+한국의_성씨_목록 교차확인."},
+      {"ch":"昇","bongwans":["금성","남주"],"meaning":"오를 승","strokes":null,"sourceNote":"한국의_성씨_목록 확인, 희귀 성씨."}
+    ]},
+    {"reading":"시","hanja":[
+      {"ch":"施","bongwans":["절강","성주"],"meaning":"베풀 시","strokes":null,"sourceNote":"위키 개별문서(시_(성씨))+한국의_성씨_목록 교차확인. 절강(항주) 출신 시조."},
+      {"ch":"柴","bongwans":["태인","김화","능향"],"meaning":"섶 시","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 세종실록지리지에 태인 토성으로 기록."}
+    ]},
+    {"reading":"계","hanja":[
+      {"ch":"桂","bongwans":["수안"],"meaning":"계수나무 계","strokes":null,"sourceNote":"위키 개별문서(계_(성씨))+한국의_성씨_목록 교차확인. 12본 전하나 현재 수안 1본으로 합본."}
+    ]},
+    {"reading":"온","hanja":[
+      {"ch":"溫","bongwans":["금구","온양","전주"],"meaning":"따뜻할 온","strokes":null,"sourceNote":"위키 개별문서(온_(성씨))+한국의_성씨_목록 교차확인. 11본이 전하나 모두 같은 혈손."}
+    ]},
+    {"reading":"팽","hanja":[
+      {"ch":"彭","bongwans":["용강","절강","남양","전주"],"meaning":"성씨 팽","strokes":null,"sourceNote":"위키 개별문서(팽_(성씨))+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"평","hanja":[
+      {"ch":"平","bongwans":["충주","가흥","인천","진주"],"meaning":"평평할 평","strokes":null,"sourceNote":"위키 개별문서(평_(성씨))+한국의_성씨_목록 교차확인. 충주가 대다수."}
+    ]},
+    {"reading":"화","hanja":[
+      {"ch":"化","bongwans":["진양(진주)","나주","복룡","여황"],"meaning":"될 화","strokes":null,"sourceNote":"위키 개별문서(화_(성씨))+한국의_성씨_목록 교차확인. 진양이 대본."}
+    ]},
+    {"reading":"종","hanja":[
+      {"ch":"鍾","bongwans":["영암","하음","강화","통진","두원","정의","풍덕"],"meaning":"쇠북 종","strokes":null,"sourceNote":"위키 개별문서(종_(성씨) 내 언급)+한국의_성씨_목록 교차확인. 영암이 대표적."},
+      {"ch":"宗","bongwans":["전주"],"meaning":"마루 종","strokes":null,"sourceNote":"위키 개별문서(종_(성씨))+한국의_성씨_목록 교차확인. 전주 단본, 인구 극소(6명)."}
+    ]},
+    {"reading":"후","hanja":[
+      {"ch":"后","bongwans":["당인"],"meaning":"임금 후","strokes":null,"sourceNote":"위키 개별문서(후_(성씨))+한국의_성씨_목록 교차확인. 1930년 국세조사에서 처음 나타남."}
+    ]},
+    {"reading":"경","hanja":[
+      {"ch":"慶","bongwans":["청주"],"meaning":"경사 경","strokes":null,"sourceNote":"위키 개별문서(경_(성씨))+한국의_성씨_목록 교차확인. 청주 단본."},
+      {"ch":"景","bongwans":["태인","해주"],"meaning":"볕 경","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인."}
+    ]},
+    {"reading":"견","hanja":[
+      {"ch":"甄","bongwans":["황간","상주","전주","청양"],"meaning":"질그릇 견","strokes":null,"sourceNote":"위키 개별문서(견_(성씨))+한국의_성씨_목록 교차확인. 후백제 견훤 후손 관련 전승."}
+    ]},
+    {"reading":"목","hanja":[
+      {"ch":"睦","bongwans":["사천"],"meaning":"화목할 목","strokes":null,"sourceNote":"위키 개별문서(목_(성씨))+한국의_성씨_목록 교차확인. 사천 단본."}
+    ]},
+    {"reading":"복","hanja":[
+      {"ch":"卜","bongwans":["면천","청양","구성"],"meaning":"점 복","strokes":null,"sourceNote":"위키 개별문서(복_(성씨))+한국의_성씨_목록 교차확인. 면천이 대본(문헌상 9본)."}
+    ]},
+    {"reading":"빈","hanja":[
+      {"ch":"賓","bongwans":["대구(수성)"],"meaning":"손 빈","strokes":null,"sourceNote":"위키 개별문서(빈_(성씨))+한국의_성씨_목록 교차확인."},
+      {"ch":"彬","bongwans":["담양","대구(달성)"],"meaning":"빛날 빈","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 몽골 출신 귀화 시조."}
+    ]},
+    {"reading":"범","hanja":[
+      {"ch":"范","bongwans":["금성"],"meaning":"성씨 범","strokes":null,"sourceNote":"위키 개별문서(범_(성씨))+한국의_성씨_목록 교차확인. 중국 낭야 출신, 고려 원종 15년(1274) 정착."},
+      {"ch":"凡","bongwans":["안주"],"meaning":"무릇 범","strokes":null,"sourceNote":"위키 개별문서 확인, 희귀 성씨(150여명)."}
+    ]},
+    {"reading":"상","hanja":[
+      {"ch":"尙","bongwans":["목천"],"meaning":"오히려 상","strokes":null,"sourceNote":"위키 개별문서(상_(성씨))+한국의_성씨_목록 교차확인. 목천 단본, 상진(영의정) 배출."}
+    ]},
+    {"reading":"옹","hanja":[
+      {"ch":"邕","bongwans":["순창(옥천)"],"meaning":"화할 옹","strokes":null,"sourceNote":"위키 개별문서(옹_(성씨))+한국의_성씨_목록 교차확인. 세종실록지리지에 순창 토성으로 기록."},
+      {"ch":"雍","bongwans":["파평"],"meaning":"화할 옹","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 1930년 국세조사에서 처음 나타남, 인구 극소."}
+    ]},
+    {"reading":"갈","hanja":[
+      {"ch":"葛","bongwans":["대구","남양","청주","성주","충주"],"meaning":"칡 갈","strokes":null,"sourceNote":"위키 개별문서(갈_(성씨))+한국의_성씨_목록 교차확인. 문헌상 20본, 인구 극소(2천여명)."}
+    ]},
+    {"reading":"금","hanja":[
+      {"ch":"琴","bongwans":["봉화","계양"],"meaning":"거문고 금","strokes":null,"sourceNote":"위키 개별문서(금_(성씨))+한국의_성씨_목록 교차확인. 봉화가 대다수(2.5만+), 시조 금의."}
+    ]},
+    {"reading":"만","hanja":[
+      {"ch":"萬","bongwans":["강화","강릉","전주"],"meaning":"일만 만","strokes":null,"sourceNote":"위키 개별문서(만_(성씨))+한국의_성씨_목록 교차확인. 인구 극소(백여명)."}
+    ]},
+    {"reading":"자","hanja":[
+      {"ch":"慈","bongwans":["요양","해주","중원"],"meaning":"사랑 자","strokes":null,"sourceNote":"위키 개별문서(자_(성씨))+한국의_성씨_목록 교차확인. 2000년 총 178명."}
+    ]},
+    {"reading":"당","hanja":[
+      {"ch":"唐","bongwans":["밀양"],"meaning":"당나라 당","strokes":null,"sourceNote":"위키 개별문서(당_(성씨))+한국의_성씨_목록 교차확인. 밀양 단본, 경주·청주·남원·영광은 세거지명일 뿐 공식 본관 아님."}
+    ]},
+    {"reading":"춘","hanja":[
+      {"ch":"椿","bongwans":["남양"],"meaning":"참죽나무 춘","strokes":null,"sourceNote":"위키 개별문서(춘_(성씨))+한국의_성씨_목록 교차확인. 시조·내력 미상, 2000년 77명."}
+    ]},
+    {"reading":"동","hanja":[
+      {"ch":"董","bongwans":["광천","경주","안동","원주","전주","청주","충주","풍천","하동","황주"],"meaning":"바를 동","strokes":null,"sourceNote":"위키 개별문서(동_(성씨))+한국의_성씨_목록 교차확인. 광천(중국 하북성)이 대종."}
+    ]},
+    {"reading":"미","hanja":[
+      {"ch":"米","bongwans":["재령","방산","유성","송림"],"meaning":"쌀 미","strokes":null,"sourceNote":"위키 개별문서(미_(성씨))+한국의_성씨_목록 교차확인. 재령이 대다수(2000년 199명)."}
+    ]},
+    {"reading":"사","hanja":[
+      {"ch":"史","bongwans":["청주","거창","청송"],"meaning":"역사 사","strokes":null,"sourceNote":"위키 개별문서(사_(성씨))+한국의_성씨_목록 교차확인. 청주가 대다수."},
+      {"ch":"謝","bongwans":["한산"],"meaning":"사례할 사","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소."},
+      {"ch":"舍","bongwans":["태안","부평"],"meaning":"집 사","strokes":null,"sourceNote":"위키 개별문서+한국의_성씨_목록 교차확인. 인구 극소(40여명)."}
+    ]}
+  ]
+}
