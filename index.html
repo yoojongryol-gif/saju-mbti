@@ -1562,7 +1562,6 @@ window.ProfileStore = (function () {
   // 이름이 바뀌면(음절 수·값이 달라지면) 자동으로 새로 초기화된다.
   var hanjaSearchState = {};
   var hanjaSearchTimers = {};
-  var hanjaFocusedSearch = null; // { targetId, idx, pos } — 디바운스 재렌더 직후 포커스 복원용(1회성)
   function getHanjaSearchState(ctx, sylls){
     var key = ctx.targetId || 'default';
     var sig = sylls.join('|');
@@ -1597,6 +1596,75 @@ window.ProfileStore = (function () {
   }
   var HANJA_DEFAULT_SHOW = 10;
 
+  // v1.7.1: 한자 검색 결과(후보 버튼 목록)는 입력칸과 분리된 별도 컨테이너에만 그린다.
+  // 검색 디바운스가 여기만 갱신하면 <input> 자체는 절대 재생성되지 않으므로
+  // 한글 IME 조합(글자 조합 세션)이 재렌더로 끊기는 일이 없다.
+  function hanjaResultsWrapId(ctx, idx){
+    return 'hanja-results-' + (ctx.targetId || 'default') + '-' + idx;
+  }
+  function renderHanjaOptsFragment(fullList, srow, sel, idx, syl){
+    var filtered = filterHanjaCandidates(fullList, srow);
+    var searching = !!(srow.q.trim() || srow.strokes);
+    var visible = searching ? filtered : (srow.showAll ? filtered : filtered.slice(0, HANJA_DEFAULT_SHOW));
+    var h = '<div class="hanja-opts">';
+    if(!visible.length){
+      h += '<p class="hanja-search-empty">검색 결과가 없습니다.</p>';
+    }
+    visible.forEach(function(e){
+      h += '<button type="button" class="hanja-opt' + (sel[idx] && sel[idx].ch === e.ch ? ' selected' : '')
+        + '" data-idx="' + idx + '" data-ch="' + e.ch + '" data-reading="' + syl + '">'
+        + '<span class="hj">' + e.ch + '</span>'
+        + '<span class="mn">' + e.meaning + '</span>'
+        + '<span class="st">' + e.strokes + '획</span></button>';
+    });
+    h += '<button type="button" class="hanja-opt none' + (sel[idx] === null ? ' selected' : '')
+      + '" data-idx="' + idx + '" data-ch=""><span class="hj">목록에<br>없음</span></button>';
+    h += '</div>';
+    if(!searching && !srow.showAll && filtered.length > HANJA_DEFAULT_SHOW){
+      h += '<button type="button" class="hanja-more-btn" data-idx="' + idx + '">나머지 ' + (filtered.length - HANJA_DEFAULT_SHOW) + '자 더 보기</button>';
+    }
+    return h;
+  }
+  // 후보 버튼 클릭/'더 보기' 클릭 리스너를 결과 wrap 하나에만 건다(부분 갱신 후 재바인딩용).
+  function bindHanjaResultsWrap(ctx, wrap){
+    if(!wrap) return;
+    wrap.querySelectorAll('.hanja-opt').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        var ch = btn.dataset.ch;
+        if(!ctx.hanjaSelection) ctx.hanjaSelection = ctx.nameInput.split('').map(function(){ return undefined; });
+        ctx.hanjaSelection[idx] = ch === '' ? null : { ch: ch, reading: btn.dataset.reading };
+        runHanjaAnalysis(ctx);
+        renderNameTab(ctx.nameResult, ctx);
+      });
+    });
+    wrap.querySelectorAll('.hanja-more-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
+        rows[idx].showAll = true;
+        renderNameTab(ctx.nameResult, ctx);
+      });
+    });
+  }
+  // 검색어/획수 필터 변경 시 이 함수만 호출한다 — 결과 wrap의 innerHTML만 바꾸고
+  // 검색 <input>·<select> DOM은 절대 건드리지 않는다.
+  function updateHanjaSearchResults(ctx, idx){
+    var container = document.getElementById(ctx.targetId || 'tab-content');
+    if(!container) return;
+    var sylls = ctx.nameInput.split('');
+    var syl = sylls[idx];
+    if(syl === undefined || !(window.HanjaDB)) return;
+    var fullList = window.HanjaDB.candidates(syl);
+    var rows = getHanjaSearchState(ctx, sylls);
+    var srow = rows[idx];
+    var sel = ctx.hanjaSelection || [];
+    var wrap = container.querySelector('#' + hanjaResultsWrapId(ctx, idx));
+    if(!wrap) return;
+    wrap.innerHTML = renderHanjaOptsFragment(fullList, srow, sel, idx, syl);
+    bindHanjaResultsWrap(ctx, wrap);
+  }
+
   function renderHanjaSection(ctx){
     ctx = ctx || selfNameCtx;
     if(!hanjaAvailable(ctx)) return '';
@@ -1615,9 +1683,6 @@ window.ProfileStore = (function () {
     sylls.forEach(function(syl, i){
       var fullList = window.HanjaDB.candidates(syl);
       var srow = searchRows[i];
-      var filtered = filterHanjaCandidates(fullList, srow);
-      var searching = !!(srow.q.trim() || srow.strokes);
-      var visible = searching ? filtered : (srow.showAll ? filtered : filtered.slice(0, HANJA_DEFAULT_SHOW));
       var strokesSet = {};
       fullList.forEach(function(e){ strokesSet[e.strokes] = true; });
       var strokesOpts = Object.keys(strokesSet).map(Number).sort(function(a, b){ return a - b; });
@@ -1640,23 +1705,9 @@ window.ProfileStore = (function () {
         h += '</div>';
       }
 
-      h += '<div class="hanja-opts">';
-      if(!visible.length){
-        h += '<p class="hanja-search-empty">검색 결과가 없습니다.</p>';
-      }
-      visible.forEach(function(e){
-        h += '<button type="button" class="hanja-opt' + (sel[i] && sel[i].ch === e.ch ? ' selected' : '')
-          + '" data-idx="' + i + '" data-ch="' + e.ch + '" data-reading="' + syl + '">'
-          + '<span class="hj">' + e.ch + '</span>'
-          + '<span class="mn">' + e.meaning + '</span>'
-          + '<span class="st">' + e.strokes + '획</span></button>';
-      });
-      h += '<button type="button" class="hanja-opt none' + (sel[i] === null ? ' selected' : '')
-        + '" data-idx="' + i + '" data-ch=""><span class="hj">목록에<br>없음</span></button>';
+      h += '<div class="hanja-results-wrap" id="' + hanjaResultsWrapId(ctx, i) + '">';
+      h += renderHanjaOptsFragment(fullList, srow, sel, i, syl);
       h += '</div>';
-      if(!searching && !srow.showAll && filtered.length > HANJA_DEFAULT_SHOW){
-        h += '<button type="button" class="hanja-more-btn" data-idx="' + i + '">나머지 ' + (filtered.length - HANJA_DEFAULT_SHOW) + '자 더 보기</button>';
-      }
       h += '</div>';
     });
     h += '</div>';
@@ -1764,19 +1815,12 @@ window.ProfileStore = (function () {
         renderNameTab(ctx.nameResult, ctx);
       });
     }
-    container.querySelectorAll('.hanja-opt').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var idx = parseInt(btn.dataset.idx, 10);
-        var ch = btn.dataset.ch;
-        if(!ctx.hanjaSelection) ctx.hanjaSelection = ctx.nameInput.split('').map(function(){ return undefined; });
-        // 다음자(多音字) 구분을 위해 음(reading)을 함께 넘긴다
-        ctx.hanjaSelection[idx] = ch === '' ? null : { ch: ch, reading: btn.dataset.reading };
-        runHanjaAnalysis(ctx);
-        renderNameTab(ctx.nameResult, ctx);
-      });
+    // 후보 버튼(.hanja-opt)·'더 보기'(.hanja-more-btn) 클릭은 결과 wrap 단위로 바인딩한다.
+    container.querySelectorAll('.hanja-results-wrap').forEach(function(wrap){
+      bindHanjaResultsWrap(ctx, wrap);
     });
 
-    // ---- 한자 검색 (v1.7) ----
+    // ---- 한자 검색 (v1.7, IME 조합 수리 v1.7.1) ----
     container.querySelectorAll('.hanja-search-mode-btn').forEach(function(btn){
       btn.addEventListener('click', function(){
         var idx = parseInt(btn.dataset.idx, 10);
@@ -1790,44 +1834,39 @@ window.ProfileStore = (function () {
         var idx = parseInt(sel.dataset.idx, 10);
         var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
         rows[idx].strokes = sel.value;
-        renderNameTab(ctx.nameResult, ctx);
+        updateHanjaSearchResults(ctx, idx);
       });
     });
-    container.querySelectorAll('.hanja-more-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var idx = parseInt(btn.dataset.idx, 10);
-        var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
-        rows[idx].showAll = true;
-        renderNameTab(ctx.nameResult, ctx);
-      });
-    });
+    // v1.7.1: 검색 <input>은 결과 갱신 때 절대 재생성되지 않는다(updateHanjaSearchResults가
+    // 결과 wrap만 건드림) — 조합(IME) 세션이 재렌더로 끊길 여지 자체가 없다.
+    // 그래도 한글 조합 중간에 검색을 실행해버리면(예: 브라우저별 composition 타이밍 차이)
+    // 사용자가 원치 않는 시점에 결과가 바뀌어 보이므로, compositionstart~compositionend
+    // 구간에는 디바운스 예약을 보류하고 compositionend에서 1회만 실행한다.
     container.querySelectorAll('.hanja-search-input').forEach(function(inp){
       var idx = parseInt(inp.dataset.idx, 10);
       var timerKey = (ctx.targetId || 'default') + ':' + idx;
-      inp.addEventListener('input', function(){
-        var val = inp.value;
-        var pos = inp.selectionStart;
+      function scheduleSearch(){
         if(hanjaSearchTimers[timerKey]) clearTimeout(hanjaSearchTimers[timerKey]);
-        // 200ms 디바운스: 재렌더가 <input>을 통째로 새로 만들기 때문에, 렌더를 일으키는
-        // 시점에만 hanjaFocusedSearch를 세워야(입력 중간 클릭 등과 겹치지 않게) 포커스가
-        // 엉뚱한 순간에 다시 뺏기지 않는다.
         hanjaSearchTimers[timerKey] = setTimeout(function(){
-          hanjaFocusedSearch = { targetId: ctx.targetId || 'default', idx: idx, pos: pos };
           var rows = getHanjaSearchState(ctx, ctx.nameInput.split(''));
-          rows[idx].q = val;
-          renderNameTab(ctx.nameResult, ctx);
+          rows[idx].q = inp.value;
+          updateHanjaSearchResults(ctx, idx);
         }, 200);
+      }
+      inp.addEventListener('compositionstart', function(){
+        inp.dataset.composing = '1';
+        if(hanjaSearchTimers[timerKey]) clearTimeout(hanjaSearchTimers[timerKey]);
+      });
+      inp.addEventListener('compositionend', function(){
+        inp.dataset.composing = '';
+        scheduleSearch();
+      });
+      inp.addEventListener('input', function(e){
+        // isComposing과 data-composing(구형 브라우저 폴백) 둘 다 확인 — 조합 중엔 보류.
+        if((e && e.isComposing) || inp.dataset.composing === '1') return;
+        scheduleSearch();
       });
     });
-    // 검색으로 인한 재렌더라면 같은 자리 입력창에 포커스·커서 위치를 되돌려준다(1회성 소비).
-    if(hanjaFocusedSearch && hanjaFocusedSearch.targetId === (ctx.targetId || 'default')){
-      var toFocus = container.querySelector('.hanja-search-input[data-idx="' + hanjaFocusedSearch.idx + '"]');
-      if(toFocus){
-        toFocus.focus();
-        try { toFocus.setSelectionRange(hanjaFocusedSearch.pos, hanjaFocusedSearch.pos); } catch(e){}
-      }
-      hanjaFocusedSearch = null;
-    }
   }
 
   // ============================================================
