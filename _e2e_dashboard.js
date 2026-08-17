@@ -225,7 +225,8 @@ async function submitSelf(page, opts) {
   var tileCases = [
     { route: 'result', selector: '.dash-tile[data-route="result"][data-tab="total"]', screen: 'screen-result', hash: '#result', label: '사주(상세 리포트)' },
     { route: 'result', selector: '.dash-tile[data-route="result"][data-tab="name"]:not([data-hanja])', screen: 'screen-result', hash: '#result', label: '이름풀이' },
-    { route: 'result', selector: '.dash-tile[data-hanja="1"]', screen: 'screen-result', hash: '#result', label: '한자 뜻풀이' },
+    // v1.10: 한자 뜻풀이 타일은 이름과 무관한 독립 사전 화면(#hanja-dict)으로 간다
+    { route: 'hanja-dict', selector: '.dash-tile[data-route="hanja-dict"]', screen: 'screen-hanja-dict', hash: '#hanja-dict', label: '한자 뜻풀이' },
     { route: 'result', selector: '.dash-tile[data-scroll-lotto="1"]', screen: 'screen-result', hash: '#result', label: '로또' },
     { route: 'compat', selector: '.dash-tile[data-route="compat"]', screen: 'screen-compat-form', hash: '#compat', label: '궁합' }
   ];

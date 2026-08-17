@@ -76,27 +76,28 @@ function check(label, cond, extra) {
     await page.locator('.hanja-syl').nth(i).locator('.hanja-opt:not(.none)').first().click();
     await page.waitForTimeout(120);
   }
-  await page.waitForSelector('.hanja-char-row', { timeout: 5000 });
+  await page.waitForSelector('.hj-detail', { timeout: 5000 });
   var sections = await page.evaluate(function () {
     var titles = Array.prototype.map.call(document.querySelectorAll('.reco-section-title'),
       function (n) { return n.textContent.trim(); });
     return titles;
   });
-  check('뜻풀이 섹션 렌더', sections.indexOf('글자에 담긴 뜻') >= 0, sections.join(' | '));
-  check('자원오행 사주보완 섹션 렌더', sections.indexOf('자원오행과 사주') >= 0);
+  check('뜻풀이 섹션 렌더', sections.indexOf('글자마다 담긴 뜻과 자형') >= 0, sections.join(' | '));
+  check('자원오행 사주보완 섹션 렌더', sections.indexOf('내 사주와의 연계') >= 0);
   check('원획 수리 4격 섹션 렌더(한글 수리와 구분 표기)',
-    sections.indexOf('원획 수리 4격 (한자 기준)') >= 0 && sections.indexOf('수리 4격 (원형이정)') >= 0);
+    sections.indexOf('수리 4격과 인생 시기 (한자 원획)') >= 0 && sections.indexOf('수리 4격 (원형이정)') >= 0);
   check('한자 종합 카드 렌더', sections.indexOf('한자 풀이 종합') >= 0);
 
   var suriCards = await page.locator('.suri-card').count();
   check('수리 카드 8장 (한글 4 + 한자 4)', suriCards === 8, '실제 ' + suriCards);
   var noteVisible = await page.locator('.suri-hanja-note').count();
-  check('한글/한자 수리 구분 안내 문구 존재', noteVisible === 1);
+  // v1.9: 음양 배열·삼원오행·수리 4격 세 곳에 규약 안내가 붙는다
+  check('한글/한자 수리 구분 안내 문구 존재', noteVisible >= 1, '실제 ' + noteVisible);
   var meaningLen = await page.evaluate(function () {
     var secs = document.querySelectorAll('.reco-section');
     for (var i = 0; i < secs.length; i++) {
       var t = secs[i].querySelector('.reco-section-title');
-      if (t && t.textContent.trim() === '글자에 담긴 뜻') {
+      if (t && t.textContent.trim() === '이름이 그리는 그림') {
         var p = secs[i].querySelector('.tab-para');
         return p ? p.textContent.trim() : '';
       }
@@ -107,7 +108,7 @@ function check(label, cond, extra) {
   check('뜻 문단에 템플릿 자리표시자 잔여 없음',
     meaningLen.indexOf('%') === -1 && meaningLen.indexOf('{') === -1);
 
-  var cardCount = await page.locator('.hanja-card').count();
+  var cardCount = await page.locator('.hj-detail').count();
   check('글자 카드 3장', cardCount === 3, '실제 ' + cardCount);
 
   // ---- "목록에 없음" 폴백 ----
@@ -118,11 +119,11 @@ function check(label, cond, extra) {
       function (n) { return n.textContent.trim(); });
     return {
       titles: titles,
-      cards: document.querySelectorAll('.hanja-card').length,
+      cards: document.querySelectorAll('.hj-detail').length,
       suri: document.querySelectorAll('.suri-card').length
     };
   });
-  check('폴백: 원획 수리 4격 섹션 사라짐', afterNone.titles.indexOf('원획 수리 4격 (한자 기준)') === -1);
+  check('폴백: 원획 수리 4격 섹션 사라짐', afterNone.titles.indexOf('수리 4격과 인생 시기 (한자 원획)') === -1);
   check('폴백: 한글 수리 4격은 그대로 유지', afterNone.titles.indexOf('수리 4격 (원형이정)') >= 0 && afterNone.suri === 4);
   check('폴백: 고른 글자 2자만 카드로 표시', afterNone.cards === 2, '실제 ' + afterNone.cards);
 
@@ -135,7 +136,7 @@ function check(label, cond, extra) {
     var hint = document.querySelector('.hanja-hint');
     return {
       hint: hint ? hint.textContent : '',
-      cards: document.querySelectorAll('.hanja-card').length
+      cards: document.querySelectorAll('.hj-detail').length
     };
   });
   check('전부 미선택 시 안내 문구 표시', allNone.hint.indexOf('목록에 없음') >= 0, allNone.hint);
@@ -233,9 +234,108 @@ function check(label, cond, extra) {
   await page.locator('.hanja-syl').nth(1).locator('.hanja-opt:not(.none)').first().click();
   await page.waitForTimeout(200);
   var afterAllPicked = await page.evaluate(function () {
-    return document.querySelectorAll('.hanja-card').length;
+    return document.querySelectorAll('.hj-detail').length;
   });
   check('검색으로 고른 글자 포함 3자 모두 결과에 반영', afterAllPicked === 3, '실제 ' + afterAllPicked);
+
+  // ============================================================
+  // v1.9 심화 화면: 파자 · 음양 배열 · 삼원오행 · ☰ 가시성
+  // ============================================================
+  // 忍(참을 인)은 SPEC v1.9 예시 글자 — 파자(刃+心)가 화면에 그려지는지 직접 확인한다.
+  await page.click('#hanja-reset-btn');
+  await page.waitForTimeout(200);
+  await page.evaluate(function () { location.hash = '#input'; });
+  await page.waitForSelector('#screen-home.active', { timeout: 10000 });
+  await page.fill('#self-name', '김인수');
+  await page.fill('#self-date', '1994-05-21');
+  await page.selectOption('#self-time', '10:30');
+  await page.selectOption('#self-mbti', 'INFP');
+  await page.click('#form-self button[type="submit"]');
+  await page.waitForSelector('#screen-result.active', { timeout: 20000 });
+  await page.click('.tab-btn[data-tab="name"]');
+  await page.waitForSelector('#hanja-open-btn', { timeout: 8000 });
+  await page.click('#hanja-open-btn');
+  await page.waitForTimeout(300);
+
+  // 음절 2(인)에서 忍 을 고르고, 나머지는 첫 후보로 채운다
+  // (忍은 '인' 후보 기본 노출 상위 10 안에 있어 "더 보기" 없이 바로 잡힌다)
+  var sylIn = page.locator('.hanja-syl').nth(1);
+  var forbearance = sylIn.locator('.hanja-opt[data-ch="忍"]');
+  check('忍 후보가 목록/검색에 존재', await forbearance.count() === 1);
+  await forbearance.first().click();
+  await page.waitForTimeout(150);
+  await page.locator('.hanja-syl').nth(0).locator('.hanja-opt:not(.none)').first().click();
+  await page.waitForTimeout(150);
+  await page.locator('.hanja-syl').nth(2).locator('.hanja-opt:not(.none)').first().click();
+  await page.waitForTimeout(350);
+
+  var deep = await page.evaluate(function () {
+    var titles = Array.prototype.map.call(document.querySelectorAll('.reco-section-title'),
+      function (n) { return n.textContent.trim(); });
+    var inBlock = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.hj-detail'), function (d) {
+      var g = d.querySelector('.hj-glyph');
+      if (g && g.textContent.trim() === '忍') inBlock = d;
+    });
+    return {
+      titles: titles,
+      yy: document.querySelectorAll('.yy-mark').length,
+      yyDots: Array.prototype.map.call(document.querySelectorAll('.yy-mark .dot'),
+        function (n) { return n.textContent.trim(); }).join(''),
+      sw: document.querySelectorAll('.sw-node').length,
+      swArrows: document.querySelectorAll('.sw-arrow').length,
+      periods: Array.prototype.map.call(document.querySelectorAll('.suri-card-label'),
+        function (n) { return n.textContent.trim(); }),
+      jw: document.querySelectorAll('.jw-effect').length,
+      radSym: document.querySelectorAll('.hj-rad-sym').length,
+      inParts: inBlock ? Array.prototype.map.call(inBlock.querySelectorAll('.hj-part .pc'),
+        function (n) { return n.textContent.trim(); }).join('') : null,
+      inPara: inBlock ? (inBlock.querySelector('.hj-break-para') || {}).textContent : null
+    };
+  });
+  check('심화 섹션 6종 렌더',
+    ['글자마다 담긴 뜻과 자형', '이름이 그리는 그림', '음양 배열', '삼원오행 흐름',
+      '수리 4격과 인생 시기 (한자 원획)', '내 사주와의 연계'].every(function (t) {
+      return deep.titles.indexOf(t) >= 0;
+    }), deep.titles.join(' | '));
+  check('忍 파자 표시 = 忍 + 刃 + 心', deep.inParts === '忍刃心', String(deep.inParts));
+  check('忍 파자 풀이 문장에 칼날/마음이 함께 등장',
+    !!deep.inPara && deep.inPara.indexOf('칼날') >= 0 && deep.inPara.indexOf('마음') >= 0,
+    String(deep.inPara).slice(0, 60));
+  check('음양 배열 ●○ 마크 3개', deep.yy === 3, '실제 ' + deep.yy);
+  check('음양 마크가 ●/○ 기호만 사용', /^[●○]{3}$/.test(deep.yyDots), deep.yyDots);
+  check('삼원오행 노드 3 + 화살표 2', deep.sw === 3 && deep.swArrows === 2,
+    deep.sw + '/' + deep.swArrows);
+  check('수리 4격이 인생 시기 라벨로 서사화',
+    deep.periods.filter(function (p) { return /초년|중년|장년|총운/.test(p); }).length >= 4,
+    deep.periods.join(','));
+  check('부수 상징 한 줄 표시', deep.radSym >= 1, '실제 ' + deep.radSym);
+  check('사주 연계 글자별 작용 문단 표시', deep.jw >= 1, '실제 ' + deep.jw);
+
+  // ☰ 메뉴 버튼 가시성 — 이모지 폰트 대체를 막기 위해 인라인 SVG여야 하고,
+  // 헤더 배경 대비 4.5:1 이상이어야 한다.
+  var menu = await page.evaluate(function () {
+    function lum(c) {
+      function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+      return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+    }
+    function px(s) { var m = s.match(/\d+(\.\d+)?/g); return m ? m.slice(0, 3).map(Number) : [0, 0, 0]; }
+    var b = document.getElementById('header-menu-btn');
+    var cs = getComputedStyle(b);
+    var body = px(getComputedStyle(document.body).backgroundColor);
+    var fg = px(cs.color);
+    var l1 = lum(fg), l2 = lum(body);
+    return {
+      svg: b.querySelectorAll('svg').length,
+      text: b.textContent.trim(),
+      ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05),
+      rect: b.getBoundingClientRect().width
+    };
+  });
+  check('☰ 버튼이 인라인 SVG(이모지 폰트 대체 차단)', menu.svg === 1 && menu.text === '',
+    'svg=' + menu.svg + ' text="' + menu.text + '"');
+  check('☰ 버튼 대비 4.5:1 이상', menu.ratio >= 4.5, menu.ratio.toFixed(2) + ':1');
+  check('☰ 버튼이 실제로 그려짐', menu.rect >= 30, '폭 ' + menu.rect);
 
   check('콘솔 에러 0건', errors.length === 0, errors.slice(0, 3).join(' / '));
 

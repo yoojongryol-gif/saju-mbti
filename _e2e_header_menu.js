@@ -149,15 +149,16 @@ async function submitSelf(page, opts) {
   var hanjaMoreBtnVisible = await page1.locator('#name-standalone-result #hanja-open-btn').count();
   check('① [이름풀이] "한자로 더 보기" 버튼도 노출(단독 화면 공용 렌더 확인)', hanjaMoreBtnVisible === 1);
 
-  // ---- 한자풀이(사주 비의존) → 프로필 없이 바로 진입 + 한자 선택 UI 자동 오픈 ----
+  // ---- 한자풀이(v1.10) → 이름과 무관한 독립 사전 화면으로 진입 ----
   await page1.evaluate(function () { location.hash = '#home'; });
   await page1.waitForSelector('#screen-dashboard.active', { timeout: 10000 });
   await openMenu(page1);
   await page1.click('.menu-tile[data-menu="hanja"]');
-  await page1.waitForSelector('#screen-name-standalone.active', { timeout: 10000 });
-  // 직전 세션에서 입력한 "김민준"이 재사용되어 한자 선택 화면이 바로 열려야 한다
-  var hanjaPickerVisible = await page1.locator('#name-standalone-result .hanja-picker').count();
-  check('① [한자풀이] 프로필 없이 단독 화면에서 한자 선택 UI 바로 오픈', hanjaPickerVisible === 1);
+  await page1.waitForSelector('#screen-hanja-dict.active', { timeout: 10000 });
+  check('① [한자풀이] 프로필·이름 없이 한자 사전 화면(#hanja-dict) 진입',
+    await activeScreenId(page1) === 'screen-hanja-dict');
+  check('① [한자풀이] 사전 화면은 검색창만 요구(이름 입력 없음)',
+    await page1.locator('#dict-search-input').count() === 1);
 
   // ---- MBTI 검사(사주 비의존) → 바로 진입 ----
   await page1.evaluate(function () { location.hash = '#home'; });

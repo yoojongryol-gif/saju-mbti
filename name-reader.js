@@ -1,6 +1,6 @@
 /**
  * name-reader.js — MZ사주풀이 이름풀이(한글 성명학 + 한자 뜻풀이) 엔진
- * v1.3 (2026-08-16, SPEC.md "v1.2 이름풀이" + "v1.3 한자 뜻풀이" 계약 준수)
+ * v1.9 (2026-08-17, SPEC.md "v1.2 이름풀이" + "v1.3 한자 뜻풀이" + "v1.9 한자 풀이 심화" 계약 준수)
  *
  * 순수 JS · 외부 라이브러리 0 · 네트워크 0 · window.NameReader 전역 노출
  * saju-engine.js / content-db.js 는 import/수정하지 않는다 (파일 독립).
@@ -9,8 +9,16 @@
  *   syllables, soriFlow, suri, sajuFit, overall
  * }
  * window.NameReader.analyzeHanja(selected, chart|null) → {
- *   perChar, meaningPara, jawonFit, suriHanja, overall
+ *   perChar, meaningPara, jawonFit, suriHanja, overall,
+ *   breakdown, yinYang, samwon                       // ★v1.9 추가 (기존 필드 무변경)
  * }   // 한자 데이터는 name-hanja-db.js(window.HanjaDB)에서 온다
+ * window.NameReader.charProfile(ch, reading|null) → {…}   // ★v1.10 한자 사전(글자 단독 풀이)
+ *
+ * v1.9 신규 3종의 계산 규약과 출처는 각각 아래 주석에 적어 두었다.
+ *   · breakdown(파자)   → 8-4절. 데이터는 HanjaDB.breakdown(cjkvi-ids 기반), 어원 서술 금지.
+ *   · yinYang(음양 배열) → 5-2절. [출처4][출처5]
+ *   · samwon(삼원오행)   → 5-3절. [출처6][출처7][출처8]
+ *   · suri 4격의 시기(초년/중년/장년/총운) 라벨 → 5-1b절.
  *
  * 범위: 성 1자 + 이름 1~3자. 한글 풀이가 기본이고, 한자 풀이는 사용자가 음절별
  * 후보를 고른 경우에만 부가로 계산한다("목록에 없음" 선택 시 한글 풀이만 유지).
@@ -279,17 +287,177 @@
       hyeongRaw = surnameS + nameArr[0];
       iRaw = surnameS + nameArr[nameArr.length - 1];
     }
-    return {
+    var out = {
       wonhyeong: suriEntry(wonRaw),
       hyeonggyeok: suriEntry(hyeongRaw),
       igyeok: suriEntry(iRaw),
       jeonggyeok: suriEntry(surnameS + totalName)
     };
+    // v1.9: 4격을 인생 시기로 읽는 전통 배속을 필드로 붙인다(기존 필드는 그대로).
+    Object.keys(SURI_PERIOD).forEach(function (k) {
+      out[k].period = SURI_PERIOD[k].period;
+      out[k].periodLabel = SURI_PERIOD[k].label;
+      out[k].periodPara = SURI_PERIOD[k].lead + ' ' + out[k].para;
+    });
+    return out;
   }
+
+  // ============================================================
+  // 5-1b. 4격 → 인생 시기 배속 (v1.9, SPEC "수리 4격 서사화")
+  // 전통 성명학에서 원격=초년, 형격=중년, 이격=장년, 정격=일생 총운으로 읽는
+  // 통용 배속을 그대로 따랐다(이 앱의 81수리 출처 [출처1~3]과 같은 계열의 해설).
+  // 계산식 자체는 v1.2부터 쓰던 computeSuri 그대로이고, 시기 라벨과 도입 문장만 덧붙인다.
+  // ============================================================
+  var SURI_PERIOD = {
+    wonhyeong: { period: '초년', label: '원격 · 초년운(0~20대)',
+      lead: '태어나 자리를 잡기까지의 초년 흐름입니다.' },
+    hyeonggyeok: { period: '중년', label: '형격 · 중년운(20~40대)',
+      lead: '사회에 나가 제 몫을 만들어 가는 중년 흐름입니다.' },
+    igyeok: { period: '장년', label: '이격 · 장년운(40~60대)',
+      lead: '쌓아 온 것이 모양을 갖추는 장년 흐름입니다.' },
+    jeonggyeok: { period: '총운', label: '정격 · 일생 총운',
+      lead: '이름 전체가 그리는 한평생의 큰 줄기입니다.' }
+  };
 
   function suriAverage(suri) {
     return (GRADE_SCORE[suri.wonhyeong.grade] + GRADE_SCORE[suri.hyeonggyeok.grade] +
       GRADE_SCORE[suri.igyeok.grade] + GRADE_SCORE[suri.jeonggyeok.grade]) / 4;
+  }
+
+  // ============================================================
+  // 5-2. 음양 배열 (v1.9, SPEC "3. 음양 배열")
+  //
+  // 공식(전통 성명학 획수음양):
+  //   · 글자 획수가 홀수면 양(陽), 짝수면 음(陰).
+  //   · 성+이름 전체의 음양이 한쪽으로만 쏠리면(순양·순음) 조화가 부족한 배열로 보고,
+  //     홀짝이 섞여 있으면 길한 배치로 본다.
+  //   [출처4] 이름공방 "획수음양이란?" https://ainamingstudio.com/guide/hoeksu-eumyang
+  //           — "홀수는 양, 짝수는 음", "양양양(순양)·음음음(순음)은 한쪽 기운으로만
+  //             쏠려 있어 균형이 부족하다", "획수의 홀짝이 고루 섞여 있으면 전통적으로
+  //             길한 배치"
+  //   [출처5] 안산김씨 "성명학 좋은 이름 / 인명용 한자 사전"
+  //           https://ankim.tistory.com/8599263
+  //           — "한자의 획수조합이 짝수와 홀수로 적절히 섞여 있어야 좋은 이름입니다."
+  //   두 자료가 같은 규약을 말해 교차확인했다. 한글 획수 풀이에도 같은 방식을 쓴다.
+  //
+  // 반환: { marks:[{ch, strokes, yin:bool, sign:'●'|'○'}], pattern:'양음양',
+  //         balanced:bool, verdict, para }
+  //   sign 은 UI 표기용(● 양 / ○ 음).
+  // ============================================================
+  function computeYinYang(chars, strokesArr) {
+    var marks = strokesArr.map(function (s, i) {
+      var yang = s % 2 === 1;
+      return { ch: chars[i], strokes: s, yin: !yang, sign: yang ? '●' : '○' };
+    });
+    var yangN = marks.filter(function (m) { return !m.yin; }).length;
+    var yinN = marks.length - yangN;
+    var pattern = marks.map(function (m) { return m.yin ? '음' : '양'; }).join('');
+    var balanced = yangN > 0 && yinN > 0;
+    var verdict, para;
+    if (!balanced && marks.length === 1) {
+      verdict = '판정 보류';
+      para = '글자가 하나뿐이라 음양이 오가는 배열을 볼 수 없습니다. 이 항목은 참고에서 빼두었습니다.';
+    } else if (!balanced) {
+      verdict = marks[0].yin ? '순음(純陰)' : '순양(純陽)';
+      para = '획수가 모두 ' + (marks[0].yin ? '짝수(음)' : '홀수(양)') + '라 ' + verdict +
+        ' 배열입니다. 전통 성명학에서는 한쪽 기운으로만 쏠린 배열을 조화가 덜한 쪽으로 보는데, ' +
+        '뒤집어 말하면 결이 아주 뚜렷하다는 뜻이기도 합니다. 성향이 한 방향으로 분명한 대신 ' +
+        '반대쪽 결을 곁에서 채워 주는 사람이 있으면 훨씬 수월해지는 흐름으로 읽으시면 좋겠습니다.';
+    } else if (Math.abs(yangN - yinN) <= 1) {
+      verdict = '음양 조화';
+      para = '홀수(양) ' + yangN + '자와 짝수(음) ' + yinN + '자가 고르게 섞인 배열입니다. ' +
+        '나아갈 때와 물러설 때가 함께 들어 있는 구성이라, 한쪽으로 쏠리지 않고 상황에 맞게 ' +
+        '결을 바꿔 가는 흐름으로 봅니다.';
+    } else {
+      verdict = '한쪽으로 기운 조화';
+      para = '홀수(양)와 짝수(음)가 함께 있어 배열 자체는 열려 있지만 ' +
+        (yangN > yinN ? '양' : '음') + ' 쪽이 조금 더 많습니다. ' +
+        (yangN > yinN ? '먼저 움직이고 밀어붙이는 힘' : '안으로 다지고 살피는 힘') +
+        '이 기본값이 되는 결이라, 반대쪽 결을 의식적으로 챙길 때 균형이 잡히는 흐름입니다.';
+    }
+    return { marks: marks, pattern: pattern, yangCount: yangN, yinCount: yinN,
+      balanced: balanced, verdict: verdict, para: para };
+  }
+
+  // ============================================================
+  // 5-3. 삼원오행 (v1.9, SPEC "4. 삼원오행")
+  //
+  // 공식(전통 성명학 삼원오행):
+  //   · 일원(一元) 천격(하늘·부모) = 성씨의 획수
+  //   · 이원(二元) 인격(사람·자신) = 성씨의 획수 + 이름 첫 자의 획수
+  //   · 삼원(三元) 지격(땅·가정)   = 이름 첫 자의 획수 + 이름 끝 자의 획수
+  //     (이름이 한 자면 그 글자의 획수)
+  //   · 수(數)를 오행으로: 끝자리 1·2=목, 3·4=화, 5·6=토, 7·8=금, 9·0=수
+  //     (10이 넘으면 10 단위를 버린다)
+  //   · 천격→인격→지격으로 흐르며 상생이면 순한 흐름, 상극이면 걸리는 흐름으로 본다.
+  //   [출처6] 모두맘 "사주에 부족한 오행 채우는 법: 자원오행으로 이름짓기"
+  //           https://blog.naver.com/kwsdl2030/224043372094
+  //           — "일원(一元) 천격(하늘, 부모) 성씨의 획수 / 이원(二元) 인격(사람, 자신)
+  //             성씨의 획수+이름 첫 자 획수 / 삼원(三元) 지격(땅, 처, 자식)
+  //             이름 첫 자 획수 + 이름 끝자의 획수"
+  //   [출처7] 송파 작명 철학 연구소 "성명학"
+  //           https://blog.naver.com/ktm650120/221052402740 — 같은 삼원 정의로 교차확인
+  //   [출처8] 사주포럼 "삼원오행" https://www.sajuforum.com/01forum/nm/samwon.php
+  //           — 수리→오행 변환 규칙: "글자의 획수가 1, 2이면 목(木), 3, 4이면 화(火),
+  //             5, 6이면 토(土), 7, 8이면 금(金), 9, 10이면 수(水)…(10이 넘을 경우에는
+  //             10을 버립니다.)"
+  //   ※ [출처8]은 삼원오행 이론 자체를 비판하는 글이기도 하다. 이 앱은 전통 해석 하나를
+  //     재미로 보여줄 뿐이므로 계산 규약만 인용하고, 화면에도 단정 표현을 쓰지 않는다.
+  //
+  // 반환: { cheon:{num,element}, in:{num,element}, ji:{num,element},
+  //         flow:[{from,to,rel}], verdict, para }
+  // ============================================================
+  var SUSU_ELEMENT = ['수', '목', '목', '화', '화', '토', '토', '금', '금', '수']; // 끝자리 0~9
+
+  function elementOfNumber(n) {
+    return SUSU_ELEMENT[n % 10];
+  }
+
+  function computeSamwon(strokesArr) {
+    if (!strokesArr || strokesArr.length < 2) return null;
+    var surname = strokesArr[0];
+    var nameArr = strokesArr.slice(1);
+    var cheonN = surname;
+    var inN = surname + nameArr[0];
+    var jiN = nameArr.length === 1 ? nameArr[0] : nameArr[0] + nameArr[nameArr.length - 1];
+    var cheon = { num: cheonN, element: elementOfNumber(cheonN), label: '천격(天格)', role: '하늘·부모에게서 받은 바탕' };
+    var inn = { num: inN, element: elementOfNumber(inN), label: '인격(人格)', role: '나 자신의 중심' };
+    var ji = { num: jiN, element: elementOfNumber(jiN), label: '지격(地格)', role: '가정과 살아가는 터전' };
+    var flow = [
+      { from: cheon.element, to: inn.element, rel: relationOf(cheon.element, inn.element), fromLabel: '천격', toLabel: '인격' },
+      { from: inn.element, to: ji.element, rel: relationOf(inn.element, ji.element), fromLabel: '인격', toLabel: '지격' }
+    ];
+    var gen = flow.filter(function (f) { return f.rel === '상생'; }).length;
+    var ctrl = flow.filter(function (f) { return f.rel === '상극'; }).length;
+    var verdict, para;
+    var chain = cheon.element + ' → ' + inn.element + ' → ' + ji.element;
+    if (gen === 2) {
+      verdict = '상생 흐름';
+      para = '천격에서 인격으로, 인격에서 지격으로(' + chain + ') 두 단계 모두 상생으로 이어집니다. ' +
+        '받은 바탕이 나를 밀어 주고 그 힘이 다시 살아가는 터전으로 넘어가는 구성이라, ' +
+        '막히는 지점이 적은 순한 흐름으로 봅니다.';
+    } else if (ctrl === 2) {
+      verdict = '상극 흐름';
+      para = '천격·인격·지격이 ' + chain + '으로 이어지는데 두 단계 모두 상극입니다. ' +
+        '주어진 바탕과 내 결, 그리고 터전이 서로 다른 방향을 보는 구성이라 ' +
+        '남보다 조율에 품이 더 드는 흐름입니다. 다만 상극은 부딪침이자 다듬음이기도 해서, ' +
+        '어느 쪽에도 그냥 끌려가지 않는 단단함으로 나타나는 경우도 많습니다.';
+    } else if (ctrl === 1 && gen === 1) {
+      verdict = '반생반극';
+      para = '한 단계는 상생, 한 단계는 상극인 ' + chain + ' 흐름입니다. ' +
+        '순하게 풀리는 구간과 힘을 들여야 하는 구간이 한 이름 안에 함께 있는 구성이라, ' +
+        '잘 되는 자리와 애쓰는 자리가 비교적 뚜렷하게 갈리는 편입니다.';
+    } else if (ctrl === 1) {
+      verdict = '한 곳이 걸리는 흐름';
+      para = chain + '으로 이어지는 가운데 한 단계에서 상극이 끼어 있습니다. ' +
+        '전체가 어긋난 것은 아니고 한 지점에서만 결이 부딪히는 구성이니, ' +
+        '그 자리를 알고 다루면 크게 문제 되지 않는 흐름으로 보시면 됩니다.';
+    } else {
+      verdict = '비화(比和) 흐름';
+      para = chain + '처럼 같은 기운이 이어지는 구간이 있는 구성입니다. ' +
+        '서로 밀거나 당기지 않고 나란히 가는 결이라 기복이 적은 대신 변화도 완만한 흐름으로 봅니다.';
+    }
+    return { cheon: cheon, "in": inn, ji: ji, flow: flow, chain: chain, verdict: verdict, para: para };
   }
 
   // 사주에서 가장 약한 오행 찾기 (한글 소리오행/한자 자원오행 공용)
@@ -511,7 +679,9 @@
 
   // ---- 조사(助詞) 자동 선택: 앞 단어의 받침 유무로 은/는·이/가·을/를·과/와를 고른다.
   // 문장 템플릿에는 {는} {가} {를} {와} {으로} 자리표시자를 쓰고, 바로 앞 글자를 보고 치환한다.
-  var JOSA_PAIRS = { '는': ['은', '는'], '가': ['이', '가'], '를': ['을', '를'], '와': ['과', '와'], '으로': ['으로', '로'] };
+  // v1.10: '이라'(서술격 조사) 추가 — "자원오행이 금이라 / 화라" 처럼 받침에 따라 갈린다.
+  var JOSA_PAIRS = { '는': ['은', '는'], '가': ['이', '가'], '를': ['을', '를'], '와': ['과', '와'],
+    '으로': ['으로', '로'], '이라': ['이라', '라'] };
 
   function hasJongseong(ch) {
     var code = ch.charCodeAt(0) - 0xAC00;
@@ -521,7 +691,7 @@
 
   /** 문자열 안의 {는}{가}{를}{와}{으로} 자리표시자를 앞 글자 받침에 맞게 치환 */
   function applyJosa(text) {
-    return text.replace(/([\s\S])\{(는|가|를|와|으로)\}/g, function (_, prev, key) {
+    return text.replace(/([\s\S])\{(는|가|를|와|으로|이라)\}/g, function (_, prev, key) {
       var base = prev;
       // 괄호로 닫힌 경우(예: "俊(준걸 준)") 괄호 안 마지막 한글을 기준으로 삼는다
       return prev + JOSA_PAIRS[key][hasJongseong(base) ? 0 : 1];
@@ -598,7 +768,8 @@
       if (entry) {
         return {
           ch: entry.ch, reading: entry.reading, meaning: entry.meaning,
-          jawonElement: entry.jawonElement, strokes: entry.strokes, pilhoek: entry.pilhoek
+          jawonElement: entry.jawonElement, strokes: entry.strokes, pilhoek: entry.pilhoek,
+          rad: entry.rad || null            // v1.9 파자 풀이에서 부수 상징을 고를 때 쓴다
         };
       }
       // DB에 없는 글자를 직접 넘긴 경우: 획수 없이 뜻만 비워 반환(수리 계산에서 제외)
@@ -611,6 +782,149 @@
       }
       return null;
     });
+  }
+
+  // ============================================================
+  // 8-4. 파자(자형 분해) 풀이 (v1.9, SPEC "1. 파자 풀이" + "2. 부수 상징 사전")
+  //
+  // 데이터는 전부 name-hanja-db.js(HanjaDB.breakdown)에서 온다 — 이 함수는 그 결과를
+  // 문장으로 옮기기만 하고, 데이터에 없는 어원을 만들어 내지 않는다.
+  //   ⓐ 큐레이션 서사(HanjaDB.stories)가 있으면 그것을 쓴다.
+  //      (서사는 빌드 때 구성요소가 IDS 원본과 일치하는지 전량 대조된 것만 들어 있다)
+  //   ⓑ 없고, 구성요소 중 하나의 음(音)이 글자의 음과 데이터상 같으면(entry.snd)
+  //      "뜻은 X, 소리는 Y에서" 로 서술한다.
+  //   ⓒ 그 밖에는 "X와 Y가 결합한 글자" 라는 중립 서술만 쓴다.
+  //      (형성/회의 구분이 데이터로 확인되지 않으므로 추정하지 않는다)
+  //   ⓓ 구성요소가 원자료에서 밝혀지지 않으면(resolved=false) 파자 풀이를 내지 않는다.
+  // ============================================================
+  function partLabel(p) {
+    // 변형 자형은 원형을 함께 밝힌다 — 例 氵(水) 물
+    return p.ch + (p.orig && p.orig !== p.ch ? '(' + p.orig + ')' : '') + ' ' + p.meaning;
+  }
+
+  function composeBreakdown(norm) {
+    var HDB = global.HanjaDB;
+    if (!HDB || typeof HDB.breakdown !== 'function') return [];
+    return norm.filter(function (e) { return e; }).map(function (e) {
+      var b = HDB.breakdown(e.ch, e.reading) ||
+        { ids: null, layout: null, parts: [], story: null, sound: null, resolved: false };
+      var parts = b.parts || [];
+      var para, kind;
+      if (!b.resolved || parts.length < 2) {
+        kind = 'none';
+        para = '이 글자는 공개된 자형 분해 자료에서 구성 요소가 확인되지 않아, 파자 풀이는 두지 않았습니다. ' +
+          '아래 뜻과 자원오행으로 보시면 됩니다.';
+      } else if (b.story) {
+        kind = 'story';
+        para = b.story;
+      } else if (b.sound) {
+        var sndPart = null, meanParts = [];
+        parts.forEach(function (p) {
+          if (p.ch === b.sound && !sndPart) sndPart = p; else meanParts.push(p);
+        });
+        kind = 'phonetic';
+        para = '뜻은 ' + meanParts.map(partLabel).join('·') + '에서 오고, 소리는 ' +
+          sndPart.ch + '(' + sndPart.reading + ')에서 온 글자입니다.';
+      } else {
+        kind = 'neutral';
+        para = parts.map(partLabel).join('과(와) ') + '가 결합한 글자입니다.' +
+          (b.layout ? ' 두 요소는 ' + b.layout + '으로 놓여 있습니다.' : '');
+      }
+      // 부수 상징 한 줄 — 구성 요소 중 부수 사전에 있는 것 하나를 골라 덧붙인다
+      var radPart = null;
+      parts.forEach(function (p) {
+        if (!radPart && p.radical && (p.orig || p.ch) === e.rad) radPart = p;
+      });
+      if (!radPart) { parts.forEach(function (p) { if (!radPart && p.radical) radPart = p; }); }
+      return {
+        ch: e.ch, reading: e.reading, meaning: e.meaning,
+        ids: b.ids, layout: b.layout, resolved: b.resolved && parts.length >= 2,
+        parts: parts, sound: b.sound, kind: kind, para: para,
+        radicalSymbol: radPart ? {
+          ch: radPart.orig || radPart.ch, name: radPart.radical.name,
+          cat: radPart.radical.cat, sym: radPart.radical.sym
+        } : null
+      };
+    });
+  }
+
+  // 자원오행 한 글자가 사주 오행 분포에 어떻게 작용하는지 (v1.9, SPEC "6. 사주 연계 강화")
+  function charElementEffects(perChar, chart, lackEl) {
+    var counts = chart.elements || {};
+    var maxN = 0;
+    ELEMENT_ORDER.forEach(function (e) { if ((counts[e] || 0) > maxN) maxN = counts[e] || 0; });
+    return perChar.filter(function (e) { return e.jawonElement; }).map(function (e) {
+      var el = e.jawonElement;
+      var n = counts[el] || 0;
+      var role, para;
+      if (el === lackEl) {
+        role = '부족한 자리를 채움';
+        para = e.ch + '(' + e.meaning + ')의 자원오행은 ' + el + '입니다. 사주에서 가장 옅은 오행이 바로 ' +
+          el + '이라, 이 글자가 비어 있던 칸을 직접 메워 주는 자리에 놓입니다.';
+      } else if (n >= maxN && maxN > 0) {
+        role = '강한 기운을 더함';
+        para = e.ch + '(' + e.meaning + ')의 자원오행은 ' + el + '입니다. 사주에서 이미 ' + el +
+          '이 두터운 편이라 이 글자는 강점을 한 번 더 눌러 주는 쪽으로 작용합니다. ' +
+          '잘 쓰면 뚜렷한 무기가 되고, 치우치면 고집으로 보일 수 있는 결입니다.';
+      } else if (relationOf(el, lackEl) === '상생') {
+        role = '부족한 오행을 살려 줌';
+        para = e.ch + '(' + e.meaning + ')의 자원오행 ' + el + '은 가장 옅은 ' + lackEl +
+          '을(를) 낳아 주는 관계입니다. 직접 채우진 않아도 부족한 자리를 살려 주는 쪽으로 거듭니다.';
+      } else {
+        role = '중간을 메움';
+        para = e.ch + '(' + e.meaning + ')의 자원오행은 ' + el + '입니다. 넘치지도 모자라지도 않은 자리라 ' +
+          '사주 전체의 균형을 완만하게 잡아 주는 쪽으로 작용합니다.';
+      }
+      return { ch: e.ch, element: el, count: n, role: role, para: para };
+    });
+  }
+
+  // ============================================================
+  // 8-5. 글자 한 자 단독 풀이 (v1.10, SPEC "한자풀이 = 독립 한자 사전 화면")
+  //
+  // 이름과 무관하게 한자 한 글자만 놓고 볼 때 쓰는 요약. 새로 계산하는 것은 없고
+  // v1.9 파자·부수 상징·자원오행 데이터를 그대로 엮어 문장 한 줄로 옮긴다.
+  //
+  // charProfile(ch, reading|null) → {
+  //   ch, reading, meaning, strokes(원획), pilhoek(필획), jawonElement, rad,
+  //   radical:{name,cat,sym}|null, breakdown:{…8-4절과 동형}, yin:bool,
+  //   nameEnergy: '이름에 쓸 때의 기운 한 줄', unverified:bool
+  // }  — DB에 없는 글자면 null.
+  // ============================================================
+  function charProfile(ch, reading) {
+    var HDB = global.HanjaDB;
+    if (!HDB || !HDB.lookup) return null;
+    var e = HDB.lookup(ch, reading || null);
+    if (!e) return null;
+    var norm = {
+      ch: e.ch, reading: e.reading, meaning: e.meaning, jawonElement: e.jawonElement,
+      strokes: e.strokes, pilhoek: e.pilhoek, rad: e.rad || null
+    };
+    var brk = composeBreakdown([norm])[0] || null;
+    var radInfo = (HDB.radicals && e.rad) ? HDB.radicals[e.rad] : null;
+    var yang = e.strokes % 2 === 1;
+
+    // 이름에 쓸 때의 기운 — 자원오행 + 획수 음양 + 부수 뿌리, 전부 데이터에서 온 값만 엮는다
+    var bits = [];
+    if (e.jawonElement) {
+      bits.push('자원오행이 ' + e.jawonElement + '{이라} 이름에 넣으면 그 기운을 보태는 글자입니다');
+    } else {
+      bits.push('부수만으로는 자원오행이 갈려 확정하지 않은 글자라, 이름에서는 뜻과 획수 쪽을 보시면 됩니다');
+    }
+    bits.push('원획 ' + e.strokes + '획이라 음양 배열에서는 ' + (yang ? '양(●)' : '음(○)') + ' 자리를 맡습니다');
+    if (radInfo) {
+      bits.push('뿌리가 되는 부수는 ' + e.rad + '(' + radInfo.name + ') — ' + radInfo.sym + '{이라}, 뜻의 결이 ' +
+        radInfo.cat + ' 쪽에 닿아 있습니다');
+    }
+    return {
+      ch: e.ch, reading: e.reading, meaning: e.meaning,
+      strokes: e.strokes, pilhoek: e.pilhoek,
+      jawonElement: e.jawonElement || null, rad: e.rad || null,
+      radical: radInfo ? { ch: e.rad, name: radInfo.name, cat: radInfo.cat, sym: radInfo.sym } : null,
+      breakdown: brk, yin: !yang, sign: yang ? '●' : '○',
+      unverified: !!e.unverified,
+      nameEnergy: applyJosa(bits.join('. ') + '.')
+    };
   }
 
   /**
@@ -656,9 +970,20 @@
         lackElement: lackEl,
         nameElements: nameElements,
         verdict: nameElements.length ? (fills ? '오행 보완' : '오행 비보완') : '판정 보류',
-        para: para
+        para: para,
+        // v1.9: 글자별 자원오행이 사주 오행 분포에 주는 작용 (SPEC "6. 사주 연계 강화")
+        charEffects: charElementEffects(perChar, chart, lackEl)
       };
     }
+
+    // ---- v1.9 신규: 파자 / 음양 배열 / 삼원오행 ----
+    var breakdown = composeBreakdown(norm);
+    var yinYang = complete
+      ? computeYinYang(norm.map(function (e) { return e.ch; }), norm.map(function (e) { return e.strokes; }))
+      : null;
+    var samwon = complete && norm.length >= 2
+      ? computeSamwon(norm.map(function (e) { return e.strokes; }))
+      : null;
 
     // ---- overall (결정적 가중 합산) ----
     var score, parts = [];
@@ -696,6 +1021,10 @@
       meaningPara: meaningPara,
       jawonFit: jawonFit,
       suriHanja: suriHanja,
+      // v1.9 추가 필드 (기존 필드는 그대로 — 하위호환)
+      breakdown: breakdown,
+      yinYang: yinYang,
+      samwon: samwon,
       overall: { score: score, headline: headline, para: para2 }
     };
   }
@@ -884,6 +1213,7 @@
   var NameReader = {
     analyze: analyze,
     analyzeHanja: analyzeHanja,
+    charProfile: charProfile,        // v1.10 한자 사전 화면(글자 단독 풀이)
     hanjaCandidates: hanjaCandidates,
     compatNames: compatNames,
     isValidName: isValidName,

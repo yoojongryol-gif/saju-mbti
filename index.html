@@ -27,15 +27,15 @@
     --accent2:#c9a227;
     --text:#f3e7cc;
     --muted:#c7b48c;
-    --muted2:#8f7d5c;
+    --muted2:#9c8968;       /* v1.9 대비 수정: 먹빛 배경 위 4.4:1 미달 → 5.0:1 */
     --danger:#c0433f;
     --ok:#5c8a4a;
     --radius:16px;
     /* 한지 위 잉크(먹) 텍스트 톤 — .card/.tab-content 안에서 --text/--muted 를 대체 */
     --ink:#2c2013;
     --ink-soft:#5c4a30;
-    --ink-soft2:#8a765a;
-    --ink-accent:#8a4a1f;
+    --ink-soft2:#63533b;    /* v1.9 대비 수정: #8a765a 는 한지 위 3.3:1 로 미달 → 5.0:1 */
+    --ink-accent:#6d3410;   /* v1.9 대비 수정: #8a4a1f 는 한지 위 4.4:1 로 미달 → 6.4:1 */
     --hanji-2:#e6d3a0;
     --seal:#8c2a2a;
     --font-title:'Nanum Myeongjo','HY Myeongjo','Batang',serif;
@@ -127,13 +127,20 @@
     display:flex;align-items:center;gap:10px;background:none;border:none;padding:0;margin:0;
     cursor:pointer;text-align:left;font:inherit;color:inherit;flex:1;min-width:0;
   }
+  /* v1.9 대비 수정 — 사장님 지적 "☰가 까매서 안 보여".
+     진단: ☰(U+2630)은 흑백 기호지만 기기에 따라 컬러 이모지 폰트(Windows Segoe UI Emoji /
+     Android Noto Color Emoji)로 대체 렌더된다. 컬러 이모지 글리프는 CSS color 를 무시하고
+     자기 색으로 그려지므로, 먹빛 헤더 위에 "검은 삼선"이 찍혀 보이지 않게 된다.
+     → 글자 대신 인라인 SVG(stroke:currentColor)로 바꿔 폰트 대체를 원천 차단했다.
+     색 #e8c766 on 헤더 배경 #15110c = 10.0:1 (WCAG AA 4.5:1 충족). */
   .menu-btn{
     flex:none;width:40px;height:40px;border-radius:10px;
     border:1.5px solid rgba(232,199,102,0.75);background:rgba(201,162,39,0.16);
-    color:#e8c766;font-size:19px;line-height:1;cursor:pointer;
+    color:#e8c766;line-height:1;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
-  .menu-btn:active{background:rgba(201,162,39,0.2);}
+  .menu-btn svg{width:20px;height:20px;display:block;}
+  .menu-btn:active{background:rgba(201,162,39,0.3);}
 
   /* v1.6.1 상시 메뉴(바텀시트) — 프로필 유무와 무관하게 항상 열림 */
   .menu-backdrop{
@@ -146,6 +153,13 @@
     max-width:480px;margin:0 auto;
     background:var(--card);border:1px solid var(--card-border);border-bottom:none;
     border-radius:20px 20px 0 0;padding:10px 20px calc(22px + env(safe-area-inset-bottom));
+    /* v1.9 대비 수정: 한지(밝은) 패널이므로 카드와 같은 잉크 톤 스코프를 쓴다.
+       (기존에는 --bg-elevated가 먹빛으로 남아 메뉴 타일이 "먹 위에 먹" 글씨였다) */
+    --text:var(--ink);
+    --muted:var(--ink-soft);
+    --muted2:var(--ink-soft2);
+    --bg-elevated:var(--hanji-2);
+    --accent2:var(--ink-accent);
     color:var(--ink);
     transform:translateY(102%);transition:transform .25s ease;
     max-height:82vh;overflow-y:auto;
@@ -254,8 +268,8 @@
 
   .btn-primary{
     display:block;width:100%;padding:14px 16px;border:none;border-radius:12px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    color:var(--ink);font-size:16px;font-weight:700;cursor:pointer;
+    background:linear-gradient(135deg,#b8862a,#c9a227);   /* v1.9 대비 수정: 카드 안 토큰 상속으로 어두워지던 것을 금색 고정 */
+    color:#231a0e;font-size:16px;font-weight:700;cursor:pointer;
     box-shadow:0 6px 18px rgba(184,134,42,0.4);
   }
   .btn-primary:active{transform:scale(0.98);}
@@ -345,6 +359,13 @@
   .saju-col{
     background:var(--card);border:1px solid var(--card-border);border-radius:12px;
     padding:10px 4px;text-align:center;
+    /* v1.9 대비 수정: 한지 배경인데 --text가 먹빛 밖(밝은 크림)으로 남아 있어
+       사주 4주 간지가 거의 보이지 않았다(대비 1.07:1). 카드와 같은 잉크 스코프 적용. */
+    --text:var(--ink);
+    --muted:var(--ink-soft);
+    --muted2:var(--ink-soft2);
+    --accent2:var(--ink-accent);
+    color:var(--ink);
   }
   .saju-col-label{font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;}
   .pillar-gan{font-size:15px;font-weight:700;margin-bottom:4px;}
@@ -408,9 +429,104 @@
   .name-chip .ch{font-size:18px;font-weight:700;color:var(--text);}
   .name-chip .el{font-size:11px;color:var(--accent2);font-weight:600;}
   .name-arrow{font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;}
-  .name-arrow .rel-상생{color:#2e7d32;font-weight:700;}
+  .name-arrow .rel-상생{color:#1f6b26;font-weight:700;}   /* v1.9 대비 수정 3.9→5.1:1 */
   .name-arrow .rel-상극{color:var(--danger);font-weight:700;}
   .name-arrow .rel-비화{color:var(--muted);font-weight:700;}
+
+  /* ---- v1.9 한자 풀이 심화: 파자·음양 배열·삼원오행 ---- */
+  .hj-detail{
+    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:14px;
+    padding:13px 14px;margin-bottom:12px;
+  }
+  .hj-detail-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .hj-glyph{
+    font-family:var(--font-title);font-size:38px;line-height:1;font-weight:700;color:var(--ink);
+    flex:none;min-width:46px;text-align:center;
+  }
+  .hj-detail-meta{min-width:0;flex:1;}
+  .hj-detail-meta .mn{font-size:15px;font-weight:700;color:var(--ink);}
+  .hj-detail-meta .sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .hj-detail-meta .el{
+    display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:2px 9px;margin-top:6px;
+    background:rgba(122,60,20,0.14);color:#6d3410;
+  }
+  .hj-parts{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:2px 0 9px;}
+  .hj-part{
+    display:flex;flex-direction:column;align-items:center;gap:1px;
+    background:var(--card);border:1px solid var(--card-border);border-radius:10px;
+    padding:6px 9px;min-width:46px;
+  }
+  .hj-part .pc{font-size:19px;font-weight:700;line-height:1.1;color:var(--ink);font-family:var(--font-title);}
+  .hj-part .pm{font-size:10.5px;color:#6d3410;font-weight:600;white-space:nowrap;}
+  .hj-part-op{font-size:14px;color:var(--ink-soft);font-weight:700;}
+  .hj-part-eq{font-size:14px;color:var(--ink-soft);font-weight:700;padding:0 2px;}
+  .hj-break-para{font-size:14px;color:var(--ink);margin:0 0 7px;line-height:1.6;}
+  .hj-rad-sym{
+    font-size:12px;color:var(--ink-soft);margin:0;line-height:1.55;
+    border-left:2px solid var(--card-border);padding-left:9px;
+  }
+  .hj-rad-sym b{color:#6d3410;}
+  .hj-ids{font-size:11px;color:var(--ink-soft2);margin:6px 0 0;}
+
+  /* ---- v1.10 한자 사전 화면 ---- */
+  .dict-hint{font-size:12.5px;color:var(--muted);margin:2px 0 0;line-height:1.55;}
+  .dict-count{font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 7px;}
+  .dict-hero{
+    display:flex;align-items:center;gap:14px;
+    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:14px;
+    padding:14px;margin-bottom:12px;
+  }
+  .dict-hero .g{
+    font-family:var(--font-title);font-size:52px;line-height:1;font-weight:700;color:var(--ink);
+    flex:none;min-width:62px;text-align:center;
+  }
+  .dict-hero .t{min-width:0;flex:1;}
+  .dict-hero .t .m{font-size:19px;font-weight:800;color:var(--ink);}
+  .dict-hero .t .s{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+  .dict-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+  .dict-badge{
+    font-size:10.5px;font-weight:700;border-radius:20px;padding:3px 9px;
+    background:rgba(122,60,20,0.14);color:#6d3410;
+  }
+  .dict-badge.is-surname{background:rgba(140,42,42,0.16);color:#7a2020;}
+  .dict-bongwan{font-size:12.5px;color:var(--ink);margin:0;line-height:1.6;}
+  .dict-go-name{
+    display:block;width:100%;margin-top:4px;background:transparent;
+    border:1px solid var(--card-border);border-radius:10px;padding:11px;
+    color:var(--ink);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;
+  }
+
+  .yy-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:6px 0 12px;}
+  .yy-mark{
+    display:flex;flex-direction:column;align-items:center;gap:3px;min-width:54px;
+    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;padding:9px 8px;
+  }
+  .yy-mark .dot{font-size:20px;line-height:1;}
+  .yy-mark.is-yang .dot{color:#8a3c14;}
+  .yy-mark.is-yin .dot{color:#2f4d6b;}
+  .yy-mark .ch{font-size:15px;font-weight:700;color:var(--ink);font-family:var(--font-title);}
+  .yy-mark .st{font-size:10.5px;color:var(--ink-soft);font-weight:600;}
+  .yy-pattern{font-size:13px;font-weight:700;color:#6d3410;margin:0 0 6px;letter-spacing:0.08em;}
+
+  .sw-flow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:6px 0 12px;}
+  .sw-node{
+    display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px;
+    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;padding:10px 8px;
+  }
+  .sw-node .lb{font-size:11px;color:var(--ink-soft);font-weight:700;}
+  .sw-node .el{font-size:19px;font-weight:800;color:#6d3410;font-family:var(--font-title);}
+  .sw-node .nm{font-size:10.5px;color:var(--ink-soft);}
+  .sw-arrow{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--ink-soft);}
+  .sw-arrow .rel-상생{color:#1f6b26;font-weight:700;}
+  .sw-arrow .rel-상극{color:#a8302c;font-weight:700;}
+  .sw-arrow .rel-비화{color:var(--ink-soft);font-weight:700;}
+  .sw-role{font-size:12px;color:var(--ink-soft);margin:0 0 10px;line-height:1.55;}
+  .jw-effect{
+    font-size:13px;color:var(--ink);margin:0 0 8px;line-height:1.6;
+    border-left:2px solid var(--card-border);padding-left:10px;
+  }
+  .jw-effect b{color:#6d3410;}
+
   .suri-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 14px;}
   .suri-card{background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;padding:12px;}
   .suri-card-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;}
@@ -419,7 +535,7 @@
   .suri-grade{
     display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-bottom:6px;
   }
-  .suri-grade.g-길{background:rgba(76,175,80,0.18);color:#2e7d32;}
+  .suri-grade.g-길{background:rgba(76,175,80,0.18);color:#17561d;}   /* v1.9 대비 수정 3.1→5.3:1 */
   .suri-grade.g-중길{background:rgba(184,134,42,0.18);color:var(--accent2);}
   .suri-grade.g-평{background:rgba(44,32,19,0.06);color:var(--muted);}
   .suri-grade.g-흉{background:rgba(229,72,77,0.14);color:var(--seal);}
@@ -465,15 +581,7 @@
   .hanja-run-btn:disabled{opacity:0.45;cursor:not-allowed;}
   .hanja-reset-btn{background:transparent;color:var(--muted);}
   .hanja-hint{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.55;}
-  .hanja-char-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
-  .hanja-card{
-    background:var(--bg-elevated);border:1px solid var(--card-border);border-radius:12px;
-    padding:10px 12px;text-align:center;min-width:66px;
-  }
-  .hanja-card .hj{font-size:22px;font-weight:700;display:block;line-height:1.2;}
-  .hanja-card .rd{font-size:11px;color:var(--muted);}
-  .hanja-card .mn{font-size:12px;color:var(--text);margin-top:2px;}
-  .hanja-card .meta{font-size:10.5px;color:var(--accent2);font-weight:700;margin-top:3px;}
+  /* (v1.3~1.8의 .hanja-char-row/.hanja-card 는 v1.9 심화 화면에서 .hj-detail 로 대체됐다) */
   .suri-hanja-note{
     font-size:11.5px;color:var(--muted);background:rgba(184,134,42,0.12);
     border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:8px 10px;margin:0 0 10px;line-height:1.55;
@@ -506,7 +614,7 @@
   /* ---- 성씨·본관 검색 (v1.8) ---- */
   .hanja-opt.is-surname{border-color:rgba(184,134,42,0.55);}
   .hanja-opt .surname-badge{
-    font-size:8.5px;font-weight:700;color:#1a1410;background:var(--accent2);
+    font-size:8.5px;font-weight:700;color:#fdf6e6;background:var(--accent2);   /* v1.9 대비 수정 2.7→9.0:1 */
     border-radius:6px;padding:1px 5px;line-height:1.5;letter-spacing:0.2px;
   }
   .hanja-opt .surname-bongwan{
@@ -545,8 +653,8 @@
   }
   .lotto-ball.b-yellow{background:#FBC400;}
   .lotto-ball.b-blue{background:#69C8F2;}
-  .lotto-ball.b-red{background:#FF7272;color:#fff;}
-  .lotto-ball.b-gray{background:#AAAAAA;color:#fff;}
+  .lotto-ball.b-red{background:#FF7272;}   /* v1.9 대비 수정: 흰 글씨 2.7:1 → 기본 먹빛 6.5:1 */
+  .lotto-ball.b-gray{background:#AAAAAA;}  /* v1.9 대비 수정: 흰 글씨 2.3:1 → 기본 먹빛 7.5:1 */
   .lotto-ball.b-green{background:#B0D840;}
   .lotto-disclaimer{font-size:10.5px;color:var(--muted2);margin-top:10px;}
 
@@ -630,7 +738,7 @@
         <div class="tagline">사주 명리 × MBTI 재미 풀이</div>
       </div>
     </button>
-    <button type="button" class="menu-btn" id="header-menu-btn" aria-label="메뉴 열기" aria-haspopup="true" aria-expanded="false">☰</button>
+    <button type="button" class="menu-btn" id="header-menu-btn" aria-label="메뉴 열기" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </header>
 
   <!-- ================= v1.6.1 상시 메뉴(바텀시트) — 프로필 유무와 무관하게 항상 열림 ================= -->
@@ -722,7 +830,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10a2 2 0 00-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
           <span class="dash-tile-label">이름풀이</span>
         </button>
-        <button type="button" class="dash-tile" data-route="result" data-tab="name" data-hanja="1">
+        <button type="button" class="dash-tile" data-route="hanja-dict">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 7v10M8 12h8"/></svg>
           <span class="dash-tile-label">한자<br>뜻풀이</span>
         </button>
@@ -870,6 +978,28 @@
       </form>
       <div id="name-standalone-result"></div>
       <button type="button" class="btn-ghost" id="name-standalone-home-btn" style="width:100%;margin-top:6px;">🏠 홈으로</button>
+    </section>
+
+    <!-- ================= 한자 사전 (v1.10) — 이름과 무관한 독립 화면 ================= -->
+    <section class="screen" id="screen-hanja-dict">
+      <h2 class="screen-title">한자 뜻풀이</h2>
+      <p class="screen-sub">이름을 넣지 않아도 됩니다. 한자 한 글자를 찾아 뜻·자형(파자)·부수·획수를 바로 보실 수 있습니다.</p>
+      <div class="card">
+        <!-- v1.7.1 IME 원칙: 이 &lt;input&gt;은 검색 결과가 바뀌어도 절대 재생성되지 않는다.
+             결과는 #dict-results 안쪽만 다시 그린다(조합 세션이 끊길 여지 없음). -->
+        <div class="hanja-search-row">
+          <div class="hanja-search-modes" id="dict-search-modes">
+            <button type="button" class="hanja-search-mode-btn active" data-dict-mode="reading">음</button>
+            <button type="button" class="hanja-search-mode-btn" data-dict-mode="meaning">뜻</button>
+          </div>
+          <input type="text" class="hanja-search-input" id="dict-search-input"
+                 placeholder="음으로 찾기 (예: 민)" autocomplete="off" maxlength="12">
+          <select class="hanja-search-strokes" id="dict-search-strokes"><option value="">획수 전체</option></select>
+        </div>
+        <div id="dict-results"></div>
+      </div>
+      <div id="dict-detail"></div>
+      <button type="button" class="btn-ghost" id="dict-home-btn" style="width:100%;margin-top:6px;">🏠 홈으로</button>
     </section>
 
     <!-- ================= 궁합 입력폼 ================= -->
@@ -1176,6 +1306,13 @@ window.ProfileStore = (function () {
           if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 60);
       }
+      return;
+    }
+
+    if(route === 'hanja-dict'){
+      // v1.10: 한자풀이 = 이름과 무관한 독립 사전 화면. 사주·이름 어느 것도 요구하지 않는다.
+      showScreen('screen-hanja-dict');
+      renderHanjaDict();
       return;
     }
 
@@ -1800,45 +1937,124 @@ window.ProfileStore = (function () {
     return h;
   }
 
+  /**
+   * 한자 풀이 화면 (v1.9 재구성)
+   *  ① 글자 카드(뜻·음 / 파자 풀이 / 자원오행) → ② 이름 서사 → ③ 음양 배열(●○)
+   *  → ④ 삼원오행 흐름 → ⑤ 수리 4격 인생시기 서사 → ⑥ 사주 연계 → ⑦ 종합
+   * 문장은 전부 NameReader가 만든 것을 그대로 옮긴다(UI에서 풀이를 지어내지 않는다).
+   */
   function renderHanjaResult(hr){
     var h = '';
+    var brk = {};
+    (hr.breakdown || []).forEach(function(b){ if(!brk[b.ch]) brk[b.ch] = b; });
 
-    // 글자별 카드 + 뜻 조합
-    h += '<div class="reco-section"><div class="reco-section-title">글자에 담긴 뜻</div><div class="hanja-char-row">';
+    // ① 글자별 상세 카드 (뜻·음 + 파자 + 자원오행)
+    //    ※ IDS 원본(⿱刃心)의 IDC 문자는 대부분의 기기 서체에 없어 두부(▯)로 깨지므로
+    //      화면에는 최상위 배치만 한국어 한 마디("위아래 결합")로 보여준다.
+    //      IDS 원본 문자열은 name-hanja-db.js 에 그대로 남아 있어 대조 검증이 가능하다.
+    h += '<div class="reco-section"><div class="reco-section-title">글자마다 담긴 뜻과 자형</div>';
     hr.perChar.forEach(function(c){
-      h += '<div class="hanja-card"><span class="hj">' + c.ch + '</span>'
-        + '<span class="rd">' + c.reading + '</span>'
-        + '<div class="mn">' + c.meaning + '</div>'
-        + '<div class="meta">원획 ' + c.strokes + '획'
-        + (c.jawonElement ? ' · ' + c.jawonElement : '') + '</div></div>';
+      var b = brk[c.ch];
+      h += '<div class="hj-detail">'
+        + '<div class="hj-detail-head"><div class="hj-glyph">' + hanjaEsc(c.ch) + '</div>'
+        + '<div class="hj-detail-meta">'
+        + '<div class="mn">' + hanjaEsc(c.meaning) + ' ' + hanjaEsc(c.reading) + '</div>'
+        + '<div class="sub">원획 ' + c.strokes + '획'
+        + (b && b.resolved && b.layout ? ' · ' + hanjaEsc(b.layout) + ' 결합' : '') + '</div>'
+        + (c.jawonElement ? '<span class="el">자원오행 ' + c.jawonElement + '</span>' : '')
+        + '</div></div>';
+      if(b && b.resolved && b.parts.length){
+        h += '<div class="hj-parts"><div class="hj-part"><span class="pc">' + hanjaEsc(c.ch) + '</span>'
+          + '<span class="pm">' + hanjaEsc(c.reading) + '</span></div><span class="hj-part-eq">=</span>';
+        b.parts.forEach(function(p, i){
+          if(i) h += '<span class="hj-part-op">+</span>';
+          h += '<div class="hj-part"><span class="pc">' + hanjaEsc(p.ch) + '</span>'
+            + '<span class="pm">' + hanjaEsc(p.meaning) + '</span></div>';
+        });
+        h += '</div>';
+      }
+      if(b) h += '<p class="hj-break-para">' + hanjaEsc(b.para) + '</p>';
+      if(b && b.radicalSymbol){
+        h += '<p class="hj-rad-sym"><b>' + hanjaEsc(b.radicalSymbol.ch) + ' '
+          + hanjaEsc(b.radicalSymbol.name) + '</b> · ' + hanjaEsc(b.radicalSymbol.cat)
+          + ' — ' + hanjaEsc(b.radicalSymbol.sym) + '</p>';
+      }
+      h += '</div>';
     });
-    h += '</div><p class="tab-para">' + hr.meaningPara + '</p></div>';
+    h += '</div>';
 
-    // 자원오행 ↔ 사주
-    if(hr.jawonFit){
-      h += '<div class="reco-section"><div class="reco-section-title">자원오행과 사주</div>'
-        + '<h3 class="tab-headline" style="font-size:14px;">' + hr.jawonFit.verdict + '</h3>'
-        + '<p class="tab-para">' + hr.jawonFit.para + '</p></div>';
+    // ② 이름 전체 서사
+    h += '<div class="reco-section"><div class="reco-section-title">이름이 그리는 그림</div>'
+      + '<p class="tab-para">' + hr.meaningPara + '</p></div>';
+
+    // ③ 음양 배열
+    if(hr.yinYang){
+      h += '<div class="reco-section"><div class="reco-section-title">음양 배열</div>'
+        + '<p class="yy-pattern">' + hanjaEsc(hr.yinYang.pattern) + ' · ' + hanjaEsc(hr.yinYang.verdict) + '</p>'
+        + '<div class="yy-row">';
+      hr.yinYang.marks.forEach(function(m){
+        h += '<div class="yy-mark ' + (m.yin ? 'is-yin' : 'is-yang') + '">'
+          + '<span class="dot">' + m.sign + '</span>'
+          + '<span class="ch">' + hanjaEsc(m.ch) + '</span>'
+          + '<span class="st">' + m.strokes + '획 ' + (m.yin ? '음' : '양') + '</span></div>';
+      });
+      h += '</div><p class="tab-para">' + hanjaEsc(hr.yinYang.para) + '</p>'
+        + '<p class="suri-hanja-note">획수가 홀수면 양(●), 짝수면 음(○)으로 보는 전통 성명학 규약입니다. '
+        + '한쪽으로만 쏠린 배열(순양·순음)보다 홀짝이 섞인 배열을 조화롭게 보는 편입니다.</p></div>';
     }
 
-    // 원획 수리 4격 (한글 획수 4격과 구분 표기)
+    // ④ 삼원오행 흐름
+    if(hr.samwon){
+      h += '<div class="reco-section"><div class="reco-section-title">삼원오행 흐름</div><div class="sw-flow">';
+      [['cheon', hr.samwon.cheon], null, ['in', hr.samwon['in']], null, ['ji', hr.samwon.ji]]
+        .forEach(function(item, idx){
+          if(item){
+            h += '<div class="sw-node"><span class="lb">' + hanjaEsc(item[1].label) + '</span>'
+              + '<span class="el">' + item[1].element + '</span>'
+              + '<span class="nm">' + item[1].num + '획</span></div>';
+          } else {
+            var f = hr.samwon.flow[(idx - 1) / 2];
+            h += '<div class="sw-arrow"><span>→</span><span class="rel-' + f.rel + '">' + f.rel + '</span></div>';
+          }
+        });
+      h += '</div>'
+        + '<p class="sw-role">천격=하늘·부모에게서 받은 바탕 / 인격=나 자신의 중심 / 지격=가정과 살아가는 터전</p>'
+        + '<p class="tab-para">' + hanjaEsc(hr.samwon.para) + '</p>'
+        + '<p class="suri-hanja-note">천격=성씨 원획, 인격=성씨+이름 첫 자, 지격=이름 첫 자+끝 자로 셈한 뒤 '
+        + '끝자리 수를 오행으로 바꾼 전통 방식입니다(1·2 목, 3·4 화, 5·6 토, 7·8 금, 9·0 수). '
+        + '유파에 따라 셈법이 갈리는 항목이라 참고로만 보시면 좋겠습니다.</p></div>';
+    }
+
+    // ⑤ 원획 수리 4격 — 인생 시기 서사 (한글 획수 4격과 구분 표기)
     if(hr.suriHanja){
-      h += '<div class="reco-section"><div class="reco-section-title">원획 수리 4격 (한자 기준)</div>'
+      h += '<div class="reco-section"><div class="reco-section-title">수리 4격과 인생 시기 (한자 원획)</div>'
         + '<p class="suri-hanja-note">위쪽 &lsquo;수리 4격&rsquo;은 <b>한글 획수</b>로, 여기는 <b>한자 원획(原劃)</b>으로 계산한 별개의 결과입니다. '
         + '원획은 변형된 부수를 원래 글자로 되돌려 세는 전통 성명학 방식이라 옥편의 획수와 다를 수 있습니다.</p>'
         + '<div class="suri-grid">';
       ['wonhyeong', 'hyeonggyeok', 'igyeok', 'jeonggyeok'].forEach(function(key){
         var g = hr.suriHanja[key];
         h += '<div class="suri-card">'
-          + '<div class="suri-card-label">' + SURI_LABEL[key] + '</div>'
+          + '<div class="suri-card-label">' + hanjaEsc(g.periodLabel || SURI_LABEL[key]) + '</div>'
           + '<div class="suri-card-num">' + g.num + '획</div>'
           + '<span class="suri-grade g-' + g.grade + '">' + g.grade + ' · ' + g.name + '</span>'
-          + '<p class="suri-card-para">' + g.para + '</p></div>';
+          + '<p class="suri-card-para">' + hanjaEsc(g.periodPara || g.para) + '</p></div>';
       });
       h += '</div></div>';
     }
 
-    // 종합
+    // ⑥ 사주 연계 (자원오행이 내 오행 분포에 주는 작용)
+    if(hr.jawonFit){
+      h += '<div class="reco-section"><div class="reco-section-title">내 사주와의 연계</div>'
+        + '<h3 class="tab-headline" style="font-size:14px;">' + hr.jawonFit.verdict + '</h3>'
+        + '<p class="tab-para">' + hr.jawonFit.para + '</p>';
+      (hr.jawonFit.charEffects || []).forEach(function(e){
+        h += '<p class="jw-effect"><b>' + hanjaEsc(e.ch) + ' · ' + e.element + ' · '
+          + hanjaEsc(e.role) + '</b><br>' + hanjaEsc(e.para) + '</p>';
+      });
+      h += '</div>';
+    }
+
+    // ⑦ 종합
     h += '<div class="reco-section"><div class="reco-section-title">한자 풀이 종합</div>'
       + '<div class="name-overall-card">'
       + '<div class="name-overall-score">' + hr.overall.score + '</div>'
@@ -2012,6 +2228,224 @@ window.ProfileStore = (function () {
   if(nameStandaloneHomeBtn){
     nameStandaloneHomeBtn.addEventListener('click', function(){ navigateTo('home'); });
   }
+
+  // ============================================================
+  // 6-4. 한자 사전 화면 (v1.10, SPEC "이름풀이/한자풀이 분리")
+  //   이름 입력을 요구하지 않는 독립 화면. 검색(음/뜻 + 획수) → 글자 선택 →
+  //   단독 풀이 카드(뜻·음 / 파자 / 부수·자원오행 상징 / 원획·필획 / 이름 기운 / 성씨 본관).
+  //   풀이 문장은 전부 NameReader.charProfile 이 만든 것을 옮기기만 한다.
+  //   ⚠ v1.7.1 IME 원칙: #dict-search-input 은 정적 마크업이라 재렌더 대상이 아니다.
+  //      결과 갱신은 #dict-results 안쪽만 다시 그린다.
+  // ============================================================
+  var DICT_MAX_RESULTS = 40;
+  var dictState = { mode: 'reading', q: '', strokes: '', selected: null };
+  var dictSearchTimer = null;
+
+  function dictAvailable(){
+    return !!(window.HanjaDB && window.HanjaDB.byReading &&
+      window.NameReader && typeof window.NameReader.charProfile === 'function');
+  }
+
+  /** DB 전체를 훑어 검색 조건에 맞는 항목을 모은다(음절 순서 = DB 빈도 순서 유지). */
+  function dictSearch(){
+    if(!dictAvailable()) return [];
+    var q = (dictState.q || '').trim();
+    var strokes = dictState.strokes ? parseInt(dictState.strokes, 10) : null;
+    var byReading = window.HanjaDB.byReading;
+    var out = [], seen = {};
+    var readings = dictState.mode === 'reading' && q
+      ? window.HanjaDB.readings.filter(function(r){ return r.indexOf(q) === 0; })
+      : window.HanjaDB.readings;
+    for(var i = 0; i < readings.length; i++){
+      var list = byReading[readings[i]] || [];
+      for(var j = 0; j < list.length; j++){
+        var e = list[j];
+        if(strokes && e.strokes !== strokes) continue;
+        if(dictState.mode === 'meaning' && q && e.meaning.indexOf(q) === -1) continue;
+        if(dictState.mode === 'reading' && !q && !strokes) continue;   // 조건 없으면 전량 나열 금지
+        var key = e.ch + '/' + e.reading;
+        if(seen[key]) continue;
+        seen[key] = 1;
+        out.push(e);
+        if(out.length >= DICT_MAX_RESULTS) return out;
+      }
+    }
+    return out;
+  }
+
+  function renderDictResults(){
+    var wrap = document.getElementById('dict-results');
+    if(!wrap) return;
+    if(!dictAvailable()){
+      wrap.innerHTML = '<p class="hanja-search-empty">한자 데이터를 불러오지 못했습니다. 페이지를 새로고침해주세요.</p>';
+      return;
+    }
+    var hasQuery = (dictState.q || '').trim() || dictState.strokes;
+    if(!hasQuery){
+      wrap.innerHTML = '<p class="dict-hint">찾으실 한자의 <b>음</b>(예: 민)이나 <b>뜻</b>(예: 밝을)을 입력해보세요. 획수만으로도 찾을 수 있습니다.</p>';
+      return;
+    }
+    var rows = dictSearch();
+    if(!rows.length){
+      wrap.innerHTML = '<p class="hanja-search-empty">검색 결과가 없습니다.</p>';
+      return;
+    }
+    var SDB = window.SurnameDB;
+    var h = '<p class="dict-count">' + rows.length + '자'
+      + (rows.length >= DICT_MAX_RESULTS ? ' 이상 (조건을 좁혀보세요)' : '') + '</p><div class="hanja-opts">';
+    rows.forEach(function(e){
+      var isSur = !!(SDB && SDB.isSurnameChar && SDB.isSurnameChar(e.ch, e.reading));
+      h += '<button type="button" class="hanja-opt' + (isSur ? ' is-surname' : '')
+        + (dictState.selected && dictState.selected.ch === e.ch && dictState.selected.reading === e.reading ? ' selected' : '')
+        + '" data-dict-ch="' + hanjaEsc(e.ch) + '" data-dict-reading="' + hanjaEsc(e.reading) + '">'
+        + '<span class="hj">' + hanjaEsc(e.ch) + '</span>'
+        + '<span class="mn">' + hanjaEsc(e.meaning) + ' ' + hanjaEsc(e.reading) + '</span>'
+        + '<span class="st">' + e.strokes + '획</span>'
+        + (isSur ? '<span class="surname-badge">성씨</span>' : '')
+        + '</button>';
+    });
+    h += '</div>';
+    wrap.innerHTML = h;
+    wrap.querySelectorAll('.hanja-opt').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        dictState.selected = { ch: btn.dataset.dictCh, reading: btn.dataset.dictReading };
+        renderDictResults();
+        renderDictDetail();
+        var d = document.getElementById('dict-detail');
+        if(d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  function renderDictDetail(){
+    var el = document.getElementById('dict-detail');
+    if(!el) return;
+    if(!dictState.selected || !dictAvailable()){ el.innerHTML = ''; return; }
+    var p = window.NameReader.charProfile(dictState.selected.ch, dictState.selected.reading);
+    if(!p){ el.innerHTML = ''; return; }
+    var SDB = window.SurnameDB;
+    var surEntry = null;
+    if(SDB && SDB.surnameCandidates){
+      SDB.surnameCandidates(p.reading).forEach(function(s){ if(!surEntry && s.ch === p.ch) surEntry = s; });
+    }
+
+    var h = '<div class="dict-hero"><div class="g">' + hanjaEsc(p.ch) + '</div><div class="t">'
+      + '<div class="m">' + hanjaEsc(p.meaning) + ' ' + hanjaEsc(p.reading) + '</div>'
+      + '<div class="s">원획 ' + p.strokes + '획 · 필획 ' + p.pilhoek + '획'
+      + (p.breakdown && p.breakdown.resolved && p.breakdown.layout ? ' · ' + hanjaEsc(p.breakdown.layout) + ' 결합' : '')
+      + '</div><div class="dict-badges">'
+      + (p.jawonElement ? '<span class="dict-badge">자원오행 ' + p.jawonElement + '</span>' : '')
+      + (p.rad ? '<span class="dict-badge">부수 ' + hanjaEsc(p.rad) + (p.radical ? ' ' + hanjaEsc(p.radical.name) : '') + '</span>' : '')
+      + '<span class="dict-badge">' + p.sign + ' ' + (p.yin ? '음' : '양') + '</span>'
+      + (surEntry ? '<span class="dict-badge is-surname">성씨 한자</span>' : '')
+      + '</div></div></div>';
+
+    // 파자 구조 (v1.9 breakdown 재사용)
+    h += '<div class="reco-section"><div class="reco-section-title">자형(파자) 풀이</div><div class="hj-detail">';
+    if(p.breakdown && p.breakdown.resolved && p.breakdown.parts.length){
+      h += '<div class="hj-parts"><div class="hj-part"><span class="pc">' + hanjaEsc(p.ch) + '</span>'
+        + '<span class="pm">' + hanjaEsc(p.reading) + '</span></div><span class="hj-part-eq">=</span>';
+      p.breakdown.parts.forEach(function(part, i){
+        if(i) h += '<span class="hj-part-op">+</span>';
+        h += '<div class="hj-part"><span class="pc">' + hanjaEsc(part.ch) + '</span>'
+          + '<span class="pm">' + hanjaEsc(part.meaning) + '</span></div>';
+      });
+      h += '</div>';
+    }
+    h += '<p class="hj-break-para">' + hanjaEsc(p.breakdown ? p.breakdown.para : '') + '</p>';
+    if(p.radical){
+      h += '<p class="hj-rad-sym"><b>' + hanjaEsc(p.radical.ch) + ' ' + hanjaEsc(p.radical.name) + '</b> · '
+        + hanjaEsc(p.radical.cat) + ' — ' + hanjaEsc(p.radical.sym) + '</p>';
+    }
+    h += '</div></div>';
+
+    // 이름에 쓸 때의 기운
+    h += '<div class="reco-section"><div class="reco-section-title">이름에 쓸 때</div>'
+      + '<p class="tab-para">' + hanjaEsc(p.nameEnergy) + '</p>'
+      + (p.unverified ? '<p class="suri-hanja-note">이 글자의 원획은 대조표에 없어 프로그램 계산값을 그대로 씁니다(유파에 따라 1획 차이가 날 수 있습니다).</p>' : '')
+      + '</div>';
+
+    // 성씨 한자면 본관 (v1.8 재사용)
+    if(surEntry){
+      h += '<div class="reco-section"><div class="reco-section-title">성씨로 쓰일 때</div>'
+        + '<p class="dict-bongwan"><b>' + hanjaEsc(surEntry.surname || (p.reading + '씨')) + '</b>'
+        + (surEntry.bongwans && surEntry.bongwans.length
+          ? ' — 주요 본관: ' + hanjaEsc(surEntry.bongwans.slice(0, 12).join(' · '))
+            + (surEntry.bongwans.length > 12 ? ' 외' : '')
+          : ' — 수록된 본관 정보가 없습니다.')
+        + '</p>'
+        + (surEntry.note ? '<p class="dict-hint">' + hanjaEsc(surEntry.note) + '</p>' : '')
+        + '</div>';
+    }
+
+    h += '<button type="button" class="dict-go-name" id="dict-go-name-btn">이 글자로 이름풀이 하러 가기 →</button>';
+    // .card 로 감싸야 한지(밝은) 배경 + 잉크 톤 토큰 스코프가 걸린다.
+    // (감싸지 않으면 먹빛 배경 위에 먹빛 글씨가 되어 대비가 무너진다 — v1.9 대비 점검에서 확인)
+    el.innerHTML = '<div class="card">' + h + '</div>';
+    var goBtn = document.getElementById('dict-go-name-btn');
+    if(goBtn) goBtn.addEventListener('click', function(){ navigateTo('name'); });
+  }
+
+  function renderHanjaDict(){
+    var sel = document.getElementById('dict-search-strokes');
+    if(sel && sel.options.length <= 1 && dictAvailable()){
+      var seen = {};
+      window.HanjaDB.readings.forEach(function(r){
+        (window.HanjaDB.byReading[r] || []).forEach(function(e){ seen[e.strokes] = 1; });
+      });
+      Object.keys(seen).map(Number).sort(function(a, b){ return a - b; }).forEach(function(n){
+        var o = document.createElement('option');
+        o.value = String(n); o.textContent = n + '획';
+        sel.appendChild(o);
+      });
+    }
+    renderDictResults();
+    renderDictDetail();
+  }
+
+  (function bindHanjaDict(){
+    var inp = document.getElementById('dict-search-input');
+    var modes = document.getElementById('dict-search-modes');
+    var strokesSel = document.getElementById('dict-search-strokes');
+    var homeBtn = document.getElementById('dict-home-btn');
+    if(!inp) return;
+    function schedule(){
+      if(dictSearchTimer) clearTimeout(dictSearchTimer);
+      dictSearchTimer = setTimeout(function(){
+        dictState.q = inp.value;
+        renderDictResults();
+      }, 200);
+    }
+    inp.addEventListener('compositionstart', function(){
+      inp.dataset.composing = '1';
+      if(dictSearchTimer) clearTimeout(dictSearchTimer);
+    });
+    inp.addEventListener('compositionend', function(){ inp.dataset.composing = ''; schedule(); });
+    inp.addEventListener('input', function(e){
+      if((e && e.isComposing) || inp.dataset.composing === '1') return;
+      schedule();
+    });
+    if(modes){
+      modes.addEventListener('click', function(e){
+        var btn = e.target.closest('.hanja-search-mode-btn');
+        if(!btn) return;
+        dictState.mode = btn.dataset.dictMode;
+        modes.querySelectorAll('.hanja-search-mode-btn').forEach(function(b){
+          b.classList.toggle('active', b === btn);
+        });
+        inp.placeholder = dictState.mode === 'reading' ? '음으로 찾기 (예: 민)' : '뜻으로 찾기 (예: 밝을)';
+        dictState.q = inp.value;
+        renderDictResults();
+      });
+    }
+    if(strokesSel){
+      strokesSel.addEventListener('change', function(){
+        dictState.strokes = strokesSel.value;
+        renderDictResults();
+      });
+    }
+    if(homeBtn) homeBtn.addEventListener('click', function(){ navigateTo('home'); });
+  })();
 
   function setActiveTab(key){
     document.querySelectorAll('.tab-btn').forEach(function(btn){
@@ -2638,11 +3072,17 @@ window.ProfileStore = (function () {
     if(!hasProfile){
       // 빈 상태: 이름풀이/한자풀이는 프로필 없이도 바로 진입 가능한 단독 화면으로,
       // 사주 데이터가 필요한 나머지(사주풀이/로또/궁합)는 입력 유도로 보낸다.
-      if(btn.dataset.tab === 'name'){
+      if(btn.dataset.route === 'hanja-dict'){
+        navigateTo('hanja-dict');
+      } else if(btn.dataset.tab === 'name'){
         navigateTo('name', btn.dataset.hanja ? { openHanja: true } : {});
       } else {
         goSajuRoute(btn.dataset.route, {});
       }
+      return;
+    }
+    if(btn.dataset.route === 'hanja-dict'){   // v1.10: 사전 화면은 프로필·이름 무관
+      navigateTo('hanja-dict');
       return;
     }
     if(btn.dataset.tab === 'name' && !state.nameResult){
@@ -2730,7 +3170,7 @@ window.ProfileStore = (function () {
     closeMenu();
     if(action === 'total') goSajuRoute('result', { tab: 'total' });
     else if(action === 'name') navigateTo('name');
-    else if(action === 'hanja') navigateTo('name', { openHanja: true });
+    else if(action === 'hanja') navigateTo('hanja-dict');   // v1.10: 독립 한자 사전 화면
     else if(action === 'lotto') goSajuRoute('result', { scrollLotto: true });
     else if(action === 'compat') goSajuRoute('compat');
   });
