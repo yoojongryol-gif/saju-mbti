@@ -218,6 +218,14 @@ window.NameReader.compatNames(nameA, nameB, chartA|null, chartB|null) → {
 - **이름풀이 흐름은 무변경** — 기존 `#name` 단독 화면과 결과 탭의 "한자로 더 보기"(analyzeHanja) 그대로.
 - 검증: `_e2e_hanja_dict.js` (진입·이름 미입력 동작·음/뜻/획수 검색·忍 파자 표시·본관 표시·IME 입력칸 불가침·이름풀이 복귀, 실패 0). 대비 스캔에도 사전 화면 2단계를 추가해 0건.
 
+## v1.11 추가: 로또 번호 일별 누적 기록 (2026-08-20 사장님 지시 "로또 번호는 하루하루 쌓이게 해서 누적으로 볼 수 있게")
+- **저장**: `window.LottoHistoryStore`(ProfileStore와 동일 패턴, DOM 비의존 순수 localStorage 모듈) — 키 `mzsaju_lotto_history_v1`, 활성 프로필 id로 스코프(`{ [profileId]: [{date, numbers}, ...] }`). 오늘 로또 번호가 계산될 때마다(`ContentDB.lotto` 재사용, 재계산 없음) `record(profileId, TODAY_STR, numbers)` 호출.
+- **하루 단위 정책**: 같은 프로필·같은 날짜(YYYY-MM-DD)로 다시 호출되면 그날 기록을 최신 번호로 갱신(하루 1줄 유지). 날짜가 바뀌면 새 줄로 쌓인다. 로또 번호 자체가 chart+날짜 결정적 시드라 같은 날 재조회해도 값은 항상 동일.
+- **용량 관리**: 프로필별 최근 365일 초과분은 오래된 것부터 정리.
+- **UI**: 결과 화면 `#lotto-block`(오늘의 로또 번호 카드) 하단에 "📅 지난 번호" 목록 추가(`#lotto-history-block`) — 날짜 내림차순, 날짜+번호 6개(기존 `.lotto-ball` 재사용, 목록 안에서는 24px 축소판 `.lotto-ball.sm`), `max-height` + `overflow-y:auto`로 스크롤. **오늘 날짜는 목록에서 제외**(바로 위 "오늘의 로또 번호" 카드와 중복 표시 방지). 기록이 없으면 "아직 쌓인 지난 번호가 없습니다" 안내.
+- 로또 섹션이 미노출인 주말(v1.4 `show` 규칙)에는 기록도 하지 않는다 — 화면에 나타난 번호만 쌓인다는 원칙 유지.
+- 검증: `_unit_lotto_history_store.js`(저장/하루 1줄 갱신/날짜 정렬/365일 캡/프로필별 분리/localStorage 차단 폴백), `_e2e_lotto_history.js`(첫 조회 시 목록 비어있음→같은 날 재조회 1건 유지·결정성→날짜가 바뀐 뒤 재방문 시 지난 날짜가 목록에 등장, localStorage 키·프로필 스코프 실측). 기존 `_e2e_lotto.js`·`_e2e_dashboard.js` 등 전체 회귀 실패 0건.
+
 ## 품질 기준
 - 엔진: test.html에 검증 사례 최소 8건(절기 경계일 2건, 자시 경계 1건, 음력 윤달 1건 포함) 전부 PASS 표기.
 - 콘텐츠: 동일 조합이라도 문단이 조각 3개 이상 조합으로 구성돼 기계 반복감 없게. 존댓말, 단정 대신 경향("~한 흐름입니다"). 의료 단정 금지(건강운은 생활 조언 톤).

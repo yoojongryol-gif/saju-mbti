@@ -658,6 +658,16 @@
   .lotto-ball.b-green{background:#B0D840;}
   .lotto-disclaimer{font-size:10.5px;color:var(--muted2);margin-top:10px;}
 
+  /* ---- lotto 지난 번호 누적 기록 (v1.11) ---- */
+  .lotto-history{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(201,162,39,0.18);}
+  .lotto-history-label{font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:8px;}
+  .lotto-history-list{display:flex;flex-direction:column;gap:8px;max-height:230px;overflow-y:auto;padding-right:2px;}
+  .lotto-history-row{display:flex;align-items:center;gap:10px;}
+  .lotto-history-date{font-size:11px;color:var(--muted2);width:66px;flex:none;}
+  .lotto-history-balls{display:flex;gap:5px;flex-wrap:wrap;}
+  .lotto-ball.sm{width:24px;height:24px;font-size:10.5px;}
+  .lotto-history-empty{font-size:11.5px;color:var(--muted2);}
+
   /* ---- action buttons block ---- */
   .action-block{margin-bottom:18px;}
   .section-label{font-size:13px;color:var(--muted);font-weight:700;margin:22px 0 10px;text-transform:uppercase;letter-spacing:0.04em;}
@@ -938,6 +948,12 @@
           <p class="lotto-para" id="lotto-para">-</p>
           <div class="lotto-balls" id="lotto-balls"></div>
           <div class="lotto-disclaimer">재미로 보는 번호이며 당첨과 무관합니다.</div>
+
+          <!-- v1.11 로또 번호 일별 누적 기록 -->
+          <div class="lotto-history" id="lotto-history-block" style="display:none;">
+            <div class="lotto-history-label">📅 지난 번호</div>
+            <div class="lotto-history-list" id="lotto-history-list"></div>
+          </div>
         </div>
       </div>
 
@@ -1150,6 +1166,77 @@ window.ProfileStore = (function () {
   }
 
   return { load: load, save: save, upsert: upsert, list: list, getActive: getActive, setActive: setActive, _key: profileKey };
+})();
+</script>
+<!-- v1.11 로또 번호 일별 누적 기록(로컬 전용) — ProfileStore와 동일하게 DOM 의존 없는 순수 localStorage 로직 -->
+<script>
+window.LottoHistoryStore = (function () {
+  'use strict';
+  var KEY = 'mzsaju_lotto_history_v1';
+  var MAX_DAYS = 365; // 프로필별 최근 365일 초과분은 오래된 것부터 정리
+
+  function loadAll() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return {};
+      var obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) {
+      // 사생활 모드 등으로 localStorage 접근 불가 → 항상 "기록 없음"으로 자연 폴백
+      return {};
+    }
+  }
+
+  function saveAll(all) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(all));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function byDateDesc(a, b) {
+    if (a.date === b.date) return 0;
+    return a.date < b.date ? 1 : -1;
+  }
+
+  // 하루 단위 정책: 같은 profileId+dateStr 로 다시 호출되면 그날 기록을 최신 번호로 갱신(하루 1줄 유지),
+  // 날이 바뀌면(dateStr 이 다르면) 새 줄로 쌓인다.
+  function record(profileId, dateStr, numbers) {
+    if (!profileId || !dateStr || !Array.isArray(numbers)) return false;
+    try {
+      var all = loadAll();
+      var list = Array.isArray(all[profileId]) ? all[profileId].slice() : [];
+      var idx = -1;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].date === dateStr) { idx = i; break; }
+      }
+      var entry = { date: dateStr, numbers: numbers.slice() };
+      if (idx >= 0) list[idx] = entry; else list.push(entry);
+      list.sort(byDateDesc);
+      if (list.length > MAX_DAYS) list = list.slice(0, MAX_DAYS); // 오래된 것부터 정리(내림차순이므로 뒤쪽이 오래된 것)
+      all[profileId] = list;
+      return saveAll(all);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 날짜 내림차순(최신이 먼저) 목록 반환
+  function list(profileId) {
+    if (!profileId) return [];
+    try {
+      var all = loadAll();
+      var l = Array.isArray(all[profileId]) ? all[profileId].slice() : [];
+      l.sort(byDateDesc);
+      return l;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return { record: record, list: list, _key: KEY, _maxDays: MAX_DAYS };
 })();
 </script>
 <script>
@@ -2549,6 +2636,44 @@ window.ProfileStore = (function () {
       ballsWrap.appendChild(ball);
     });
     block.style.display = 'block';
+    renderLottoHistory();
+  }
+
+  // v1.11: 오늘 계산된 번호를 프로필별로 localStorage 에 쌓는다.
+  // 정책 — 같은 날 재조회하면 그날 기록을 최신 번호로 갱신(하루 1줄 유지), 날이 바뀌면 새 줄로 쌓인다.
+  // 주말(로또 섹션 미노출일)은 번호 자체가 화면에 나타나지 않으므로 기록하지 않는다(기존 show 규칙과 동일 기준).
+  function recordLottoHistory(){
+    if(!window.LottoHistoryStore) return;
+    var info = state.lottoInfo;
+    var profile = state.activeProfile;
+    if(!info || info.show !== true) return;
+    if(!profile || !profile.id) return;
+    try { window.LottoHistoryStore.record(profile.id, TODAY_STR, info.numbers || []); }
+    catch(e){ console.error('[MZ사주풀이] 로또 기록 저장 오류:', e); }
+  }
+
+  // v1.11: "지난 번호" 누적 목록 렌더 — 날짜 내림차순(최신이 위), 스크롤 가능한 목록
+  function renderLottoHistory(){
+    var wrap = document.getElementById('lotto-history-block');
+    var listEl = document.getElementById('lotto-history-list');
+    if(!wrap || !listEl) return;
+    var profile = state.activeProfile;
+    var rows = (window.LottoHistoryStore && profile && profile.id) ? window.LottoHistoryStore.list(profile.id) : [];
+    // 오늘 기록은 위 "오늘의 로또 번호" 카드에 이미 나오므로 목록에서는 제외해 중복을 피한다.
+    rows = rows.filter(function(r){ return r.date !== TODAY_STR; });
+    if(rows.length === 0){
+      listEl.innerHTML = '<div class="lotto-history-empty">아직 쌓인 지난 번호가 없습니다. 내일 다시 방문해보세요.</div>';
+      wrap.style.display = 'block';
+      return;
+    }
+    listEl.innerHTML = rows.map(function(r){
+      var balls = (r.numbers || []).map(function(n){
+        return '<div class="lotto-ball sm ' + lottoBallClass(n) + '">' + n + '</div>';
+      }).join('');
+      return '<div class="lotto-history-row"><div class="lotto-history-date">' + r.date + '</div>' +
+        '<div class="lotto-history-balls">' + balls + '</div></div>';
+    }).join('');
+    wrap.style.display = 'block';
   }
 
   // ============================================================
@@ -2606,6 +2731,8 @@ window.ProfileStore = (function () {
         if(window.ProfileStore){
           try { state.activeProfile = window.ProfileStore.upsert(data); } catch(saveErr){ state.activeProfile = null; }
         }
+        // v1.11: 프로필이 확정된 뒤에 오늘 로또 번호를 프로필별 기록으로 누적 저장
+        recordLottoHistory();
 
         renderResult();
         navigateTo('result');
@@ -2947,6 +3074,8 @@ window.ProfileStore = (function () {
     state.dailyInfo = window.ContentDB.daily(state.todayResult, chart);
     state.recommendData = (typeof window.ContentDB.recommend === 'function') ? window.ContentDB.recommend(chart, p.mbti) : null;
     state.lottoInfo = (typeof window.ContentDB.lotto === 'function') ? window.ContentDB.lotto(chart, TODAY_STR) : null;
+    // v1.11: 대시보드 진입/새로고침마다 오늘 번호를 프로필별 기록으로 누적 저장(같은 날 재호출은 그날 기록 갱신)
+    recordLottoHistory();
 
     state.nameResult = null;
     state.nameInput = p.name || '';
