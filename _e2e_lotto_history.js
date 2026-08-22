@@ -1,11 +1,13 @@
 /**
- * 헤드리스 e2e (v1.11 로또 번호 일별 누적 기록, 배포 대상 아님)
+ * 헤드리스 e2e (v1.11 로또 번호 일별 누적 기록 / v1.12 매일 노출 / v1.13 최소 5줄 소급 채움, 배포 대상 아님)
  *   node _e2e_lotto_history.js [baseUrl]
  * 검증:
- *  - 첫 조회일(평일 A) → 오늘 번호 표시, "지난 번호" 목록은 아직 비어있음(오늘은 목록에서 제외)
- *  - 같은 날 재조회(새로고침) → localStorage 기록이 1건 그대로(하루 1줄 유지), 번호 결정성 유지
- *  - 날짜가 다음 평일(B)로 바뀐 뒤 재방문 → "지난 번호" 목록에 A날짜 1건이 나타남(날짜+번호6개)
+ *  - 첫 조회일(A, 기록 0건 상태) → 오늘 번호 표시, "지난 번호" 목록이 소급 계산으로 즉시 5줄 채워짐
+ *    (v1.13: MIN_HISTORY_ROWS=5, 소급 대상 5일 중 주말 날짜도 포함됨을 함께 확인)
+ *  - 같은 날 재조회(새로고침) → localStorage 기록 건수가 그대로(중복 소급 없음), 번호 결정성 유지
+ *  - 날짜가 다음 평일(B)로 바뀐 뒤 재방문 → 이미 5줄 이상이라 추가 소급 없이 기존 기록이 그대로 나타남
  *  - localStorage 키 네임스페이스가 기존 관례(mzsaju_*)를 따름 + 프로필 id로 스코프됨
+ *  - v1.12: 토요일(2026-08-22) → 로또 섹션 노출 + localStorage 에 실제로 기록됨(노출+기록 동시 확인, 별도 컨텍스트)
  *  - 콘솔 에러 0
  */
 var PW = 'C:/Users/NHNE/AppData/Local/npm-cache/_npx/9833c18b2d85bc59/node_modules/playwright';
@@ -73,7 +75,8 @@ async function submitSelf(page, name) {
   var ctx = await browser.newContext();
 
   // ============================================================
-  // 1. 평일 A(2026-08-17, 월요일) 첫 조회 — 오늘 번호 표시, 지난 번호는 아직 없음
+  // 1. 평일 A(2026-08-17, 월요일) 첫 조회, 기록 0건 상태 — 오늘 번호 표시 +
+  //    v1.13: "지난 번호" 목록이 저장 기록 없이도 소급 계산으로 즉시 5줄 채워짐
   // ============================================================
   var pageA = await attachPage(ctx, '2026-08-17T09:00:00');
   await submitSelf(pageA, '김민준');
@@ -83,13 +86,28 @@ async function submitSelf(page, name) {
   });
   check('A일차: 오늘 번호 6개 렌더', numbersA.length === 6, JSON.stringify(numbersA));
 
-  var histEmptyA = await pageA.evaluate(function () {
+  var histA = await pageA.evaluate(function () {
     var wrap = document.getElementById('lotto-history-block');
-    var list = document.getElementById('lotto-history-list');
-    return { display: wrap ? getComputedStyle(wrap).display : null, text: list ? list.textContent : null };
+    var rows = document.querySelectorAll('#lotto-history-list .lotto-history-row');
+    return {
+      display: wrap ? getComputedStyle(wrap).display : null,
+      rows: Array.prototype.map.call(rows, function (r) {
+        var date = r.querySelector('.lotto-history-date').textContent.trim();
+        var nums = Array.prototype.map.call(r.querySelectorAll('.lotto-ball'), function (b) { return Number(b.textContent); });
+        return { date: date, numbers: nums };
+      })
+    };
   });
-  check('A일차: 지난 번호 섹션 노출(display=block)', histEmptyA.display === 'block', histEmptyA.display);
-  check('A일차: 지난 번호 목록은 비어있음(오늘은 목록에서 제외)', /아직 쌓인 지난 번호가 없습니다/.test(histEmptyA.text || ''), histEmptyA.text);
+  check('A일차: 지난 번호 섹션 노출(display=block)', histA.display === 'block', histA.display);
+  // v1.13 핵심 케이스: 기록 0건 상태에서도 목록이 최소 5줄(MIN_HISTORY_ROWS)로 소급 채워진다.
+  check('A일차(기록 0건 상태): 지난 번호 목록이 5줄로 소급 채워짐', histA.rows.length === 5, JSON.stringify(histA.rows));
+  var histADates = histA.rows.map(function (r) { return r.date; });
+  check('A일차: 소급 날짜가 어제부터 역순(8/16~8/12)', JSON.stringify(histADates) ===
+    JSON.stringify(['2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12']), JSON.stringify(histADates));
+  check('A일차: 소급 대상에 오늘(8/17)은 없음', histADates.indexOf('2026-08-17') === -1, JSON.stringify(histADates));
+  // v1.12(주 7일 매일 노출)와 맞물려, 소급 5일 중 주말(8/16 일, 8/15 토)도 정상 포함되는지 확인
+  check('A일차: 소급 대상에 주말 날짜(8/16 일요일)도 포함됨', histADates.indexOf('2026-08-16') !== -1, JSON.stringify(histADates));
+  check('A일차: 소급 대상에 주말 날짜(8/15 토요일)도 포함됨', histADates.indexOf('2026-08-15') !== -1, JSON.stringify(histADates));
 
   // localStorage 키 네임스페이스 + 스코프 확인
   var storeCheck = await pageA.evaluate(function () {
@@ -101,9 +119,10 @@ async function submitSelf(page, name) {
     return { hasKey: !!raw, activeId: activeId, entryForActive: all && activeId ? all[activeId] : null };
   });
   check('로컬 저장 키가 기존 관례(mzsaju_*)를 따름', storeCheck.hasKey === true);
-  check('기록이 활성 프로필 id로 스코프됨', !!storeCheck.activeId && Array.isArray(storeCheck.entryForActive) && storeCheck.entryForActive.length === 1,
+  // v1.13: 소급분도 localStorage 에 저장되므로, 오늘 1건 + 소급 5건 = 6건이 저장된다.
+  check('기록이 활성 프로필 id로 스코프됨(오늘 1건+소급 5건=6건)', !!storeCheck.activeId && Array.isArray(storeCheck.entryForActive) && storeCheck.entryForActive.length === 6,
     JSON.stringify(storeCheck));
-  check('A일차 기록의 날짜가 2026-08-17', storeCheck.entryForActive && storeCheck.entryForActive[0].date === '2026-08-17', JSON.stringify(storeCheck.entryForActive));
+  check('A일차 기록의 날짜가 2026-08-17(최신=오늘)', storeCheck.entryForActive && storeCheck.entryForActive[0].date === '2026-08-17', JSON.stringify(storeCheck.entryForActive));
   check('A일차 기록의 번호가 화면 번호와 일치', storeCheck.entryForActive && JSON.stringify(storeCheck.entryForActive[0].numbers) === JSON.stringify(numbersA),
     JSON.stringify(storeCheck.entryForActive));
 
@@ -122,7 +141,8 @@ async function submitSelf(page, name) {
     var activeId = prof && prof.activeId;
     return (all[activeId] || []).length;
   });
-  check('같은 날 재조회 후에도 기록은 1건 그대로(하루 1줄 유지)', afterReloadCount === 1, afterReloadCount);
+  // 재조회는 대시보드 화면(로또 이력 섹션 없음)이라 추가 소급이 일어나지 않는다 — 6건 그대로(중복 소급 없음, 오늘 기록은 하루 1줄 유지).
+  check('같은 날 재조회 후에도 기록 건수 그대로(6건, 중복 소급 없음)', afterReloadCount === 6, afterReloadCount);
 
   var numbersA2 = await pageA.evaluate(function () {
     return Array.prototype.map.call(document.querySelectorAll('#dash-lotto-balls .lotto-ball'), function (b) { return Number(b.textContent); });
@@ -134,6 +154,7 @@ async function submitSelf(page, name) {
   // ============================================================
   // 3. 다음 평일 B(2026-08-18, 화요일)로 날짜가 바뀐 뒤 재방문
   //    — 같은 컨텍스트(같은 localStorage)를 이어서 사용, 프로필은 이미 저장돼 있으므로 대시보드로 바로 진입
+  //    이미 6건(≥5) 저장돼 있어 추가 소급 없이 기존 기록 그대로 나타나야 한다.
   // ============================================================
   var pageB = await attachPage(ctx, '2026-08-18T09:00:00');
   await pageB.waitForSelector('#screen-dashboard.active', { timeout: 10000 });
@@ -156,8 +177,12 @@ async function submitSelf(page, name) {
       return { date: date, numbers: nums };
     });
   });
-  check('B일차: 지난 번호 목록에 A날짜 1건 등장', histB.length === 1, JSON.stringify(histB));
-  check('B일차: 지난 번호 목록의 날짜 = 2026-08-17(A)', histB[0] && histB[0].date === '2026-08-17', JSON.stringify(histB));
+  // 이미 6건(8/17~8/12)이 저장돼 5줄 기준을 넘으므로 추가 소급 없이 그대로 6건이 나타난다.
+  check('B일차: 지난 번호 목록에 기존 6건(A일차 소급분 포함) 그대로 등장(추가 소급 없음)', histB.length === 6, JSON.stringify(histB));
+  var histBDates = histB.map(function (r) { return r.date; });
+  check('B일차: 지난 번호 목록이 8/17~8/12 내림차순', JSON.stringify(histBDates) ===
+    JSON.stringify(['2026-08-17', '2026-08-16', '2026-08-15', '2026-08-14', '2026-08-13', '2026-08-12']), JSON.stringify(histBDates));
+  check('B일차: 지난 번호 목록 맨 위(최신) 날짜 = 2026-08-17(A)', histB[0] && histB[0].date === '2026-08-17', JSON.stringify(histB));
   check('B일차: 지난 번호 목록의 번호 = A일차 번호와 일치', histB[0] && JSON.stringify(histB[0].numbers) === JSON.stringify(numbersA), JSON.stringify(histB));
   check('B일차: 지난 번호 목록에 오늘(B)은 없음(중복 표시 방지)', histB.every(function (r) { return r.date !== '2026-08-18'; }), JSON.stringify(histB));
 
@@ -169,13 +194,49 @@ async function submitSelf(page, name) {
     var all = raw ? JSON.parse(raw) : {};
     return (all[activeId] || []).map(function (r) { return r.date; });
   });
-  check('B일차: localStorage 기록이 날짜 2건(A, B) 누적', storeCheckB.length === 2, JSON.stringify(storeCheckB));
+  // 소급 6건(A일차) + B일차 오늘 기록 1건 = 7건
+  check('B일차: localStorage 기록이 7건(A일차 소급 6건 + B일차 1건) 누적', storeCheckB.length === 7, JSON.stringify(storeCheckB));
   check('B일차: localStorage 기록이 내림차순(B가 먼저)', storeCheckB[0] === '2026-08-18' && storeCheckB[1] === '2026-08-17', JSON.stringify(storeCheckB));
 
   await pageB.close();
 
   // ============================================================
-  // 4. 콘솔 에러 0
+  // 4. v1.12: 토요일(2026-08-22) — 로또 섹션 노출 + 기록 동시 확인 (별도 컨텍스트, A/B와 무관한 새 프로필)
+  // ============================================================
+  var ctxSat = await browser.newContext();
+  var pageSat = await attachPage(ctxSat, '2026-08-22T09:00:00');
+  await submitSelf(pageSat, '박서준');
+
+  var numbersSat = await pageSat.evaluate(function () {
+    return Array.prototype.map.call(document.querySelectorAll('#lotto-balls .lotto-ball'), function (b) { return Number(b.textContent); });
+  });
+  check('토요일: 오늘 번호 6개 렌더(노출)', numbersSat.length === 6, JSON.stringify(numbersSat));
+
+  var satDisplay = await pageSat.evaluate(function () {
+    var el = document.getElementById('lotto-block');
+    return el ? getComputedStyle(el).display : null;
+  });
+  check('토요일: 로또 섹션 display=block (v1.12: 매일 노출)', satDisplay === 'block', satDisplay);
+
+  var satStoreCheck = await pageSat.evaluate(function () {
+    var raw = localStorage.getItem('mzsaju_lotto_history_v1');
+    var profRaw = localStorage.getItem('mzsaju_profiles_v1');
+    var prof = profRaw ? JSON.parse(profRaw) : null;
+    var activeId = prof && prof.activeId;
+    var all = raw ? JSON.parse(raw) : {};
+    return { entry: (all[activeId] || []) };
+  });
+  // v1.13: 기록 0건 상태에서 방문해도 소급 5건이 함께 저장되므로, 오늘 1건 + 소급 5건 = 6건.
+  check('토요일: localStorage 에 실제로 기록됨(오늘 1건+소급 5건=6건)', satStoreCheck.entry.length === 6, JSON.stringify(satStoreCheck));
+  check('토요일: 기록된 날짜 = 2026-08-22(최신=오늘)', satStoreCheck.entry[0] && satStoreCheck.entry[0].date === '2026-08-22', JSON.stringify(satStoreCheck));
+  check('토요일: 기록된 번호가 화면 번호와 일치', satStoreCheck.entry[0] && JSON.stringify(satStoreCheck.entry[0].numbers) === JSON.stringify(numbersSat),
+    JSON.stringify(satStoreCheck));
+
+  await pageSat.close();
+  await ctxSat.close();
+
+  // ============================================================
+  // 5. 콘솔 에러 0
   // ============================================================
   check('콘솔 에러 0건 (전체 페이즈 합산)', errors.length === 0, JSON.stringify(errors));
 

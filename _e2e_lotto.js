@@ -1,8 +1,8 @@
 /**
- * 헤드리스 e2e (v1.4 오늘의운세 로또 번호, 배포 대상 아님)
+ * 헤드리스 e2e (v1.4 오늘의운세 로또 번호 / v1.12 매일 노출, 배포 대상 아님)
  *   node _e2e_lotto.js [baseUrl]
  * 검증:
- *  - 토요일(2026-08-16, 실제 오늘)로 렌더 → 로또 섹션 미노출(정답)
+ *  - 토요일(2026-08-16)로 렌더 → v1.12: 로또 섹션 노출(주말도 매일 노출로 변경됨)
  *  - 날짜 모킹으로 평일(2026-08-17 월요일) → 로또 섹션 노출, 공 6개, 고지문구
  *  - 콘솔 에러 0
  *  - v1.1(맞춤 추천 탭)/v1.2(이름풀이 탭)/v1.3(한자풀이) 회귀 확인
@@ -76,7 +76,7 @@ async function submitSelf(page, name) {
   var browser = await chromium.launch({ executablePath: CHROME });
 
   // ============================================================
-  // 1. 토요일(2026-08-16, 실제 오늘) — 로또 섹션 미노출이 정답
+  // 1. 토요일(2026-08-16) — v1.12: 로또 섹션 노출이 정답(주말도 매일 노출)
   // ============================================================
   var p1 = await freshPage(browser, '2026-08-16T09:00:00');
   var page1 = p1.page;
@@ -88,16 +88,19 @@ async function submitSelf(page, name) {
   check('날짜 모킹 적용: #self-date max = 2026-08-16 (토요일)', dateMax1 === '2026-08-16', 'actual ' + dateMax1);
 
   await submitSelf(page1, '김민준');
+  await page1.waitForSelector('#lotto-block', { timeout: 5000 });
   var satDisplay = await page1.evaluate(function () {
     var el = document.getElementById('lotto-block');
     return el ? getComputedStyle(el).display : null;
   });
-  check('토요일(2026-08-16): 로또 섹션 display=none (미노출)', satDisplay === 'none', 'actual ' + satDisplay);
+  check('토요일(2026-08-16): 로또 섹션 display=block (v1.12: 매일 노출)', satDisplay === 'block', 'actual ' + satDisplay);
 
-  var satWeekday = await page1.evaluate(function () {
-    return window.ContentDB._internal.lottoIsWeekday('2026-08-16');
-  });
-  check('ContentDB._internal.lottoIsWeekday(2026-08-16) === false (토요일)', satWeekday === false);
+  var satBallCount = await page1.locator('#lotto-balls .lotto-ball').count();
+  check('토요일: 로또 공 6개 렌더', satBallCount === 6, '실제 ' + satBallCount);
+
+  check('ContentDB._internal.lottoIsWeekday 는 v1.12에서 제거됨', await page1.evaluate(function () {
+    return window.ContentDB._internal.lottoIsWeekday === undefined;
+  }));
 
   await p1.ctx.close();
 

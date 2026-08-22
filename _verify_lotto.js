@@ -1,8 +1,8 @@
 /**
- * node 유닛 검증 스크립트 (v1.4 로또 번호, 일회성, 배포에는 포함하지 않음)
+ * node 유닛 검증 스크립트 (v1.4 로또 번호 / v1.12 매일 노출, 일회성, 배포에는 포함하지 않음)
  * - 결정성(같은 chart+날짜 = 같은 번호)
  * - 범위(1~45)·중복 없음·오름차순 정렬
- * - 요일별 show 판정(월/금/토/일)
+ * - show 판정(v1.12: 요일 무관 항상 true — 월/금/토/일 전부 확인)
  * - 가중 로직: 부족 오행 대역이 실제로 더 자주 뽑히는지 통계 표본(chart 20종)
  */
 require('./content-db.js');
@@ -63,16 +63,14 @@ for (var d = 17; d <= 21; d++) { // 8/17(월)~8/21(금)
 }
 
 // ============================================================
-// 2. 요일별 show 판정 — 2026-08-17(월)/2026-08-21(금)/2026-08-15(토)/2026-08-16(일)
+// 2. show 판정 — v1.12: 요일 무관 항상 true (2026-08-17(월)/2026-08-21(금)/2026-08-15(토)/2026-08-16(일))
 // ============================================================
 check('월요일(2026-08-17) show=true', ContentDB.lotto(chartA, '2026-08-17').show === true);
 check('금요일(2026-08-21) show=true', ContentDB.lotto(chartA, '2026-08-21').show === true);
-check('토요일(2026-08-15) show=false', ContentDB.lotto(chartA, '2026-08-15').show === false);
-check('일요일(2026-08-16) show=false', ContentDB.lotto(chartA, '2026-08-16').show === false);
-// 요일 헬퍼 직접 검증(내부 노출)
-check('_internal.lottoIsWeekday 월=true', ContentDB._internal.lottoIsWeekday('2026-08-17') === true);
-check('_internal.lottoIsWeekday 토=false', ContentDB._internal.lottoIsWeekday('2026-08-15') === false);
-check('_internal.lottoIsWeekday 일=false', ContentDB._internal.lottoIsWeekday('2026-08-16') === false);
+check('토요일(2026-08-15) show=true (v1.12: 주말도 노출)', ContentDB.lotto(chartA, '2026-08-15').show === true);
+check('일요일(2026-08-16) show=true (v1.12: 주말도 노출)', ContentDB.lotto(chartA, '2026-08-16').show === true);
+// v1.12: 요일 제한 폐지로 _internal.lottoIsWeekday 는 제거됨 — 더 이상 노출되지 않아야 한다.
+check('_internal.lottoIsWeekday 제거됨(v1.12)', ContentDB._internal.lottoIsWeekday === undefined);
 
 // ============================================================
 // 3. 에러 케이스

@@ -6,8 +6,8 @@
  *  - 이름 1개(한쪽만)만 입력 → 그쪽만 축약 표시, giveTake 카드 없음
  *  - 이름 0개(둘 다 미입력) → 섹션 자체 숨김
  *  - 콘솔 에러 0
- *  - v1.1~1.4 회귀(맞춤 추천 탭 / 이름풀이 탭 / 한자 더보기 버튼 / 토요일 로또 미노출)
- * 주의: 오늘(2026-08-16)은 실제로 토요일이라 로또 미노출이 정상 동작이다(날짜 모킹도 동일 날짜로 고정해 재현성 확보).
+ *  - v1.1~1.4 회귀(맞춤 추천 탭 / 이름풀이 탭 / 한자 더보기 버튼 / 로또 노출)
+ * 주의: 오늘(2026-08-16)은 실제로 토요일. v1.12부터 로또는 요일 무관 매일 노출이므로 토요일에도 노출이 정상 동작이다.
  */
 var PW = 'C:/Users/NHNE/AppData/Local/npm-cache/_npx/9833c18b2d85bc59/node_modules/playwright';
 var { chromium } = require(PW);
@@ -98,7 +98,7 @@ async function submitPartner(page, name) {
     var el = document.getElementById('lotto-block');
     return el ? getComputedStyle(el).display : null;
   });
-  check('v1.4 회귀: 토요일(2026-08-16) 로또 섹션 미노출', lottoDisplay === 'none', 'actual ' + lottoDisplay);
+  check('v1.4 회귀: 토요일(2026-08-16) 로또 섹션 노출(v1.12: 매일 노출)', lottoDisplay === 'block', 'actual ' + lottoDisplay);
   await page1.click('.tab-btn[data-tab="name"]');
   await page1.waitForSelector('#hanja-open-btn', { timeout: 8000 });
   check('v1.3 회귀: "한자로 더 보기" 버튼 노출', await page1.locator('#hanja-open-btn').count() === 1);

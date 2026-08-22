@@ -2641,7 +2641,8 @@ window.LottoHistoryStore = (function () {
 
   // v1.11: 오늘 계산된 번호를 프로필별로 localStorage 에 쌓는다.
   // 정책 — 같은 날 재조회하면 그날 기록을 최신 번호로 갱신(하루 1줄 유지), 날이 바뀌면 새 줄로 쌓인다.
-  // 주말(로또 섹션 미노출일)은 번호 자체가 화면에 나타나지 않으므로 기록하지 않는다(기존 show 규칙과 동일 기준).
+  // v1.12(2026-08-22): 로또 섹션이 주 7일 매일 노출로 바뀌어(show 는 항상 true), 토·일도 다른 요일과
+  // 동일하게 기록된다 — info.show !== true 가드는 향후 show 가 다시 조건부가 될 경우를 위한 방어 코드로 유지.
   function recordLottoHistory(){
     if(!window.LottoHistoryStore) return;
     var info = state.lottoInfo;
@@ -2653,6 +2654,61 @@ window.LottoHistoryStore = (function () {
   }
 
   // v1.11: "지난 번호" 누적 목록 렌더 — 날짜 내림차순(최신이 위), 스크롤 가능한 목록
+  // v1.13(2026-08-22, 사장님 "누적 5개는 보여야지"): 저장된 기록이 5줄 미만이면,
+  // ContentDB.lotto(chart, 날짜)가 chart+날짜 결정적 시드라는 점을 이용해 어제부터 역순으로
+  // 지난 날짜의 번호를 소급 계산해 목록을 최소 MIN_HISTORY_ROWS 줄로 채운다.
+  // 소급값은 "그날 실제로 접속했다면 나왔을 번호"와 동일(허구 생성이 아니라 같은 결정적 공식의 재계산)이라
+  // 정직하다. 이미 저장된 날짜와 소급 계산이 겹치면 저장값을 그대로 신뢰하고(동일해야 정상),
+  // 값이 다르면(이론상 발생해선 안 됨 — chart 변경 등 이상 신호) 콘솔 경고만 남긴다.
+  var MIN_HISTORY_ROWS = 5;
+  var MAX_BACKFILL_LOOKBACK_DAYS = 400; // LottoHistoryStore 365일 캡 + 여유, 무한루프 방지 가드
+
+  function backfillLottoHistoryRows(rows, chart, profileId){
+    if(!chart || !profileId || !window.ContentDB || typeof window.ContentDB.lotto !== 'function') return rows;
+    var existing = {};
+    rows.forEach(function(r){ existing[r.date] = r; });
+
+    var toSave = [];
+    var filled = rows.slice();
+    var cursor = new Date(TODAY_STR + 'T00:00:00');
+    var lookback = 0;
+    while(filled.length < MIN_HISTORY_ROWS && lookback < MAX_BACKFILL_LOOKBACK_DAYS){
+      lookback++;
+      cursor.setDate(cursor.getDate() - 1);
+      // 로컬 날짜 그대로 포맷(TODAY_STR과 동일한 방식) — toISOString()은 UTC로 변환돼
+      // 양의 UTC 오프셋(KST 등) 환경에서 하루 밀리는 버그가 있어 사용하지 않는다.
+      var ds = cursor.getFullYear() + '-' + pad(cursor.getMonth() + 1) + '-' + pad(cursor.getDate());
+
+      var computed;
+      try { computed = window.ContentDB.lotto(chart, ds); }
+      catch(calcErr){ console.error('[MZ사주풀이] 로또 소급 계산 오류(' + ds + '):', calcErr); continue; }
+
+      var already = existing[ds];
+      if(already){
+        // v1.13: 저장 기록과 소급 계산값이 겹치는 날짜 — 저장 기록을 그대로 신뢰(우선), 값이 다르면 경고만.
+        if(JSON.stringify(already.numbers) !== JSON.stringify(computed.numbers)){
+          console.warn('[MZ사주풀이] 로또 소급 계산값이 저장 기록과 다릅니다(' + ds + '):',
+            already.numbers, 'vs', computed.numbers);
+        }
+        continue; // 이미 rows/filled 에 포함돼 있으므로 다시 추가하지 않음
+      }
+
+      filled.push({ date: ds, numbers: computed.numbers });
+      toSave.push({ date: ds, numbers: computed.numbers });
+    }
+
+    // 소급분도 localStorage 에 기록해 다음부터는 저장된 기록으로 뜨게 한다(중복 없이, 하루 1줄 유지).
+    if(window.LottoHistoryStore){
+      toSave.forEach(function(r){
+        try { window.LottoHistoryStore.record(profileId, r.date, r.numbers); }
+        catch(saveErr){ console.error('[MZ사주풀이] 로또 소급 기록 저장 오류(' + r.date + '):', saveErr); }
+      });
+    }
+
+    filled.sort(function(a, b){ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); }); // 날짜 내림차순
+    return filled;
+  }
+
   function renderLottoHistory(){
     var wrap = document.getElementById('lotto-history-block');
     var listEl = document.getElementById('lotto-history-list');
@@ -2661,6 +2717,11 @@ window.LottoHistoryStore = (function () {
     var rows = (window.LottoHistoryStore && profile && profile.id) ? window.LottoHistoryStore.list(profile.id) : [];
     // 오늘 기록은 위 "오늘의 로또 번호" 카드에 이미 나오므로 목록에서는 제외해 중복을 피한다.
     rows = rows.filter(function(r){ return r.date !== TODAY_STR; });
+
+    if(rows.length < MIN_HISTORY_ROWS && profile && profile.id){
+      rows = backfillLottoHistoryRows(rows, state.selfChart, profile.id);
+    }
+
     if(rows.length === 0){
       listEl.innerHTML = '<div class="lotto-history-empty">아직 쌓인 지난 번호가 없습니다. 내일 다시 방문해보세요.</div>';
       wrap.style.display = 'block';

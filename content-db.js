@@ -1193,12 +1193,14 @@
   }
 
   // ============================================================
-  // 13. 오늘의 운세 로또 번호 (v1.4, 2026-08-16) — lotto()
+  // 13. 오늘의 운세 로또 번호 (v1.4, 2026-08-16 / v1.12, 2026-08-22 매일 노출로 변경) — lotto()
   //   결정적 시드 = chart + 날짜 (chartSeedString 재사용, 날짜별로 매일 변경)
   //   오행→숫자 대역: 목1~9 / 화10~18 / 토19~27 / 금28~36 / 수37~45
   //   가중치: 당일 일진 천간 오행 +1.5, 본인 부족(최소) 오행 +2 (겹치면 합산), 기본 1
   //   일진 오행은 SajuEngine.today() 와 동일한 JDN 60갑자 공식((jdn+9)%10)을 독립 계산
   //   (saju-engine.js 를 직접 참조하지 않고, 그레고리력 JDN 공식만 여기서도 자체 구현)
+  //   v1.12: 기존 월~금 노출 제한(show, lottoIsWeekday)을 제거 — 주 7일 매일 번호 노출.
+  //   번호 생성(시드·가중치) 로직은 무변경, 토·일도 해당 날짜 시드로 번호가 계산된다.
   // ============================================================
 
   var LOTTO_BAND = { 목: [1, 9], 화: [10, 18], 토: [19, 27], 금: [28, 36], 수: [37, 45] };
@@ -1217,12 +1219,6 @@
     var jdn = jdnFromYmdLocal(p.y, p.mo, p.d);
     return GAN_ELEMENT[GAN[(jdn + 9) % 10]];
   }
-  function lottoIsWeekday(dateStr) {
-    var p = parseDateStrLotto(dateStr);
-    var dow = new Date(p.y, p.mo - 1, p.d).getDay(); // 0=일 ~ 6=토 (로컬 y/m/d 생성이라 타임존 경계 이슈 없음)
-    return dow >= 1 && dow <= 5;
-  }
-
   function lotto(chart, dateStr) {
     if (!chart) throw new Error('ContentDB.lotto: chart 가 필요합니다.');
     parseDateStrLotto(dateStr); // 형식 검증(실패 시 throw)
@@ -1261,7 +1257,8 @@
       ? ('오늘 일진과 겹치는 ' + iljinEl + ' 기운을 중심으로 뽑아본 번호입니다.')
       : ('오늘 일진의 ' + iljinEl + ' 기운과 부족한 ' + lackEl + ' 기운을 함께 채우는 조합입니다.');
 
-    return { numbers: numbers, para: para, show: lottoIsWeekday(dateStr) };
+    // v1.12: 요일 제한 제거 — 주 7일 매일 노출(사장님 2026-08-22 09:18 "로또 번호 안나오네" = 토요일 미노출 문제 수정).
+    return { numbers: numbers, para: para, show: true };
   }
 
   // ============================================================
@@ -1284,7 +1281,7 @@
       MBTI_TYPES: MBTI_TYPES, MBTI_GROUPS: MBTI_GROUPS,
       groupOf: groupOf, iljiSipsin: iljiSipsin, sipsinOf: sipsinOf,
       weakestElement: weakestElement,
-      lottoIljinElement: lottoIljinElement, lottoIsWeekday: lottoIsWeekday
+      lottoIljinElement: lottoIljinElement
     }
   };
 
